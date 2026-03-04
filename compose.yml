@@ -1,0 +1,10 @@
+services:
+
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: fennec
+    ports:
+      - "7891:5432"
