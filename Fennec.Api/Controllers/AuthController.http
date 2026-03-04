@@ -1,0 +1,8 @@
+### Register a user
+POST https://localhost:7014/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "name": "karo",
+  "password": "a"
+}
