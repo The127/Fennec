@@ -61,6 +61,39 @@ namespace Fennec.Api.Migrations
                     b.ToTable("auth_method", (string)null);
                 });
 
+            modelBuilder.Entity("Fennec.Api.Models.Session", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("token");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_session");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_session_user_id");
+
+                    b.ToTable("session", (string)null);
+                });
+
             modelBuilder.Entity("Fennec.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -88,6 +121,10 @@ namespace Fennec.Api.Migrations
                     b.HasKey("Id")
                         .HasName("pk_user");
 
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_name");
+
                     b.ToTable("user", (string)null);
                 });
 
@@ -103,9 +140,23 @@ namespace Fennec.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Fennec.Api.Models.Session", b =>
+                {
+                    b.HasOne("Fennec.Api.Models.User", "User")
+                        .WithMany("Sessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_session_user_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Fennec.Api.Models.User", b =>
                 {
                     b.Navigation("AuthMethods");
+
+                    b.Navigation("Sessions");
                 });
 #pragma warning restore 612, 618
         }

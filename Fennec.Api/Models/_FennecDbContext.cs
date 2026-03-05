@@ -14,4 +14,9 @@ public class FennecDbContext : DbContext
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FennecDbContext).Assembly);
     }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTrackingWithIdentityResolution);
+    }
 }

@@ -6,8 +6,8 @@ namespace Fennec.Api.Commands;
 
 public record RegisterUserCommand : IRequest
 {
-    public required string Name { get; set; }
-    public required string Password { get; set; }
+    public required string Name { get; init; }
+    public required string Password { get; init; }
 }
 
 public class RegisterUserCommandHandler(
@@ -31,7 +31,7 @@ public class RegisterUserCommandHandler(
             Details = JsonSerializer.SerializeToDocument(new PasswordAuthMethodDetails
             {
                 Hash = hash,
-            })
+            }),
         };
         
         dbContext.AddRange(user, password);
