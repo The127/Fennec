@@ -1,6 +1,8 @@
 using Fennec.Api.Models;
 using Fennec.Api.Services;
+using Fennec.Api.Triggers;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,8 +12,12 @@ builder.Services.AddMediatR(config => config.RegisterServicesFromAssemblyContain
 
 builder.Services.AddDbContext<FennecDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("FennecDb"), npgsqlOptions =>
-        npgsqlOptions.UseNodaTime()
-    ).UseSnakeCaseNamingConvention()
+            npgsqlOptions.UseNodaTime()
+        )
+        .UseSnakeCaseNamingConvention()
+        .UseTriggers(triggerOptions => triggerOptions
+            .AddTrigger<SetAuditTimestampsTrigger>()
+        )
 );
 
 builder.Services.AddSingleton<IClockService, ServerClockService>();

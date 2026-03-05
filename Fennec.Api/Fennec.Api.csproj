@@ -11,6 +11,8 @@
         <PackageReference Include="Darkarotte.HttpExceptions" Version="0.1.0" />
         <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
         <PackageReference Include="EntityFrameworkCore.Projectables" Version="5.0.2" />
+        <PackageReference Include="EntityFrameworkCore.Triggered" Version="3.2.2" />
+        <PackageReference Include="JetBrains.Annotations" Version="2025.2.4" />
         <PackageReference Include="MediatR" Version="14.1.0" />
         <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="11.1.0" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1"/>
