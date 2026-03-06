@@ -6,8 +6,9 @@ namespace Fennec.Api.Models;
 public class Server : EntityBase
 {
     public required string Name { get; set; }
-    
     public required string Slug { get; init; }
+    
+    public List<ServerMember> Members { get; set; } = new();
 }
 
 public class ServerConfiguration : IEntityTypeConfiguration<Server>

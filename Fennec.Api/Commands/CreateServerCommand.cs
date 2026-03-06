@@ -1,12 +1,14 @@
 ﻿using Fennec.Api.Models;
+using Fennec.Api.Security;
 using MediatR;
 
 namespace Fennec.Api.Commands;
 
 public record CreateServerCommand : IRequest
 {
-    public required string Name { get; set; }
-    public required string Slug { get; set; }
+    public required string Name { get; init; }
+    public required string Slug { get; init; }
+    public required IAuthPrinciple AuthPrinciple { get; init; }
 }
 
 public class CreateServerCommandHandler(
@@ -21,7 +23,13 @@ public class CreateServerCommandHandler(
             Slug = request.Slug,
         };
         
-        await dbContext.AddAsync(server, cancellationToken);
+        var member = new ServerMember
+        {
+            UserId = request.AuthPrinciple.Id,
+            ServerId = server.Id,
+        };
+        
+        dbContext.AddRange(server, member);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

@@ -32,6 +32,7 @@ public class ServerController : FennecControllerBase
         {
             Name = requestDto.Name,
             Slug = requestDto.Slug,
+            AuthPrinciple = AuthPrincipal,
         }, cancellationToken);
         
         return NoContent();
