@@ -13,7 +13,6 @@ public enum AuthMethodType
 
 public class PasswordAuthMethodDetails
 {
-    [JsonPropertyName("hash")]
     public required string Hash { get; set; }
 }
 
@@ -52,7 +51,7 @@ public static class AuthMethodExtensions
             UserId = x.UserId,
             Details = new PasswordAuthMethodDetails
             {
-                Hash = x.Details.RootElement.GetProperty("hash").GetString()!,
+                Hash = x.Details.RootElement.GetProperty(nameof(PasswordAuthMethodDetails.Hash)).GetString()!,
             },
         });
 }
