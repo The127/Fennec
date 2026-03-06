@@ -16,5 +16,6 @@ public class ServerMemberConfiguration : IEntityTypeConfiguration<ServerMember>
 {
     public void Configure(EntityTypeBuilder<ServerMember> builder)
     {
+        builder.HasIndex(x => new { x.UserId, x.ServerId }).IsUnique();
     }
 }

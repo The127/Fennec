@@ -9,7 +9,7 @@ public record CreateServerCommand : IRequest
     public required string Name { get; init; }
     public required string Slug { get; init; }
     public required ServerVisibility Visibility { get; init; }
-    public required IAuthPrinciple AuthPrinciple { get; init; }
+    public required IAuthPrinciple AuthPrincipal { get; init; }
 }
 
 public class CreateServerCommandHandler(
@@ -27,7 +27,7 @@ public class CreateServerCommandHandler(
         
         var member = new ServerMember
         {
-            UserId = request.AuthPrinciple.Id,
+            UserId = request.AuthPrincipal.Id,
             ServerId = server.Id,
         };
         

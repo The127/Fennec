@@ -29,15 +29,28 @@ public class ServerController : FennecControllerBase
         CancellationToken cancellationToken
     )
     {
-        if (AuthPrincipal.Id == Guid.Empty)
-            return Unauthorized();
-        
         await mediator.Send(new CreateServerCommand
         {
             Name = requestDto.Name,
             Slug = requestDto.Slug,
             Visibility =  requestDto.Visibility,
-            AuthPrinciple = AuthPrincipal,
+            AuthPrincipal = AuthPrincipal,
+        }, cancellationToken);
+        
+        return NoContent();
+    }
+
+    [HttpPost("{server:guid}/join")]
+    public async Task<IActionResult> JoinServer(
+        Guid server,
+        [FromServices] IMediator mediator,
+        CancellationToken cancellationToken
+    )
+    {
+        await mediator.Send(new JoinServerCommand
+        {
+            ServerId = server,
+            AuthPrincipal = AuthPrincipal,
         }, cancellationToken);
         
         return NoContent();
