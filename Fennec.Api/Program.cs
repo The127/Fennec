@@ -22,6 +22,8 @@ builder.Services.AddDbContext<FennecDbContext>(options =>
 );
 
 builder.Services.AddSingleton<IClockService, ServerClockService>();
+
+builder.Services.AddScoped<AuthenticationMiddleware>();
 builder.Services.AddScoped<ExceptionMiddleware>();
 
 var app = builder.Build();
@@ -32,6 +34,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpsRedirection();
 app.MapControllers();
