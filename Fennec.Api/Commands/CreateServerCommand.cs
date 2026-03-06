@@ -7,7 +7,6 @@ namespace Fennec.Api.Commands;
 public record CreateServerCommand : IRequest
 {
     public required string Name { get; init; }
-    public required string Slug { get; init; }
     public required ServerVisibility Visibility { get; init; }
     public required IAuthPrinciple AuthPrincipal { get; init; }
 }
@@ -21,7 +20,6 @@ public class CreateServerCommandHandler(
         var server = new Server
         {
             Name = request.Name,
-            Slug = request.Slug,
             Visibility = request.Visibility,
         };
         

@@ -15,9 +15,6 @@ public class ServerController : FennecControllerBase
         [JsonPropertyName("name")]
         public required string Name { get; set; }
         
-        [JsonPropertyName("slug")]
-        public required string Slug { get; set; }
-        
         [JsonPropertyName("visibility")]
         public required ServerVisibility Visibility { get; set; }
     }
@@ -32,7 +29,6 @@ public class ServerController : FennecControllerBase
         await mediator.Send(new CreateServerCommand
         {
             Name = requestDto.Name,
-            Slug = requestDto.Slug,
             Visibility =  requestDto.Visibility,
             AuthPrincipal = AuthPrincipal,
         }, cancellationToken);

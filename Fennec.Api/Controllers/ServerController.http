@@ -5,7 +5,6 @@ Authorization: {{bearer}}
 
 {
   "name": "fennec",
-  "slug": "fennec3",
   "visibility": 0
 }
 
