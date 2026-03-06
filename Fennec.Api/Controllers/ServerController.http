@@ -1,6 +1,7 @@
 ﻿### Create a server
 POST https://localhost:7014/api/v1/server/create
 Content-Type: application/json
+Authorization: {{bearer}}
 
 {
   "name": "fennec",

@@ -7,7 +7,7 @@ namespace Fennec.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/server")]
-public class ServerController : ControllerBase
+public class ServerController : FennecControllerBase
 {
     public class CreateServerRequestDto
     {
@@ -25,6 +25,9 @@ public class ServerController : ControllerBase
         CancellationToken cancellationToken
     )
     {
+        if (AuthPrincipal.Id == Guid.Empty)
+            return Unauthorized();
+        
         await mediator.Send(new CreateServerCommand
         {
             Name = requestDto.Name,

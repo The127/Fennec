@@ -15,5 +15,6 @@ public class SessionConfiguration : IEntityTypeConfiguration<Session>
 {
     public void Configure(EntityTypeBuilder<Session> builder)
     {
+        builder.HasIndex(x => x.Token).IsUnique();
     }
 }
