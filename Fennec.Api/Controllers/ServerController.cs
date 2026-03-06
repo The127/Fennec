@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using Fennec.Api.Commands;
+using Fennec.Api.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,6 +17,9 @@ public class ServerController : FennecControllerBase
         
         [JsonPropertyName("slug")]
         public required string Slug { get; set; }
+        
+        [JsonPropertyName("visibility")]
+        public required ServerVisibility Visibility { get; set; }
     }
 
     [HttpPost("create")]
@@ -32,6 +36,7 @@ public class ServerController : FennecControllerBase
         {
             Name = requestDto.Name,
             Slug = requestDto.Slug,
+            Visibility =  requestDto.Visibility,
             AuthPrinciple = AuthPrincipal,
         }, cancellationToken);
         
