@@ -1,3 +1,4 @@
+using Fennec.Api.Middlewares;
 using Fennec.Api.Models;
 using Fennec.Api.Services;
 using Fennec.Api.Triggers;
@@ -21,6 +22,7 @@ builder.Services.AddDbContext<FennecDbContext>(options =>
 );
 
 builder.Services.AddSingleton<IClockService, ServerClockService>();
+builder.Services.AddScoped<ExceptionMiddleware>();
 
 var app = builder.Build();
 
@@ -30,6 +32,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpsRedirection();
 app.MapControllers();
 
