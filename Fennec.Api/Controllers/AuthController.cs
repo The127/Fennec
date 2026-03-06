@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Fennec.Api.Commands;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +20,7 @@ public class AuthController : ControllerBase
         public required string Password { get; set; }
     }
 
+    [AllowAnonymous]
     [HttpPost("register")]
     public async Task<IActionResult> RegisterUser(
         [FromBody] RegisterUserRequestDto requestDto,
@@ -44,6 +46,7 @@ public class AuthController : ControllerBase
         public required string Password { get; set; }
     }
     
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> LoginUser(
         [FromBody] LoginRequestDto requestDto,
