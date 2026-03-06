@@ -30,8 +30,21 @@ public class CreateServerCommandHandler(
             UserId = request.AuthPrincipal.Id,
             ServerId = server.Id,
         };
+
+        var defaultGroup = new ChannelGroup
+        {
+            Name = "default group",
+            ServerId = server.Id,
+        };
+
+        var defaultChannel = new Channel
+        {
+            Name = "default channel",
+            ServerId = server.Id,
+            ChannelGroupId = defaultGroup.Id,
+        };
         
-        dbContext.AddRange(server, member);
+        dbContext.AddRange(server, member, defaultGroup, defaultChannel);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

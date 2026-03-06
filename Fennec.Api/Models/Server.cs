@@ -16,6 +16,8 @@ public class Server : EntityBase
     public required ServerVisibility Visibility { get; set; }
     
     public List<ServerMember> Members { get; set; } = [];
+    public List<ChannelGroup> ChannelGroups { get; set; } = [];
+    public List<Channel> Channels { get; set; } = [];
 }
 
 public class ServerConfiguration : IEntityTypeConfiguration<Server>
