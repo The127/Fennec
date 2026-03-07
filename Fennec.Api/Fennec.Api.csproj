@@ -44,6 +44,9 @@
       <None Update="Controllers\AuthController.http">
         <DependentUpon>AuthController.cs</DependentUpon>
       </None>
+      <None Update="Controllers\WellKnownController.http">
+        <DependentUpon>WellKnownController.cs</DependentUpon>
+      </None>
     </ItemGroup>
 
 </Project>
