@@ -1,4 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
 using Fennec.Api.Models;
+using Fennec.Api.Settings;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using NodaTime;
+using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
 
 namespace Fennec.Api.Services;
 
@@ -9,8 +17,39 @@ public interface IKeyService
 
 public class KeyService : IKeyService
 {
+    private readonly IOptions<FennecSettings> _fennecSettings;
+    private readonly IClockService _clockService;
+    private readonly SigningCredentials _signingCredentials;
+    
+    public KeyService(
+        IOptions<KeySettings> keyOptions,
+        IOptions<FennecSettings> fennecSettings,
+        IClockService clockService)
+    {
+        _fennecSettings = fennecSettings;
+        _clockService = clockService;
+        
+        var pem = File.ReadAllText(keyOptions.Value.PrivateKeyPath);
+        var rsa = RSA.Create();
+        rsa.ImportFromPem(pem);
+        _signingCredentials = new SigningCredentials(new RsaSecurityKey(rsa), SecurityAlgorithms.RsaSha256);
+    }
+    
     public string GetSignedToken(User user)
     {
-        return "signed-token";
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _fennecSettings.Value.IssuerUrl,
+            audience: "fennec-client",
+            claims: claims,
+            expires: (_clockService.GetCurrentInstant() + Duration.FromMinutes(5)).ToDateTimeUtc(),
+            signingCredentials: _signingCredentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

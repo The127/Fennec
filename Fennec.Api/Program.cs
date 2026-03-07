@@ -22,12 +22,17 @@ builder.Services.AddDbContext<FennecDbContext>(options =>
 );
 
 builder.Services.AddSingleton<IClockService, ServerClockService>();
+builder.Services.AddSingleton<IKeyService, KeyService>();
 
 builder.Services.AddScoped<ExceptionMiddleware>();
 builder.Services.AddScoped<AuthenticationMiddleware>();
 
 builder.Services.AddOptions<KeySettings>()
-    .Bind(builder.Configuration.GetSection("KeySettings"));
+    .Bind(builder.Configuration.GetSection("KeySettings"))
+    .ValidateOnStart();
+builder.Services.AddOptions<FennecSettings>()
+    .Bind(builder.Configuration.GetSection("FennecSettings"))
+    .ValidateOnStart();
 
 var app = builder.Build();
 
