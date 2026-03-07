@@ -46,15 +46,17 @@ public class AuthController : FennecControllerBase
             Name = requestDto.Name,
             Password = requestDto.Password
         });
-
-        Request.HttpContext.Response.Headers.AppendAuthorizationHeader(loginResponse.Token);
         
-        return NoContent();
+        return Ok(new LoginResponseDto
+        {
+            SessionToken = loginResponse.Token.Value,
+        });
     }
 
     [AllowAnonymous]
     [HttpPost("public-token")]
     public async Task<IActionResult> GetPublicToken(
+        [FromBody] GetPublicTokenRequestDto requestDto,
         [FromServices] IKeyService keyService,
         [FromServices] FennecDbContext dbContext
     )
@@ -77,7 +79,7 @@ public class AuthController : FennecControllerBase
         
         return Ok(new GetPublicTokenResponseDto
         {
-            Token = keyService.GetSignedToken(session.User),
+            Token = keyService.GetSignedToken(session.User, requestDto.Audience),
         });
     }
 }

@@ -26,7 +26,7 @@ public record AuthenticationModel : IAuthPrincipal
 
 public interface IKeyService
 {
-    public string GetSignedToken(User user);
+    public string GetSignedToken(User user, string audience);
     public Task<IAuthPrincipal> VerifyTokenAsync(BearerToken jwt, CancellationToken cancellationToken);
 
     public string PublicKeyPem { get; }
@@ -68,11 +68,10 @@ public class KeyService : IKeyService
 
         var validationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidIssuer = jwt.Issuer,
+            ValidateIssuer = false,
 
             ValidateAudience = true,
-            ValidAudiences = ["fennec-client"],
+            ValidAudience = _fennecSettings.Value.IssuerUrl,
 
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
@@ -158,7 +157,7 @@ public class KeyService : IKeyService
         }
     }
 
-    public string GetSignedToken(User user)
+    public string GetSignedToken(User user, string audience)
     {
         var claims = new[]
         {
@@ -166,11 +165,17 @@ public class KeyService : IKeyService
             new Claim(JwtRegisteredClaimNames.Name, user.Name),
         };
 
+        var expiry = Duration.FromMinutes(5);
+        if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+        {
+            expiry = Duration.FromDays(1);
+        }
+        
         var token = new JwtSecurityToken(
             issuer: _fennecSettings.Value.IssuerUrl,
-            audience: "fennec-client",
+            audience: audience,
             claims: claims,
-            expires: (_clockService.GetCurrentInstant() + Duration.FromMinutes(5)).ToDateTimeUtc(),
+            expires: (_clockService.GetCurrentInstant() + expiry).ToDateTimeUtc(),
             signingCredentials: _signingCredentials
         );
 

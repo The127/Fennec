@@ -18,4 +18,9 @@ Content-Type: application/json
 
 ### Get a public token
 POST https://localhost:7014/api/v1/auth/public-token
-Authorization: Session WQuwxKZMuf6X94S3jjTG3Pj2zHP0wHAXPG7qJ/QNz1kJy/yZTq16hKjXGgdEB7yGvmIF46H02sbC4b6MVwuI1w==
+Authorization: Session YZnmi4f9swpzDP+kKc7TIxZWKqJPP6nr9498GIbXRYGsRGRKr74Gahs77J5eI/NMMVNBJQ9XKBIiIC7CxjWSnw==
+Content-Type: application/json
+
+{
+  "audience": "https://localhost:7014"
+}

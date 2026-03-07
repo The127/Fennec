@@ -43,9 +43,9 @@ public static class HeaderExtensions
             var parts = authorizationHeader.Split(' ');
             return parts switch
             {
-                ["Bearer", _] => BearerToken.From(parts[1].Trim()),
-                ["Session", _] => SessionToken.From(parts[1].Trim()),
-                _ => throw new HttpBadRequestException("Invalid authorization header format")
+                ["Bearer", var token] => BearerToken.From(token.Trim()),
+                ["Session", var token] => SessionToken.From(token.Trim()),
+                _ => throw new HttpBadRequestException("Invalid authorization header format"),
             };
         }
     }
