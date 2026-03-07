@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Fennec.Api.Models;
+using Fennec.Api.Utils;
 using HttpExceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,7 @@ public class LoginCommand : IRequest<LoginResponse>
 
 public class LoginResponse
 {
-    public required string Token { get; init; }
+    public required SessionToken Token { get; init; }
 }
 
 public class LoginCommandHandler(
@@ -46,7 +47,7 @@ public class LoginCommandHandler(
         
         return new LoginResponse
         {
-            Token = session.Token,
+            Token = SessionToken.From(session.Token),
         };
     }
 }

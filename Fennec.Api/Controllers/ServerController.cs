@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using Fennec.Api.Commands;
-using Fennec.Api.Models;
+﻿using Fennec.Api.Commands;
 using Fennec.Shared.Dtos;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

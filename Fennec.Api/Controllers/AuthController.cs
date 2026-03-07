@@ -1,8 +1,13 @@
 using Fennec.Api.Commands;
+using Fennec.Api.Models;
+using Fennec.Api.Services;
+using Fennec.Api.Utils;
 using Fennec.Shared.Dtos;
+using HttpExceptions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Fennec.Api.Controllers;
 
@@ -26,7 +31,6 @@ public class AuthController : FennecControllerBase
 
         return NoContent();
     }
-
     
     [AllowAnonymous]
     [HttpPost("login")]
@@ -42,8 +46,37 @@ public class AuthController : FennecControllerBase
             Password = requestDto.Password
         });
 
-        Request.HttpContext.Response.Headers.Append("Authorization", "Bearer " + loginResponse.Token);
+        Request.HttpContext.Response.Headers.AppendAuthorizationHeader(loginResponse.Token);
         
         return NoContent();
+    }
+
+    [AllowAnonymous]
+    [HttpPost("public-token")]
+    public async Task<IActionResult> GetPublicToken(
+        [FromServices] IKeyService keyService,
+        [FromServices] FennecDbContext dbContext
+    )
+    {
+        var authorizationHeader = Request.Headers.GetAuthorizationHeader();
+        var sessionToken = authorizationHeader.Match(
+            _ => throw new HttpUnauthorizedException("Expected session token"), 
+            sessionToken => sessionToken 
+        );
+        
+        var session = dbContext
+            .Set<Session>()
+            .Include(x => x.User)
+            .SingleOrDefault(x => x.Token == sessionToken.Value);
+
+        if (session is null)
+        {
+            throw new HttpUnauthorizedException("Invalid token");      
+        }
+        
+        return Ok(new GetPublicTokenResponseDto
+        {
+            Token = keyService.GetSignedToken(session.User),
+        });
     }
 }

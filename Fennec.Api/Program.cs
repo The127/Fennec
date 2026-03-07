@@ -1,9 +1,9 @@
 using Fennec.Api.Middlewares;
 using Fennec.Api.Models;
 using Fennec.Api.Services;
+using Fennec.Api.Settings;
 using Fennec.Api.Triggers;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,8 +23,11 @@ builder.Services.AddDbContext<FennecDbContext>(options =>
 
 builder.Services.AddSingleton<IClockService, ServerClockService>();
 
-builder.Services.AddScoped<AuthenticationMiddleware>();
 builder.Services.AddScoped<ExceptionMiddleware>();
+builder.Services.AddScoped<AuthenticationMiddleware>();
+
+builder.Services.AddOptions<KeySettings>()
+    .Bind(builder.Configuration.GetSection("KeySettings"));
 
 var app = builder.Build();
 
