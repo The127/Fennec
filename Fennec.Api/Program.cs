@@ -19,6 +19,7 @@ builder.Services.AddDbContext<FennecDbContext>(options =>
         .UseTriggers(triggerOptions => triggerOptions
             .AddTrigger<SetAuditTimestampsTrigger>()
         )
+        .UseProjectables()
 );
 
 builder.Services.AddSingleton<IClockService, ServerClockService>();
