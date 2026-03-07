@@ -16,6 +16,14 @@ using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegiste
 
 namespace Fennec.Api.Services;
 
+public record AuthenticationModel : IAuthPrincipal
+{
+    public required Guid Id { get; init; }
+    public required string Name { get; init; }
+    public required string Issuer { get; init; }
+    public required bool IsLocal { get; init; }
+}
+
 public interface IKeyService
 {
     public string GetSignedToken(User user);
@@ -86,10 +94,14 @@ public class KeyService : IKeyService
 
         try
         {
-            return new AuthenticationMiddleware.AuthenticationModel
+            return new AuthenticationModel
             {
                 Id = Guid.Parse(jwt.Subject),
                 IsLocal = jwt.Issuer == _fennecSettings.Value.IssuerUrl,
+                Name = jwt.TryGetClaim("name", out var name)
+                    ? name.Value
+                    : throw new BadHttpRequestException("Missing name claim"),
+                Issuer = jwt.Issuer,
             };
         }
         catch (FormatException)
@@ -113,7 +125,7 @@ public class KeyService : IKeyService
             {
                 return key;
             }
-            
+
             var uriBuilder = new UriBuilder(issuer)
             {
                 Path = ".well-known/fennec/public-key",
@@ -133,9 +145,9 @@ public class KeyService : IKeyService
 
             var rsa = RSA.Create();
             rsa.ImportFromPem(publicKeyResponse.PublicKeyPem);
-            
+
             key = new RsaSecurityKey(rsa);
-            
+
             _publicKeys.AddOrUpdate(issuer, key, (_, _) => key);
 
             return key;
@@ -151,6 +163,7 @@ public class KeyService : IKeyService
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Name, user.Name),
         };
 
         var token = new JwtSecurityToken(

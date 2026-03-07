@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Fennec.Api.Security;
 using Fennec.Api.Services;
 using Fennec.Api.Utils;
@@ -11,10 +12,12 @@ public class AuthenticationMiddleware(IKeyService keyService) : IMiddleware
 {
     public const string AuthPrincipalKey = nameof(AuthPrincipalKey);
 
-    public record AuthenticationModel : IAuthPrincipal
+    public record AnonymousUser : IAuthPrincipal
     {
-        public required Guid Id { get; init; }
-        public required bool IsLocal { get; init; }
+        public Guid Id => throw new UnreachableException("Anonymous user info accessed");
+        public string Name => throw new UnreachableException("Anonymous user info accessed");
+        public string Issuer => throw new UnreachableException("Anonymous user info accessed");
+        public bool IsLocal => throw new UnreachableException("Anonymous user info accessed");
     }
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -22,12 +25,7 @@ public class AuthenticationMiddleware(IKeyService keyService) : IMiddleware
         if (context.Features.Get<IEndpointFeature>()?.Endpoint?.Metadata.Any(m => m is AllowAnonymousAttribute) ??
             false)
         {
-            context.Items[AuthPrincipalKey] = new AuthenticationModel
-            {
-                Id = Guid.Empty,
-                IsLocal = false,
-            };
-            
+            context.Items[AuthPrincipalKey] = new AnonymousUser();
             await next.Invoke(context);
             return;
         }
