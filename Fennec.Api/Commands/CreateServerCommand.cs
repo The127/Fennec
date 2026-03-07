@@ -1,5 +1,6 @@
 ﻿using Fennec.Api.Models;
 using Fennec.Api.Security;
+using Fennec.Shared.Models;
 using MediatR;
 
 namespace Fennec.Api.Commands;

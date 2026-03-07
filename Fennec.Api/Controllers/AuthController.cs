@@ -1,8 +1,7 @@
-using System.Text.Json.Serialization;
 using Fennec.Api.Commands;
+using Fennec.Shared.Dtos;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Fennec.Api.Controllers;
@@ -11,15 +10,6 @@ namespace Fennec.Api.Controllers;
 [Route("api/v1/auth")]
 public class AuthController : FennecControllerBase
 {
-    public class RegisterUserRequestDto
-    {
-        [JsonPropertyName("name")]
-        public required string Name { get; set; }
-
-        [JsonPropertyName("password")]
-        public required string Password { get; set; }
-    }
-
     [AllowAnonymous]
     [HttpPost("register")]
     public async Task<IActionResult> RegisterUser(
@@ -37,14 +27,6 @@ public class AuthController : FennecControllerBase
         return NoContent();
     }
 
-    public class LoginRequestDto
-    {
-        [JsonPropertyName("name")]
-        public required string Name { get; set; }
-        
-        [JsonPropertyName("password")]
-        public required string Password { get; set; }
-    }
     
     [AllowAnonymous]
     [HttpPost("login")]

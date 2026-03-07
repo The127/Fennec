@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fennec.Api", "Fennec.Api\Fe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fennec.App", "Fennec.App\Fennec.App.csproj", "{2F45A262-4804-4AF4-B5E6-7F65E2E0E4D0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fennec.Shared", "Fennec.Shared\Fennec.Shared.csproj", "{FA5E1BA4-93C0-45BB-A048-6E2BE4F7D253}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{2F45A262-4804-4AF4-B5E6-7F65E2E0E4D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2F45A262-4804-4AF4-B5E6-7F65E2E0E4D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2F45A262-4804-4AF4-B5E6-7F65E2E0E4D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA5E1BA4-93C0-45BB-A048-6E2BE4F7D253}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA5E1BA4-93C0-45BB-A048-6E2BE4F7D253}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA5E1BA4-93C0-45BB-A048-6E2BE4F7D253}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA5E1BA4-93C0-45BB-A048-6E2BE4F7D253}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

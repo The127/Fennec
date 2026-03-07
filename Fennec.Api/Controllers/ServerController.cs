@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using Fennec.Api.Commands;
 using Fennec.Api.Models;
+using Fennec.Shared.Dtos;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,14 +11,6 @@ namespace Fennec.Api.Controllers;
 [Route("api/v1/server")]
 public class ServerController : FennecControllerBase
 {
-    public class CreateServerRequestDto
-    {
-        [JsonPropertyName("name")]
-        public required string Name { get; set; }
-        
-        [JsonPropertyName("visibility")]
-        public required ServerVisibility Visibility { get; set; }
-    }
 
     [HttpPost("create")]
     public async Task<IActionResult> CreateServer(

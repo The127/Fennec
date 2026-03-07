@@ -30,4 +30,8 @@
       <Folder Include="Queries\" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Fennec.Shared\Fennec.Shared.csproj" />
+    </ItemGroup>
+
 </Project>

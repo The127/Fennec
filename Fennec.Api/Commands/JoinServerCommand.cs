@@ -1,5 +1,6 @@
 ﻿using Fennec.Api.Models;
 using Fennec.Api.Security;
+using Fennec.Shared.Models;
 using HttpExceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

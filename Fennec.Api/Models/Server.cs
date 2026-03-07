@@ -1,13 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Fennec.Shared.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Fennec.Api.Models;
-
-public enum ServerVisibility
-{
-    Public = 0,
-    Private = 1,
-}
 
 public class Server : EntityBase
 {
