@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fennec.App", "Fennec.App\Fe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fennec.Shared", "Fennec.Shared\Fennec.Shared.csproj", "{FA5E1BA4-93C0-45BB-A048-6E2BE4F7D253}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fennec.Client", "Fennec.Client\Fennec.Client.csproj", "{F77C2FD5-C5B9-4DE1-86B2-A5F3219A6D84}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{FA5E1BA4-93C0-45BB-A048-6E2BE4F7D253}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FA5E1BA4-93C0-45BB-A048-6E2BE4F7D253}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FA5E1BA4-93C0-45BB-A048-6E2BE4F7D253}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F77C2FD5-C5B9-4DE1-86B2-A5F3219A6D84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F77C2FD5-C5B9-4DE1-86B2-A5F3219A6D84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F77C2FD5-C5B9-4DE1-86B2-A5F3219A6D84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F77C2FD5-C5B9-4DE1-86B2-A5F3219A6D84}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
