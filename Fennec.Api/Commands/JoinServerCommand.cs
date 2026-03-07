@@ -10,7 +10,7 @@ namespace Fennec.Api.Commands;
 public record JoinServerCommand : IRequest
 {
     public required Guid ServerId { get; init; }
-    public required IAuthPrinciple AuthPrincipal { get; init; }
+    public required IAuthPrincipal AuthPrincipal { get; init; }
 }
 
 

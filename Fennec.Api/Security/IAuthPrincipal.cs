@@ -1,6 +1,6 @@
 namespace Fennec.Api.Security;
 
-public interface IAuthPrinciple
+public interface IAuthPrincipal
 {
     public Guid Id { get; }
 }

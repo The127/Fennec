@@ -4,7 +4,7 @@ Content-Type: application/json
 Authorization: {{bearer}}
 
 {
-  "name": "fennec",
+  "name": "fennec1",
   "visibility": 0
 }
 

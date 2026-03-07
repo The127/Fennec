@@ -9,7 +9,7 @@ public record CreateServerCommand : IRequest
 {
     public required string Name { get; init; }
     public required ServerVisibility Visibility { get; init; }
-    public required IAuthPrinciple AuthPrincipal { get; init; }
+    public required IAuthPrincipal AuthPrincipal { get; init; }
 }
 
 public class CreateServerCommandHandler(

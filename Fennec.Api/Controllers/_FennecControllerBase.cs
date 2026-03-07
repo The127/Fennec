@@ -6,6 +6,6 @@ namespace Fennec.Api.Controllers;
 
 public class FennecControllerBase : ControllerBase
 {
-    protected IAuthPrinciple AuthPrincipal => (AuthenticationMiddleware.AuthenticationModel)HttpContext.Items[AuthenticationMiddleware.AuthPrincipalKey]!;
+    protected IAuthPrincipal AuthPrincipal => (AuthenticationMiddleware.AuthenticationModel)HttpContext.Items[AuthenticationMiddleware.AuthPrincipalKey]!;
     
 }

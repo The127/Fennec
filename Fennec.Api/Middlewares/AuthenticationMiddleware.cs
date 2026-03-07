@@ -1,4 +1,5 @@
 using Fennec.Api.Security;
+using Fennec.Api.Services;
 using Fennec.Api.Utils;
 using HttpExceptions;
 using Microsoft.AspNetCore.Authorization;
@@ -6,11 +7,11 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Fennec.Api.Middlewares;
 
-public class AuthenticationMiddleware : IMiddleware
+public class AuthenticationMiddleware(IKeyService keyService) : IMiddleware
 {
     public const string AuthPrincipalKey = nameof(AuthPrincipalKey);
 
-    public record AuthenticationModel : IAuthPrinciple
+    public record AuthenticationModel : IAuthPrincipal
     {
         public required Guid Id { get; init; }
     }
@@ -27,17 +28,14 @@ public class AuthenticationMiddleware : IMiddleware
 
         var authorizationHeader = context.Request.Headers.GetAuthorizationHeader();
 
-        var authPrincipal = authorizationHeader.Match(
-            bearerToken =>
-            {
-                // TODO: extract jwt
-                
-                return new AuthenticationModel { Id = Guid.NewGuid() };
-            },
-            sessionToken => throw new HttpUnauthorizedException("Expected bearer token")
+        var authPrincipalFactory = authorizationHeader.Match<Func<CancellationToken, Task<IAuthPrincipal>>>(
+            bearerToken => async cancellationToken => await keyService.VerifyTokenAsync(bearerToken, cancellationToken),
+            _ => throw new HttpUnauthorizedException("Expected bearer token")
         );
-
+        
+        var authPrincipal = await authPrincipalFactory(context.RequestAborted);
         context.Items[AuthPrincipalKey] = authPrincipal;
+        
         await next.Invoke(context);
     }
 }
