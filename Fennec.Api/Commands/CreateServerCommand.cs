@@ -18,6 +18,11 @@ public class CreateServerCommandHandler(
 {
     public async Task Handle(CreateServerCommand request, CancellationToken cancellationToken)
     {
+        if (!request.AuthPrincipal.IsLocal)
+        {
+            throw new UnauthorizedAccessException("Only local users can create servers");
+        }
+        
         var server = new Server
         {
             Name = request.Name,
