@@ -3,6 +3,7 @@ using Fennec.Api.Models;
 using Fennec.Api.Services;
 using Fennec.Api.Utils;
 using Fennec.Shared.Dtos;
+using Fennec.Shared.Dtos.Auth;
 using HttpExceptions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

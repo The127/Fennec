@@ -37,4 +37,13 @@
       <ProjectReference Include="..\Fennec.Shared\Fennec.Shared.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="Controllers\ServerController.http">
+        <DependentUpon>ServerController.cs</DependentUpon>
+      </None>
+      <None Update="Controllers\AuthController.http">
+        <DependentUpon>AuthController.cs</DependentUpon>
+      </None>
+    </ItemGroup>
+
 </Project>

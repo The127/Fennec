@@ -28,7 +28,12 @@ public class AuthenticationMiddleware : IMiddleware
         var authorizationHeader = context.Request.Headers.GetAuthorizationHeader();
 
         var authPrincipal = authorizationHeader.Match(
-            bearerToken => new AuthenticationModel { Id = Guid.NewGuid() },
+            bearerToken =>
+            {
+                // TODO: extract jwt
+                
+                return new AuthenticationModel { Id = Guid.NewGuid() };
+            },
             sessionToken => throw new HttpUnauthorizedException("Expected bearer token")
         );
 

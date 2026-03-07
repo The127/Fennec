@@ -1,5 +1,6 @@
 ﻿using Fennec.Api.Commands;
 using Fennec.Shared.Dtos;
+using Fennec.Shared.Dtos.Server;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

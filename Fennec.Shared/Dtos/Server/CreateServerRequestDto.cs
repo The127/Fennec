@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using Fennec.Shared.Models;
 
-namespace Fennec.Shared.Dtos;
+namespace Fennec.Shared.Dtos.Server;
 
 public class CreateServerRequestDto
 {

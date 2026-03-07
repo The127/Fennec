@@ -13,14 +13,19 @@ namespace Fennec.Api.Services;
 public interface IKeyService
 {
     public string GetSignedToken(User user);
+    public string PublicKeyPem { get; }
 }
 
 public class KeyService : IKeyService
 {
     private readonly IOptions<FennecSettings> _fennecSettings;
     private readonly IClockService _clockService;
-    private readonly SigningCredentials _signingCredentials;
     
+    private readonly SigningCredentials _signingCredentials;
+    private readonly string _publicKeyPem;
+
+    public string PublicKeyPem => _publicKeyPem;
+
     public KeyService(
         IOptions<KeySettings> keyOptions,
         IOptions<FennecSettings> fennecSettings,
@@ -33,6 +38,7 @@ public class KeyService : IKeyService
         var rsa = RSA.Create();
         rsa.ImportFromPem(pem);
         _signingCredentials = new SigningCredentials(new RsaSecurityKey(rsa), SecurityAlgorithms.RsaSha256);
+        _publicKeyPem = rsa.ExportRSAPublicKeyPem();
     }
     
     public string GetSignedToken(User user)

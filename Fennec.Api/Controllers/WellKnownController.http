@@ -1,0 +1,2 @@
+### Get public key info of instance
+GET https://localhost:7014/.well-known/fennec/public-key
