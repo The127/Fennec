@@ -12,6 +12,8 @@ public class Channel : EntityBase
     
     public required Guid ChannelGroupId { get; set; }
     public ChannelGroup ChannelGroup { get; set; } = null!;
+    
+    public List<ChannelMessage> Messages { get; set; } = [];
 }
 
 public class ChannelConfiguration : IEntityTypeConfiguration<Channel>
