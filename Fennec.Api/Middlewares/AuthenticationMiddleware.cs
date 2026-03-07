@@ -14,6 +14,7 @@ public class AuthenticationMiddleware(IKeyService keyService) : IMiddleware
     public record AuthenticationModel : IAuthPrincipal
     {
         public required Guid Id { get; init; }
+        public required bool IsLocal { get; init; }
     }
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -21,7 +22,12 @@ public class AuthenticationMiddleware(IKeyService keyService) : IMiddleware
         if (context.Features.Get<IEndpointFeature>()?.Endpoint?.Metadata.Any(m => m is AllowAnonymousAttribute) ??
             false)
         {
-            context.Items[AuthPrincipalKey] = new AuthenticationModel { Id = Guid.Empty };
+            context.Items[AuthPrincipalKey] = new AuthenticationModel
+            {
+                Id = Guid.Empty,
+                IsLocal = false,
+            };
+            
             await next.Invoke(context);
             return;
         }

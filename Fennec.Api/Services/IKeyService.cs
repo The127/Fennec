@@ -89,6 +89,7 @@ public class KeyService : IKeyService
             return new AuthenticationMiddleware.AuthenticationModel
             {
                 Id = Guid.Parse(jwt.Subject),
+                IsLocal = jwt.Issuer == _fennecSettings.Value.IssuerUrl,
             };
         }
         catch (FormatException)
