@@ -1,3 +1,4 @@
+using System.ComponentModel.Design;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -10,11 +11,20 @@ namespace Fennec.App;
 
 public partial class App : Application
 {
+    private IServiceProvider _services = null!;
+    
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
     }
 
+    public void ConfigureServices(Action<IServiceContainer>? configureAdditionalServices = null)
+    {
+        var services = new ServiceContainer();
+        configureAdditionalServices?.Invoke(services);
+        _services = services;
+    }
+    
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -24,14 +34,14 @@ public partial class App : Application
             DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainViewModel()
+                DataContext = new MainViewModel(_services)
             };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
             singleViewPlatform.MainView = new MainView
             {
-                DataContext = new MainViewModel()
+                DataContext = new MainViewModel(_services)
             };
         }
 

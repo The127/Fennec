@@ -9,6 +9,13 @@ sealed class Program
     // yet and stuff might break.
     [STAThread]
     public static void Main(string[] args) => BuildAvaloniaApp()
+        .AfterSetup(_ =>
+        {
+            if (Application.Current is App app)
+            {
+                app.ConfigureServices();
+            }
+        })
         .StartWithClassicDesktopLifetime(args);
 
     // Avalonia configuration, don't remove; also used by visual designer.
