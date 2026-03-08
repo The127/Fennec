@@ -18,14 +18,17 @@ public class ServerController : FennecControllerBase
         CancellationToken cancellationToken
     )
     {
-        await mediator.Send(new CreateServerCommand
+        var createServerResponse = await mediator.Send(new CreateServerCommand
         {
             Name = requestDto.Name,
             Visibility =  requestDto.Visibility,
             AuthPrincipal = AuthPrincipal,
         }, cancellationToken);
-        
-        return NoContent();
+
+        return Ok(new CreateServerResponseDto
+        {
+            ServerId = createServerResponse.ServerId,
+        });
     }
 
     [HttpPost("{server:guid}/join")]

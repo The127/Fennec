@@ -5,18 +5,23 @@ using MediatR;
 
 namespace Fennec.Api.Commands;
 
-public record CreateServerCommand : IRequest
+public record CreateServerCommand : IRequest<CreateServerResponse>
 {
     public required string Name { get; init; }
     public required ServerVisibility Visibility { get; init; }
     public required IAuthPrincipal AuthPrincipal { get; init; }
 }
 
+public record CreateServerResponse
+{
+    public required Guid ServerId { get; init; }   
+}
+
 public class CreateServerCommandHandler(
     FennecDbContext dbContext
-) : IRequestHandler<CreateServerCommand>
+) : IRequestHandler<CreateServerCommand, CreateServerResponse>
 {
-    public async Task Handle(CreateServerCommand request, CancellationToken cancellationToken)
+    public async Task<CreateServerResponse> Handle(CreateServerCommand request, CancellationToken cancellationToken)
     {
         if (!request.AuthPrincipal.IsLocal)
         {
@@ -50,5 +55,10 @@ public class CreateServerCommandHandler(
         
         dbContext.AddRange(server, member, defaultGroup, defaultChannel);
         await dbContext.SaveChangesAsync(cancellationToken);
+        
+        return new CreateServerResponse
+        {
+            ServerId = server.Id,
+        };
     }
 }
