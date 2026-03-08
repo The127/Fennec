@@ -1,7 +1,6 @@
 ﻿using Avalonia;
-using System;
 
-namespace Fennec.App;
+namespace Fennec.App.Desktop;
 
 sealed class Program
 {
