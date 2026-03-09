@@ -8,6 +8,7 @@ using Fennec.Api.Security;
 using Fennec.Api.Settings;
 using Fennec.Api.Utils;
 using Fennec.Shared.Dtos.WellKnown;
+using Fennec.Shared.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;

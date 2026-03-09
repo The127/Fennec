@@ -3,13 +3,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Fennec.App.ViewModels"
-             xmlns:routing="clr-namespace:Fennec.App.Routing"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Fennec.App.Views.MainView"
-             x:DataType="vm:MainViewModel">
-    
+             x:Class="Fennec.App.Views.TestView"
+             x:DataType="vm:TestViewModel">
+
     <StackPanel>
-        <TextBlock>Welcom to hell!</TextBlock>
-        <routing:RouteView Router="{Binding Router}" />
+        <Button Command="{Binding Increment}" Content="{Binding Message}"/>
     </StackPanel>
+
 </UserControl>

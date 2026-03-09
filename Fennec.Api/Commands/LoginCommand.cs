@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using Fennec.Api.Models;
-using Fennec.Api.Utils;
+using Fennec.Shared.Models;
 using HttpExceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +19,7 @@ public class LoginResponse
 }
 
 public class LoginCommandHandler(
-    FennecDbContext dbContext    
+    FennecDbContext dbContext
 ) : IRequestHandler<LoginCommand, LoginResponse>
 {
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -40,14 +40,14 @@ public class LoginCommandHandler(
             UserId = passwordAuthMethod.UserId,
             Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
         };
-        
+
         dbContext.Add(session);
-        
+
         await dbContext.SaveChangesAsync(cancellationToken);
-        
+
         return new LoginResponse
         {
-            Token = SessionToken.From(session.Token),
+            Token = new SessionToken(session.Token),
         };
     }
 }

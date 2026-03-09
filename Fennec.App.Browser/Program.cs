@@ -1,21 +1,23 @@
-﻿using System.Threading.Tasks;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Browser;
 using Fennec.App;
+using Microsoft.Extensions.DependencyInjection;
 
 internal sealed partial class Program
 {
-    private static Task Main(string[] args) => BuildAvaloniaApp()
-        .AfterSetup(_ =>
-        {
-            if (Application.Current is App app)
-            {
-                app.ConfigureServices();
-            }
-        })
+    private static Task Main(string[] _) => BuildAvaloniaApp()
         .WithInterFont()
         .StartBrowserAppAsync("out");
 
     public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>();
+        => AppBuilder.Configure(() =>
+        {
+            var app = new App();
+            app.ConfigureServices(ConfigureAdditionalServices);
+            return app;
+        });
+    
+    private static void ConfigureAdditionalServices(ServiceCollection services)
+    {
+    }
 }

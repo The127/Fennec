@@ -1,16 +1,19 @@
-using System.ComponentModel.Design;
-using System.Linq;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using Fennec.App.Routing;
+using Fennec.App.Services.Auth;
 using Fennec.App.ViewModels;
 using Fennec.App.Views;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fennec.App;
 
 public partial class App : Application
 {
+    public const string AppName = "FennecApp";
+    
     private IServiceProvider _services = null!;
     
     public override void Initialize()
@@ -18,15 +21,27 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-    public void ConfigureServices(Action<IServiceContainer>? configureAdditionalServices = null)
+    public void ConfigureServices(Action<ServiceCollection>? configureAdditionalServices = null)
     {
-        var services = new ServiceContainer();
+        var services = new ServiceCollection();
+        
+        ConfigureDefaultServices(services);
         configureAdditionalServices?.Invoke(services);
-        _services = services;
+        
+        _services = services.BuildServiceProvider();
     }
-    
+
+    private void ConfigureDefaultServices(ServiceCollection services)
+    {
+        services.AddSingleton<IRouter, Router>();
+        services.AddSingleton<IRouteStore>(sp => new MemoryRouteStore(10, 100));
+        
+        services.AddSingleton<IAuthService, AuthService>();
+    }
+
     public override void OnFrameworkInitializationCompleted()
     {
+        var mainViewModel = ActivatorUtilities.CreateInstance<MainViewModel>(_services);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
@@ -34,14 +49,14 @@ public partial class App : Application
             DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainViewModel(_services)
+                DataContext = mainViewModel,
             };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
             singleViewPlatform.MainView = new MainView
             {
-                DataContext = new MainViewModel(_services)
+                DataContext = mainViewModel,
             };
         }
 

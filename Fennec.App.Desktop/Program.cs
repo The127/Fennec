@@ -1,4 +1,7 @@
 ﻿using Avalonia;
+using Fennec.App.Services.Auth;
+using Fennec.App.Desktop.Services.Auth;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fennec.App.Desktop;
 
@@ -9,19 +12,22 @@ sealed class Program
     // yet and stuff might break.
     [STAThread]
     public static void Main(string[] args) => BuildAvaloniaApp()
-        .AfterSetup(_ =>
-        {
-            if (Application.Current is App app)
-            {
-                app.ConfigureServices();
-            }
-        })
         .StartWithClassicDesktopLifetime(args);
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>()
+        => AppBuilder.Configure(() =>
+            {
+                var app = new App();
+                app.ConfigureServices(ConfigureAdditionalServices);
+                return app;
+            })
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace();
+    
+    private static void ConfigureAdditionalServices(ServiceCollection services)
+    {
+        services.AddSingleton<IAuthStore, DesktopAuthStore>();
+    }
 }

@@ -1,11 +1,8 @@
+using Fennec.Shared.Models;
 using HttpExceptions;
 using OneOf;
-using ValueOf;
 
 namespace Fennec.Api.Utils;
-
-public class SessionToken : ValueOf<string, SessionToken>;
-public class BearerToken : ValueOf<string, BearerToken>;
 
 public class AuthorizationHeader : OneOfBase<BearerToken, SessionToken>
 {
@@ -43,8 +40,8 @@ public static class HeaderExtensions
             var parts = authorizationHeader.Split(' ');
             return parts switch
             {
-                ["Bearer", var token] => BearerToken.From(token.Trim()),
-                ["Session", var token] => SessionToken.From(token.Trim()),
+                ["Bearer", var token] => new BearerToken(token.Trim()),
+                ["Session", var token] => new SessionToken(token.Trim()),
                 _ => throw new HttpBadRequestException("Invalid authorization header format"),
             };
         }
