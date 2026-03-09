@@ -16,7 +16,7 @@
             </shadui:Card.Header>
             <StackPanel Spacing="16">
                 <TextBox Watermark="username@instance.com" shadui:ControlAssist.Label="Username" />
-                <TextBox shadui:ControlAssist.Label="Password"/>
+                <TextBox Classes="PasswordReveal" PasswordChar="•" shadui:ControlAssist.Label="Password"/>
                 <TextBlock>Forgot your password?</TextBlock>
                 <Button Classes="Primary" Content="Log in"/>
                 <TextBlock>Need an account? Register</TextBlock>
