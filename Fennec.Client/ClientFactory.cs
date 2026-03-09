@@ -2,7 +2,7 @@ namespace Fennec.Client;
 
 public class ClientFactory(string baseUrl)
 {
-    private IFennecClient Create()
+    public IFennecClient Create()
     {
         var httpClient = new HttpClient();
         httpClient.BaseAddress = new Uri(baseUrl);

@@ -1,9 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fennec.App.Services.Auth;
 
 namespace Fennec.App.ViewModels;
 
-public partial class LoginViewModel : ViewModelBase
+public partial class LoginViewModel(IAuthService authService) : ViewModelBase
 {
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
@@ -16,8 +17,8 @@ public partial class LoginViewModel : ViewModelBase
     private bool CanLogin() => !string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password);
 
     [RelayCommand(CanExecute = nameof(CanLogin))]
-    public void Login()
+    private async Task Login(CancellationToken cancellationToken)
     {
-        Console.WriteLine($"username: {Username}, password: {Password}");
+        await authService.Login(Username, Password, "https://localhost:7014/", cancellationToken);
     }
 }

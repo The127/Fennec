@@ -26,6 +26,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Fennec.Client\Fennec.Client.csproj" />
       <ProjectReference Include="..\Fennec.Shared\Fennec.Shared.csproj" />
     </ItemGroup>
 </Project>

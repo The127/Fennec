@@ -4,7 +4,7 @@ namespace Fennec.App.Services.Auth;
 
 public record AuthSession
 {
-    [JsonPropertyName( "sessionToken")]
+    [JsonPropertyName("sessionToken")]
     public required string SessionToken { get; init; }
     
     [JsonPropertyName("userId")]
