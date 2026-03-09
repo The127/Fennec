@@ -49,6 +49,7 @@ public class AuthController : FennecControllerBase
         return Ok(new LoginResponseDto
         {
             SessionToken = loginResponse.Token.Value,
+            UserId = loginResponse.UserId,
         });
     }
 

@@ -16,6 +16,7 @@ public class LoginCommand : IRequest<LoginResponse>
 public class LoginResponse
 {
     public required SessionToken Token { get; init; }
+    public required Guid UserId { get; init; }
 }
 
 public class LoginCommandHandler(
@@ -48,6 +49,7 @@ public class LoginCommandHandler(
         return new LoginResponse
         {
             Token = new SessionToken(session.Token),
+            UserId = session.UserId,
         };
     }
 }
