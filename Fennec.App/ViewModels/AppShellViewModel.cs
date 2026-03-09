@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using Fennec.App.Services.Auth;
 
 namespace Fennec.App.ViewModels;
 
@@ -8,5 +7,5 @@ public partial class AppShellViewModel(
 ) : ViewModelBase
 {
     [ObservableProperty]
-    private ViewModelBase _currentViewModel = new LoadingViewModel();
+    private ViewModelBase _currentViewModel = new LoginViewModel();
 }

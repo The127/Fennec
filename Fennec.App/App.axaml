@@ -2,7 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Fennec.App.App"
              xmlns:local="using:Fennec.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Default"
+             xmlns:themes="clr-namespace:ShadUI;assembly=ShadUI">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
@@ -10,6 +11,6 @@
     </Application.DataTemplates>
 
     <Application.Styles>
-        <FluentTheme />
+        <themes:ShadTheme />
     </Application.Styles>
 </Application>
