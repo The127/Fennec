@@ -2,12 +2,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Fennec.App.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              xmlns:shadui="using:ShadUI"
-             x:Class="Fennec.App.Views.LoginView">
+             x:Class="Fennec.App.Views.LoginView"
+             x:DataType="vm:LoginViewModel">
 
     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-        <shadui:Card HasShadow="True">
+        <shadui:Card HasShadow="True" Width="600">
             <shadui:Card.Header>
                 <StackPanel Spacing="4">
                     <shadui:CardTitle FontSize="18">Login</shadui:CardTitle>
@@ -15,10 +17,10 @@
                 </StackPanel>
             </shadui:Card.Header>
             <StackPanel Spacing="16">
-                <TextBox Watermark="username@instance.com" shadui:ControlAssist.Label="Username" />
-                <TextBox Classes="PasswordReveal" PasswordChar="•" shadui:ControlAssist.Label="Password"/>
+                <TextBox Watermark="username@instance.com" shadui:ControlAssist.Label="Username" Text="{Binding Username}" />
+                <TextBox Classes="PasswordReveal" PasswordChar="•" shadui:ControlAssist.Label="Password" Text="{Binding Password}"/>
                 <TextBlock>Forgot your password?</TextBlock>
-                <Button Classes="Primary" Content="Log in"/>
+                <Button Classes="Primary" Content="Log in" Command="{Binding LoginCommand}"/>
                 <TextBlock>Need an account? Register</TextBlock>
             </StackPanel>
         </shadui:Card>
