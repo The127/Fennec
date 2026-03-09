@@ -13,7 +13,7 @@ public class ServerClient(HttpClient httpClient) : IServerClient
 {
     public async Task<CreateServerResponseDto> CreateServerAsync(CreateServerRequestDto request, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/server/create");
+        var uri = new Uri("api/v1/server/create", UriKind.Relative);
         
         var response = await httpClient.PostAsJsonAsync(uri, request, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -24,7 +24,7 @@ public class ServerClient(HttpClient httpClient) : IServerClient
 
     public async Task JoinServerAsync(Guid serverId, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri($"api/v1/server/{serverId}/join");
+        var uri = new Uri($"api/v1/server/{serverId}/join", UriKind.Relative);
 
         var response = await httpClient.PostAsync(uri, null, cancellationToken);
         response.EnsureSuccessStatusCode();

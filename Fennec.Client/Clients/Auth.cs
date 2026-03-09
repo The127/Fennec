@@ -14,7 +14,7 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
 {
     public async Task RegisterAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/auth/register");
+        var uri = new Uri("api/v1/auth/register", UriKind.Relative);
         
         var response = await httpClient.PostAsJsonAsync(uri, request, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -22,7 +22,7 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/auth/login");
+        var uri = new Uri("api/v1/auth/login", UriKind.Relative);
         
         var response = await httpClient.PostAsJsonAsync(uri, request, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -33,7 +33,7 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
 
     public async Task<GetPublicTokenResponseDto> GetPublicTokenAsync(GetPublicTokenRequestDto request, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/auth/public-token");
+        var uri = new Uri("api/v1/auth/public-token", UriKind.Relative);
 
         var response = await httpClient.PostAsJsonAsync(uri, request, cancellationToken);
         response.EnsureSuccessStatusCode();
