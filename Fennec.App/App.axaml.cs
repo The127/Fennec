@@ -34,14 +34,12 @@ public partial class App : Application
     private void ConfigureDefaultServices(ServiceCollection services)
     {
         services.AddSingleton<IRouter, Router>();
-        services.AddSingleton<IRouteStore>(sp => new MemoryRouteStore(10, 100));
-        
         services.AddSingleton<IAuthService, AuthService>();
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
-        var mainViewModel = ActivatorUtilities.CreateInstance<MainViewModel>(_services);
+        var mainViewModel = ActivatorUtilities.CreateInstance<AppShellViewModel>(_services);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 

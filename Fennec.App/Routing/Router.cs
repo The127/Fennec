@@ -1,5 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using Fennec.App.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fennec.App.Routing;

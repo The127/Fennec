@@ -1,4 +1,3 @@
-using System.Diagnostics.Metrics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Fennec.App.Routing;
 using Fennec.App.ViewModels;

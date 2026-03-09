@@ -2,7 +2,6 @@ using Fennec.Api.Commands;
 using Fennec.Api.Models;
 using Fennec.Api.Services;
 using Fennec.Api.Utils;
-using Fennec.Shared.Dtos;
 using Fennec.Shared.Dtos.Auth;
 using HttpExceptions;
 using MediatR;

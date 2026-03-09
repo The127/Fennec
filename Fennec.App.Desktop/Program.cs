@@ -1,6 +1,7 @@
 ﻿using Avalonia;
 using Fennec.App.Services.Auth;
 using Fennec.App.Desktop.Services.Auth;
+using Fennec.App.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fennec.App.Desktop;
@@ -28,6 +29,7 @@ sealed class Program
     
     private static void ConfigureAdditionalServices(ServiceCollection services)
     {
+        services.AddSingleton<IRouteStore>(sp => new MemoryRouteStore(10, 100));
         services.AddSingleton<IAuthStore, DesktopAuthStore>();
     }
 }
