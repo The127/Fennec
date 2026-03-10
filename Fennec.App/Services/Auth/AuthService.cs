@@ -17,6 +17,7 @@ public class AuthService(IAuthStore authStore) : IAuthService
 
         var authSession = new AuthSession
         {
+            Url = instanceUrl,
             SessionToken = response.SessionToken,
             UserId = response.UserId,
         };
