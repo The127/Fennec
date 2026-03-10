@@ -1,5 +1,6 @@
 ﻿using Fennec.Api.Commands;
 using Fennec.Api.Queries;
+using Fennec.Api.Security;
 using Fennec.Shared.Dtos.Server;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Fennec.Api.Controllers.UserApi;
 
 [ApiController]
+[UserAuth]
 [Route("api/v1/server")]
 public class ServerController : UserControllerBase
 {

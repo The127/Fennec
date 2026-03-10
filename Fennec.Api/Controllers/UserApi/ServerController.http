@@ -11,3 +11,7 @@ Authorization: {{bearer}}
 ### Join a server
 POST https://localhost:7014/api/v1/server/195d0a5c-f1c8-46c1-85f0-88908511166c/join
 Authorization: {{bearer}}
+
+### Get joined servers
+GET https://localhost:7014/api/v1/server/joined
+Authorization: {{bearer}}

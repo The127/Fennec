@@ -1,11 +1,13 @@
 using System.Text.Json.Serialization;
 using Fennec.Api.Commands;
+using Fennec.Api.Security;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Fennec.Api.Controllers.FederationApi;
 
 [ApiController]
+[FederationAuth]
 [Route("federation/v1/server")]
 public class FederationServerController : FederationControllerBase
 {

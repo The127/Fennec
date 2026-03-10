@@ -1,6 +1,7 @@
 using Fennec.Api.Commands;
 using Fennec.Api.Controllers.UserApi;
 using Fennec.Api.Models;
+using Fennec.Api.Security;
 using Fennec.Api.Services;
 using Fennec.Api.Utils;
 using Fennec.Shared.Dtos.Auth;
@@ -10,8 +11,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Fennec.Api.Controllers;
+namespace Fennec.Api.Controllers.UserApi;
 
+[UserAuth]
 [ApiController]
 [Route("api/v1/auth")]
 public class AuthController : UserControllerBase

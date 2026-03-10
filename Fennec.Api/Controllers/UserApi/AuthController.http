@@ -18,7 +18,7 @@ Content-Type: application/json
 
 ### Get a public token
 POST https://localhost:7014/api/v1/auth/public-token
-Authorization: Session YZnmi4f9swpzDP+kKc7TIxZWKqJPP6nr9498GIbXRYGsRGRKr74Gahs77J5eI/NMMVNBJQ9XKBIiIC7CxjWSnw==
+Authorization: Session c9j5ADKAevrQq/S/nUrjlINa8/Z/W1WMFZ6I8KYjlk0VF/JAgCMyBNKeu06wVPHcc+aBCawrEZZfCI0h+/APmA==
 Content-Type: application/json
 
 {

@@ -29,7 +29,7 @@ public class AuthenticationMiddleware(IKeyService keyService) : IMiddleware
             await HandleFederationEndpoint(context);
         }
 
-        if (endpoint?.Metadata.Any(m => m is AllowAnonymousAttribute) ?? false)
+        if (endpoint?.Metadata.Any(m => m is UserAuthAttribute) ?? false)
         {
             await HandleUserEndpoint(context);
         }
