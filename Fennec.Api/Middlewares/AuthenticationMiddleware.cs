@@ -19,14 +19,34 @@ public class AuthenticationMiddleware(IKeyService keyService) : IMiddleware
         public string Issuer => throw new UnreachableException("Anonymous user info accessed");
         public bool IsLocal => throw new UnreachableException("Anonymous user info accessed");
     }
-
+    
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        if (context.Features.Get<IEndpointFeature>()?.Endpoint?.Metadata.Any(m => m is AllowAnonymousAttribute) ??
-            false)
+        var endpoint = context.GetEndpoint();
+
+        if (endpoint?.Metadata.Any(m => m is FederationAuthAttribute) ?? false)
+        {
+            await HandleFederationEndpoint(context);
+        }
+
+        if (endpoint?.Metadata.Any(m => m is AllowAnonymousAttribute) ?? false)
+        {
+            await HandleUserEndpoint(context);
+        }
+
+        await next.Invoke(context);
+    }
+
+    private async Task HandleFederationEndpoint(HttpContext context)
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task HandleUserEndpoint(HttpContext context)
+    {
+        if (context.GetEndpoint()?.Metadata.Any(m => m is AllowAnonymousAttribute) ?? false)
         {
             context.Items[AuthPrincipalKey] = new AnonymousUser();
-            await next.Invoke(context);
             return;
         }
 
@@ -36,10 +56,8 @@ public class AuthenticationMiddleware(IKeyService keyService) : IMiddleware
             bearerToken => async cancellationToken => await keyService.VerifyTokenAsync(bearerToken, cancellationToken),
             _ => throw new HttpUnauthorizedException("Expected bearer token")
         );
-        
+
         var authPrincipal = await authPrincipalFactory(context.RequestAborted);
         context.Items[AuthPrincipalKey] = authPrincipal;
-        
-        await next.Invoke(context);
     }
 }

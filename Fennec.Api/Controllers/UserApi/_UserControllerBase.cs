@@ -8,5 +8,4 @@ namespace Fennec.Api.Controllers.UserApi;
 public class UserControllerBase : ControllerBase
 {
     protected IAuthPrincipal AuthPrincipal => (IAuthPrincipal)HttpContext.Items[AuthenticationMiddleware.AuthPrincipalKey]!;
-    
 }
