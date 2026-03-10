@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace Fennec.Api.Controllers.FederationApi;
 
 [ApiController]
-[FederationAuth]
 [Route("federation/v1/server")]
 public class FederationServerController : FederationControllerBase
 {
