@@ -9,7 +9,6 @@ namespace Fennec.Api.Controllers;
 [Route("api/v1/server")]
 public class ServerController : FennecControllerBase
 {
-
     [HttpPost("create")]
     public async Task<IActionResult> CreateServer(
         [FromBody] CreateServerRequestDto requestDto,

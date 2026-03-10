@@ -21,7 +21,6 @@ public partial class AppShellViewModel : ObservableRecipient, IRecipient<LoginSu
         Messenger.RegisterAll(this);
     }
 
-
     public void Receive(LoginSucceededMessage message)
     {
         CurrentViewModel = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider);
