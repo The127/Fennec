@@ -3,7 +3,7 @@ using Fennec.Shared.Dtos.Server;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Fennec.Api.Controllers;
+namespace Fennec.Api.Controllers.UserApi;
 
 [ApiController]
 [Route("api/v1/server")]
