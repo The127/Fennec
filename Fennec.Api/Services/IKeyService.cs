@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using Fennec.Api.Models;
 using Fennec.Api.Security;
 using Fennec.Api.Settings;
@@ -25,6 +26,7 @@ public record AuthenticationModel : IAuthPrincipal
 
 public interface IKeyService
 {
+    public string SignPayload(string payload);
     public string GetSignedToken(User user, string audience);
     public Task<IAuthPrincipal> VerifyTokenAsync(BearerToken jwt, CancellationToken cancellationToken);
 
@@ -37,11 +39,12 @@ public class KeyService : IKeyService
     private readonly IClockService _clockService;
 
     private readonly SigningCredentials _signingCredentials;
+    private readonly RSA _rsa = RSA.Create();
 
     public string PublicKeyPem { get; }
 
-    private ConcurrentDictionary<string, RsaSecurityKey> _publicKeys = new();
-    private SemaphoreSlim _publicKeyFetchLock = new(1);
+    private readonly ConcurrentDictionary<string, RsaSecurityKey> _publicKeys = [];
+    private readonly SemaphoreSlim _publicKeyFetchLock = new(1);
 
     public KeyService(
         IOptions<KeySettings> keyOptions,
@@ -52,10 +55,9 @@ public class KeyService : IKeyService
         _clockService = clockService;
 
         var pem = File.ReadAllText(keyOptions.Value.PrivateKeyPath);
-        var rsa = RSA.Create();
-        rsa.ImportFromPem(pem);
-        _signingCredentials = new SigningCredentials(new RsaSecurityKey(rsa), SecurityAlgorithms.RsaSha256);
-        PublicKeyPem = rsa.ExportRSAPublicKeyPem();
+        _rsa.ImportFromPem(pem);
+        _signingCredentials = new SigningCredentials(new RsaSecurityKey(_rsa), SecurityAlgorithms.RsaSha256);
+        PublicKeyPem = _rsa.ExportRSAPublicKeyPem();
     }
 
     public async Task<IAuthPrincipal> VerifyTokenAsync(BearerToken bearerToken, CancellationToken cancellationToken)
@@ -154,6 +156,13 @@ public class KeyService : IKeyService
         {
             _publicKeyFetchLock.Release();
         }
+    }
+
+    public string SignPayload(string payload)
+    {
+        var payloadBytes = Encoding.UTF8.GetBytes(payload);
+        var signature = _rsa.SignData(payloadBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        return Convert.ToBase64String(signature);
     }
 
     public string GetSignedToken(User user, string audience)

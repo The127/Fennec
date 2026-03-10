@@ -29,16 +29,17 @@ public class ServerController : UserControllerBase
         });
     }
 
-    [HttpPost("{server:guid}/join")]
+    [HttpPost("join")]
     public async Task<IActionResult> JoinServer(
-        Guid server,
+        [FromBody] JoinServerRequestDto requestDto,
         [FromServices] IMediator mediator,
         CancellationToken cancellationToken
     )
     {
         await mediator.Send(new JoinServerCommand
         {
-            ServerId = server,
+            ServerId = requestDto.ServerId,
+            InstanceUrl = requestDto.InstanceUrl,
             AuthPrincipal = AuthPrincipal,
         }, cancellationToken);
         

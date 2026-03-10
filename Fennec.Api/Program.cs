@@ -1,9 +1,11 @@
+using Fennec.Api.FederationClient;
 using Fennec.Api.Middlewares;
 using Fennec.Api.Models;
 using Fennec.Api.Services;
 using Fennec.Api.Settings;
 using Fennec.Api.Triggers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +36,18 @@ builder.Services.AddOptions<KeySettings>()
 builder.Services.AddOptions<FennecSettings>()
     .Bind(builder.Configuration.GetSection("FennecSettings"))
     .ValidateOnStart();
+
+builder.Services.AddSingleton<IFederationClient>(sp =>
+{
+    var handler = new FederationSigningHandler(
+        sp.GetRequiredService<IKeyService>(),
+        sp.GetRequiredService<IOptions<FennecSettings>>())
+    {
+        InnerHandler = new HttpClientHandler(),
+    };
+    var httpClient = new HttpClient(handler);
+    return new FederationClient(httpClient);
+});
 
 var app = builder.Build();
 

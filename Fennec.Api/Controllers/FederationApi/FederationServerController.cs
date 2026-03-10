@@ -1,6 +1,6 @@
-using Fennec.Api.Controllers.UserApi;
-using Fennec.Api.Security;
-using Microsoft.AspNetCore.Authorization;
+using System.Text.Json.Serialization;
+using Fennec.Api.Commands;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Fennec.Api.Controllers.FederationApi;
@@ -9,9 +9,28 @@ namespace Fennec.Api.Controllers.FederationApi;
 [Route("federation/v1/server")]
 public class FederationServerController : FederationControllerBase
 {
-    [HttpPost("join")]
-    public async Task<IActionResult> JoinServer()
+    public record ServerJoinFederateRequestDto
     {
-        return Ok();
+        [JsonPropertyName("serverId")]
+        public required Guid ServerId { get; init; }
+        
+        [JsonPropertyName("userInfo")]
+        public required RemoteUserInfoDto UserInfo { get; init; }
+    }
+
+    [HttpPost("join")]
+    public async Task<IActionResult> JoinServer(
+        [FromBody] ServerJoinFederateRequestDto requestDto,
+        [FromServices] IMediator mediator,
+        CancellationToken cancellationToken
+    )
+    {
+        await mediator.Send(new JoinServerFederateCommand
+        {
+            ServerId = requestDto.ServerId,
+            UserInfo = requestDto.UserInfo,
+        }, cancellationToken);
+
+        return NoContent();
     }
 }
