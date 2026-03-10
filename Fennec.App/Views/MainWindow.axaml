@@ -7,6 +7,6 @@
         xmlns:shadui="using:ShadUI"
         x:Class="Fennec.App.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
-        Title="AvaloniaApplication1">
+        Title="Fennec">
         <views:MainView />
 </shadui:Window>
