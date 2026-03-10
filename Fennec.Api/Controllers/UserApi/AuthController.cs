@@ -1,4 +1,5 @@
 using Fennec.Api.Commands;
+using Fennec.Api.Controllers.UserApi;
 using Fennec.Api.Models;
 using Fennec.Api.Services;
 using Fennec.Api.Utils;
@@ -13,7 +14,7 @@ namespace Fennec.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/auth")]
-public class AuthController : FennecControllerBase
+public class AuthController : UserControllerBase
 {
     [AllowAnonymous]
     [HttpPost("register")]

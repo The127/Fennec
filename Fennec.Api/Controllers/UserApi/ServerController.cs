@@ -7,7 +7,7 @@ namespace Fennec.Api.Controllers.UserApi;
 
 [ApiController]
 [Route("api/v1/server")]
-public class ServerController : FennecControllerBase
+public class ServerController : UserControllerBase
 {
     [HttpPost("create")]
     public async Task<IActionResult> CreateServer(

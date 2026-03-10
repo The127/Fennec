@@ -7,7 +7,7 @@ namespace Fennec.Api.Controllers;
 
 [ApiController]
 [Route(".well-known/fennec")]
-public class WellKnownController : FennecControllerBase
+public class WellKnownController : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet("public-key")]
