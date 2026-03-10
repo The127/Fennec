@@ -7,22 +7,25 @@
              xmlns:shadui="using:ShadUI"
              x:Class="Fennec.App.Views.LoginView"
              x:DataType="vm:LoginViewModel">
-
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-        <shadui:Card HasShadow="True" Width="600">
-            <shadui:Card.Header>
-                <StackPanel Spacing="4">
-                    <shadui:CardTitle FontSize="18">Login</shadui:CardTitle>
-                    <shadui:CardDescription>Enter your account details</shadui:CardDescription>
+    <Panel>
+        <Image Source="../Assets/pretty-triangles.png" Stretch="UniformToFill"/>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <shadui:Card HasShadow="True" Width="600">
+                <shadui:Card.Header>
+                    <StackPanel Spacing="4">
+                        <shadui:CardTitle FontSize="18">Login</shadui:CardTitle>
+                        <shadui:CardDescription>Enter your account details</shadui:CardDescription>
+                    </StackPanel>
+                </shadui:Card.Header>
+                <StackPanel Spacing="16">
+                    <TextBox Watermark="username@instance.com" shadui:ControlAssist.Label="Username" Text="{Binding Username}" />
+                    <TextBox Classes="PasswordReveal" PasswordChar="•" shadui:ControlAssist.Label="Password" Text="{Binding Password}"/>
+                    <TextBlock>Forgot your password?</TextBlock>
+                    <Button Classes="Primary" Content="Log in" Command="{Binding LoginCommand}"/>
+                    <TextBlock>Need an account? Register</TextBlock>
                 </StackPanel>
-            </shadui:Card.Header>
-            <StackPanel Spacing="16">
-                <TextBox Watermark="username@instance.com" shadui:ControlAssist.Label="Username" Text="{Binding Username}" />
-                <TextBox Classes="PasswordReveal" PasswordChar="•" shadui:ControlAssist.Label="Password" Text="{Binding Password}"/>
-                <TextBlock>Forgot your password?</TextBlock>
-                <Button Classes="Primary" Content="Log in" Command="{Binding LoginCommand}"/>
-                <TextBlock>Need an account? Register</TextBlock>
-            </StackPanel>
-        </shadui:Card>
-    </StackPanel>
+            </shadui:Card>
+        </StackPanel>
+    </Panel>
+    
 </UserControl>
