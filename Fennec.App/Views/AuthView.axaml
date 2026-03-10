@@ -4,11 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Fennec.App.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Fennec.App.Views.TestView"
-             x:DataType="vm:TestViewModel">
+             x:Class="Fennec.App.Views.AuthView"
+             x:DataType="vm:AuthViewModel">
 
-    <StackPanel>
-        <Button Command="{Binding Increment}" Content="{Binding Message}"/>
-    </StackPanel>
-
+    <ContentControl Content="{Binding CurrentViewModel}" />
 </UserControl>

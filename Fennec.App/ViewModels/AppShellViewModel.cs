@@ -16,7 +16,7 @@ public partial class AppShellViewModel : ObservableRecipient, IRecipient<LoginSu
     public AppShellViewModel(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-        _currentViewModel = new LoginViewModel(serviceProvider.GetRequiredService<IAuthService>());
+        _currentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
         
         Messenger.RegisterAll(this);
     }

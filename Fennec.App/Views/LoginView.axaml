@@ -18,14 +18,20 @@
                     </StackPanel>
                 </shadui:Card.Header>
                 <StackPanel Spacing="16">
-                    <TextBox Watermark="username@instance.com" shadui:ControlAssist.Label="Username" Text="{Binding Username}" />
-                    <TextBox Classes="PasswordReveal" PasswordChar="•" shadui:ControlAssist.Label="Password" Text="{Binding Password}"/>
-                    <TextBlock>Forgot your password?</TextBlock>
+                    <TextBox Watermark="username@instance.com" 
+                             shadui:ControlAssist.Label="Username" 
+                             Text="{Binding Username}" />
+                    <TextBox Classes="PasswordReveal" 
+                             PasswordChar="•" 
+                             shadui:ControlAssist.Label="Password" 
+                             Text="{Binding Password}"/>
+                    <Button Content="Forgot password?"
+                            Command="{Binding NavigateToRegisterCommand}"
+                            />
                     <Button Classes="Primary" Content="Log in" Command="{Binding LoginCommand}"/>
                     <TextBlock>Need an account? Register</TextBlock>
                 </StackPanel>
             </shadui:Card>
         </StackPanel>
     </Panel>
-    
 </UserControl>
