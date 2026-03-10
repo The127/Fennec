@@ -44,7 +44,7 @@ public class AuthController : FennecControllerBase
         {
             Name = requestDto.Name,
             Password = requestDto.Password
-        });
+        }, cancellationToken);
         
         return Ok(new LoginResponseDto
         {
