@@ -9,5 +9,5 @@ public partial class AppShellViewModel(
 ) : ViewModelBase
 {
     [ObservableProperty]
-    private ViewModelBase _currentViewModel = new LoginViewModel(serviceProvider.GetRequiredService<IAuthService>());
+    private ObservableObject _currentViewModel = new LoginViewModel(serviceProvider.GetRequiredService<IAuthService>());
 }
