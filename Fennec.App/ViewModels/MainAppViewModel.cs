@@ -3,7 +3,7 @@ using Fennec.App.Routing;
 
 namespace Fennec.App.ViewModels;
 
-public partial class MainAppViewModel : ViewModelBase
+public partial class MainAppViewModel : ObservableObject
 {
     [ObservableProperty]
     private IRouter _router;

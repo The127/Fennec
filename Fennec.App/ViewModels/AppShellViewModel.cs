@@ -6,7 +6,7 @@ namespace Fennec.App.ViewModels;
 
 public partial class AppShellViewModel(
     IServiceProvider serviceProvider
-) : ViewModelBase
+) : ObservableObject
 {
     [ObservableProperty]
     private ObservableObject _currentViewModel = new LoginViewModel(serviceProvider.GetRequiredService<IAuthService>());

@@ -1,6 +1,8 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace Fennec.App.ViewModels;
 
-public partial class LoadingViewModel : ViewModelBase
+public partial class LoadingViewModel : ObservableObject
 {
     
 }

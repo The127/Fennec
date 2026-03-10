@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Fennec.App.ViewModels;
 
-public partial class TestViewModel : ViewModelBase
+public partial class TestViewModel : ObservableObject
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Message))]

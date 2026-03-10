@@ -4,7 +4,7 @@ using Fennec.App.Services.Auth;
 
 namespace Fennec.App.ViewModels;
 
-public partial class LoginViewModel(IAuthService authService) : ViewModelBase
+public partial class LoginViewModel(IAuthService authService) : ObservableObject
 {
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
