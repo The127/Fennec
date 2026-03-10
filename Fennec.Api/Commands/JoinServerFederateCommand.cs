@@ -7,22 +7,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Fennec.Api.Commands;
 
-public class JoinServerFederateCommand : IRequest
+public record JoinServerFederateCommand : IRequest<JoinServerFederateResponse>
 {
     public required Guid ServerId { get; init; }
     public required RemoteUserInfoDto UserInfo { get; init; }
 }
 
+public record JoinServerFederateResponse
+{
+    public required string Name { get; init; }  
+}
+
 public class JoinServerFederateCommandHandler(
     FennecDbContext dbContext
-) : IRequestHandler<JoinServerFederateCommand>
+) : IRequestHandler<JoinServerFederateCommand, JoinServerFederateResponse>
 {
-    public async Task Handle(JoinServerFederateCommand request, CancellationToken cancellationToken)
+    public async Task<JoinServerFederateResponse> Handle(JoinServerFederateCommand request, CancellationToken cancellationToken)
     {
         var serverInfo = await dbContext
             .Set<Server>()
             .Where(s => s.Id == request.ServerId)
-            .Select(s => new { s.Visibility })
+            .Select(s => new { s.Visibility, s.Name })
             .SingleOrDefaultAsync(cancellationToken);
 
         if (serverInfo == null)
@@ -45,5 +50,10 @@ public class JoinServerFederateCommandHandler(
         
         dbContext.Add(member);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new JoinServerFederateResponse
+        {
+            Name = serverInfo.Name,
+        };
     }
 }

@@ -3,8 +3,8 @@ using Fennec.Shared.Models;
 
 namespace Fennec.Shared.Dtos.Server;
 
-public class ListServerResponseDto
+public class ListJoinedServersResponseDto
 {
     [JsonPropertyName("servers")]
-    public required List<ListServerResponseItemDto> Servers { get; init; }
+    public required List<ListJoinedServersResponseItemDto> Servers { get; init; }
 }

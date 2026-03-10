@@ -43,6 +43,7 @@ public class JoinServerCommandHandler(
             {
                 RemoteId = request.ServerId,
                 InstanceUrl = request.InstanceUrl,
+                Name = request.InstanceUrl,
             };
             dbContext.Add(knownServer);
         }

@@ -8,6 +8,8 @@ public class KnownServer : EntityBase
 {
     public required Guid RemoteId { get; init; }
     public required string InstanceUrl { get; init; }
+    
+    public required string Name { get; set; }
 }
 
 public class RemoteServerConfiguration : IEntityTypeConfiguration<KnownServer>

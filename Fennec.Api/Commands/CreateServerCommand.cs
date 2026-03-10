@@ -1,7 +1,9 @@
 ﻿using Fennec.Api.Models;
 using Fennec.Api.Security;
+using Fennec.Api.Settings;
 using Fennec.Shared.Models;
 using MediatR;
+using Microsoft.Extensions.Options;
 
 namespace Fennec.Api.Commands;
 
@@ -18,7 +20,8 @@ public record CreateServerResponse
 }
 
 public class CreateServerCommandHandler(
-    FennecDbContext dbContext
+    FennecDbContext dbContext,
+    IOptions<FennecSettings> fennecSettings 
 ) : IRequestHandler<CreateServerCommand, CreateServerResponse>
 {
     public async Task<CreateServerResponse> Handle(CreateServerCommand request, CancellationToken cancellationToken)
@@ -52,8 +55,21 @@ public class CreateServerCommandHandler(
             ServerId = server.Id,
             ChannelGroupId = defaultGroup.Id,
         };
-        
-        dbContext.AddRange(server, member, defaultGroup, defaultChannel);
+
+        var knownServer = new KnownServer
+        {
+            InstanceUrl = fennecSettings.Value.IssuerUrl,
+            RemoteId = server.Id,
+            Name = server.Name,
+        };
+
+        var joinedKnownServer = new UserJoinedKnownServer
+        {
+            KnownServerId = knownServer.Id,
+            UserId = request.AuthPrincipal.Id,
+        };
+
+        dbContext.AddRange(server, member, defaultGroup, defaultChannel, knownServer, joinedKnownServer);
         await dbContext.SaveChangesAsync(cancellationToken);
         
         return new CreateServerResponse

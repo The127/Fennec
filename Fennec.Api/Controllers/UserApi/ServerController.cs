@@ -1,7 +1,9 @@
 ﻿using Fennec.Api.Commands;
+using Fennec.Api.Queries;
 using Fennec.Shared.Dtos.Server;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Fennec.Api.Controllers.UserApi;
 
@@ -44,5 +46,29 @@ public class ServerController : UserControllerBase
         }, cancellationToken);
         
         return NoContent();
+    }
+
+    [HttpGet("joined")]
+    public async Task<IActionResult> ListJoinedServers(
+        [FromServices] IMediator mediator,
+        CancellationToken cancellationToken    
+    )
+    {
+        var src = await mediator.Send(new ListUserJoinedServersQuery
+        {
+            AuthPrincipal = AuthPrincipal,
+        }, cancellationToken);
+
+        var query = src.Select(x => new ListJoinedServersResponseItemDto
+        {
+            Id = x.ServerId,
+            Name = x.Name,
+            InstanceUrl = x.InstanceUrl,
+        });
+        
+        return Ok(new ListJoinedServersResponseDto
+        {
+            Servers = await query.ToListAsync(cancellationToken),
+        });
     }
 }

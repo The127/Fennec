@@ -13,9 +13,15 @@ public class FederationServerController : FederationControllerBase
     {
         [JsonPropertyName("serverId")]
         public required Guid ServerId { get; init; }
-        
+
         [JsonPropertyName("userInfo")]
         public required RemoteUserInfoDto UserInfo { get; init; }
+    }
+
+    public record ServerJoinFederateResponseDto
+    {
+        [JsonPropertyName("name")]
+        public required string Name { get; init; }
     }
 
     [HttpPost("join")]
@@ -25,12 +31,15 @@ public class FederationServerController : FederationControllerBase
         CancellationToken cancellationToken
     )
     {
-        await mediator.Send(new JoinServerFederateCommand
+        var joinServerFederateResponse = await mediator.Send(new JoinServerFederateCommand
         {
             ServerId = requestDto.ServerId,
             UserInfo = requestDto.UserInfo,
         }, cancellationToken);
 
-        return NoContent();
+        return Ok(new ServerJoinFederateResponseDto
+        {
+            Name = joinServerFederateResponse.Name,
+        });
     }
 }
