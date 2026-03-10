@@ -45,7 +45,7 @@ public class JoinServerFederateCommandHandler(
         var member = new ServerMember
         {
             ServerId = request.ServerId,
-            UserId = Guid.Empty,
+            UserId = request.UserInfo.UserId,
         };
         
         dbContext.Add(member);

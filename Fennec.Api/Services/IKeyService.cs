@@ -8,6 +8,7 @@ using Fennec.Api.Security;
 using Fennec.Api.Settings;
 using Fennec.Shared.Dtos.WellKnown;
 using Fennec.Shared.Models;
+using HttpExceptions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -27,6 +28,10 @@ public record AuthenticationModel : IAuthPrincipal
 public interface IKeyService
 {
     public string SignPayload(string payload);
+
+    public Task VerifyPayloadAsync(string payload, string signature, string instanceUrl,
+        CancellationToken cancellationToken);
+
     public string GetSignedToken(User user, string audience);
     public Task<IAuthPrincipal> VerifyTokenAsync(BearerToken jwt, CancellationToken cancellationToken);
 
@@ -165,6 +170,23 @@ public class KeyService : IKeyService
         return Convert.ToBase64String(signature);
     }
 
+    public async Task VerifyPayloadAsync(string payload, string signature, string instanceUrl,
+        CancellationToken cancellationToken)
+    {
+        var instancePublicKey = await FetchInstancePublicKey(instanceUrl, cancellationToken);
+        var isValid = instancePublicKey.Rsa.VerifyData(
+            Encoding.UTF8.GetBytes(payload),
+            Convert.FromBase64String(signature),
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1
+        );
+        
+        if (!isValid)
+        {
+            throw new HttpUnauthorizedException("Invalid signature");
+        }
+    }
+
     public string GetSignedToken(User user, string audience)
     {
         var claims = new[]
@@ -178,7 +200,7 @@ public class KeyService : IKeyService
         {
             expiry = Duration.FromDays(1);
         }
-        
+
         var token = new JwtSecurityToken(
             issuer: _fennecSettings.Value.IssuerUrl,
             audience: audience,

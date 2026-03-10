@@ -3,7 +3,7 @@ POST https://localhost:7014/api/v1/auth/register
 Content-Type: application/json
 
 {
-  "name": "karo",
+  "name": "juce",
   "password": "a"
 }
 
@@ -12,13 +12,13 @@ POST https://localhost:7014/api/v1/auth/login
 Content-Type: application/json
 
 {
-  "name": "karo",
+  "name": "juce",
   "password": "a"
 }
 
 ### Get a public token
 POST https://localhost:7014/api/v1/auth/public-token
-Authorization: Session c9j5ADKAevrQq/S/nUrjlINa8/Z/W1WMFZ6I8KYjlk0VF/JAgCMyBNKeu06wVPHcc+aBCawrEZZfCI0h+/APmA==
+Authorization: Session 2/5MalYxaDstXKjEc3Kqr4LPJrKm04lTF7jOLIrANiwn4vt1BXO8erWbsr05h9YjN7HO+Lr1GkF5bxwPh0lo3w==
 Content-Type: application/json
 
 {

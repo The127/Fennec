@@ -40,6 +40,7 @@ builder.Services.AddOptions<FennecSettings>()
 builder.Services.AddSingleton<IFederationClient>(sp =>
 {
     var handler = new FederationSigningHandler(
+        sp.GetRequiredService<IClockService>(),
         sp.GetRequiredService<IKeyService>(),
         sp.GetRequiredService<IOptions<FennecSettings>>())
     {

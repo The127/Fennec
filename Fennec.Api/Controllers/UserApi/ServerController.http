@@ -9,8 +9,14 @@ Authorization: {{bearer}}
 }
 
 ### Join a server
-POST https://localhost:7014/api/v1/server/195d0a5c-f1c8-46c1-85f0-88908511166c/join
+POST https://localhost:7014/api/v1/server/join
+Content-Type: application/json
 Authorization: {{bearer}}
+
+{
+  "serverId": "d522680c-e43f-4632-8132-893cdcd313b7",
+  "instanceUrl": "https://localhost:7014"
+}
 
 ### Get joined servers
 GET https://localhost:7014/api/v1/server/joined
