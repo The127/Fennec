@@ -8,7 +8,7 @@
              x:Class="Fennec.App.Views.LoginView"
              x:DataType="vm:LoginViewModel">
     <Panel>
-        <Image Source="../Assets/pretty-triangles.png" Stretch="UniformToFill"/>
+        <Image Source="{DynamicResource LoginBackground}" Stretch="UniformToFill"/>
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
             <shadui:Card HasShadow="True" Width="600">
                 <shadui:Card.Header>
