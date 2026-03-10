@@ -1,10 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
 
 namespace Fennec.App.ViewModels;
 
-public partial class LoginViewModel(IAuthService authService) : ObservableObject
+public partial class LoginViewModel(IAuthService authService) : ObservableRecipient
 {
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
@@ -22,6 +24,7 @@ public partial class LoginViewModel(IAuthService authService) : ObservableObject
         var usernameParts = Username.Split('@');
         var username = usernameParts[0];
         var instanceUrl = usernameParts[1];
-        await authService.Login(Username, Password, instanceUrl, cancellationToken);
+        var authSession = await authService.Login(username, Password, instanceUrl, cancellationToken);
+        Messenger.Send(new LoginSucceededMessage(authSession!)); // TODO: deal with the nulablility
     }
 }
