@@ -6,4 +6,4 @@ public enum AuthNavigationTarget
     Register,
 }
 
-public record AuthNavigateMessage(AuthNavigationTarget Target);
+public record AuthNavigationMessage(AuthNavigationTarget Target);

@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fennec.App.ViewModels;
 
-public partial class AuthViewModel : ObservableRecipient, IRecipient<AuthNavigateMessage>
+public partial class AuthViewModel : ObservableRecipient, IRecipient<AuthNavigationMessage>
 {
     private readonly IServiceProvider _serviceProvider;
 
@@ -19,7 +19,7 @@ public partial class AuthViewModel : ObservableRecipient, IRecipient<AuthNavigat
         Messenger.RegisterAll(this);
     }
 
-    public void Receive(AuthNavigateMessage message)
+    public void Receive(AuthNavigationMessage message)
     {
         CurrentViewModel = message.Target switch
         {

@@ -31,6 +31,6 @@ public partial class LoginViewModel(IAuthService authService) : ObservableRecipi
     [RelayCommand]
     private void NavigateToRegister()
     {
-        Messenger.Send(new AuthNavigateMessage(AuthNavigationTarget.Register));
+        Messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.Register));
     }
 }
