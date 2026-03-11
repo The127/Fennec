@@ -30,6 +30,13 @@
         </h2>
     </div>
 </div>
+<script>
+    window.myLocalStorage = {
+        setItem: (key, value) => localStorage.setItem(key, value),
+        getItem: (key) => localStorage.getItem(key),
+        removeItem: (key) => localStorage.removeItem(key)
+    };
+</script>
 <script type='module' src="./main.js"></script>
 </body>
 
