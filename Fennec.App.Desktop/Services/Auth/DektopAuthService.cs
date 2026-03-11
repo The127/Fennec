@@ -19,10 +19,11 @@ public class DesktopAuthStore : IAuthStore
     private string ConfigPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         App.AppName, "auth.json");
 
-    public Task<Guid?> GetCurrentUserIdAsync(CancellationToken cancellationToken = default)
+    public Task<AuthSession?> GetCurrentAuthSessionAsync(CancellationToken cancellationToken = default)
     {
         var config = LoadConfigAsync(cancellationToken).Result;
-        return Task.FromResult(config.CurrentUserId);
+        AuthSession? authSession = config.Sessions.FirstOrDefault(x => x.UserId == config.CurrentUserId);
+        return Task.FromResult(authSession);
     }
 
     public async Task<List<AuthSession>> GetSessionsAsync(CancellationToken cancellationToken = default)

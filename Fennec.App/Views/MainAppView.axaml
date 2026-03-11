@@ -7,6 +7,9 @@
              x:Class="Fennec.App.Views.MainAppView"
              xmlns:vm="using:Fennec.App.ViewModels"
              x:DataType="vm:MainAppViewModel">
-    
-    <routing:RouteView Router="{Binding Router}" />
+
+    <StackPanel>
+        <TextBlock>Logged in</TextBlock>
+        <routing:RouteView Router="{Binding Router}" />
+    </StackPanel>
 </UserControl>
