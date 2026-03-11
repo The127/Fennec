@@ -9,4 +9,7 @@ public class RegisterUserRequestDto
 
     [JsonPropertyName("password")]
     public required string Password { get; set; }
+    
+    [JsonPropertyName("displayName")]
+    public required string? DisplayName { get; set; }
 }

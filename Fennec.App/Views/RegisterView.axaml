@@ -24,7 +24,11 @@
                 <StackPanel Spacing="16">
                     <TextBox Watermark="username@home.instance" 
                              shadui:ControlAssist.Label="Username" 
+                             shadui:ControlAssist.Hint="Must be unique on the instance."
                              Text="{Binding Username}" />
+                    <TextBox shadui:ControlAssist.Label="Displayname" 
+                             shadui:ControlAssist.Hint="The name others see you as."
+                             Text="{Binding DisplayName}" />
                     <TextBox Classes="PasswordReveal" 
                              PasswordChar="•" 
                              shadui:ControlAssist.Label="Password" 

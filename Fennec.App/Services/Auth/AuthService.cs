@@ -28,13 +28,14 @@ public class AuthService(IAuthStore authStore) : IAuthService
         return authSession;
     }
 
-    public async Task RegisterAsync(string username, string password, string instanceUrl, CancellationToken cancellationToken)
+    public async Task RegisterAsync(string username, string? displayName, string password, string instanceUrl, CancellationToken cancellationToken)
     {
         var client = new ClientFactory(instanceUrl).Create();
 
         await client.Auth.RegisterAsync(new RegisterUserRequestDto
         {
             Name = username,
+            DisplayName = displayName,
             Password = password,
         }, cancellationToken);
     }

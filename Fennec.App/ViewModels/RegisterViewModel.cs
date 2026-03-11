@@ -21,6 +21,9 @@ public partial class RegisterViewModel : ObservableValidator
     private string _username = "";
     
     [ObservableProperty]
+    private string? _displayName = "";
+    
+    [ObservableProperty]
     [NotifyDataErrorInfo]
     [Required(ErrorMessage = "Password is required")]
     [NotifyCanExecuteChangedFor(nameof(RegisterCommand))]
@@ -59,7 +62,7 @@ public partial class RegisterViewModel : ObservableValidator
 
         try
         {
-            await _authService.RegisterAsync(username, Password, instanceUrl, cancellationToken);
+            await _authService.RegisterAsync(username, DisplayName, Password, instanceUrl, cancellationToken);
             Messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.Login));
         }
         catch (Exception e)

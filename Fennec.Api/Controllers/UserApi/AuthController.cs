@@ -25,7 +25,7 @@ public class AuthController : UserControllerBase
         await mediator.Send(new RegisterUserCommand
         {
             Name = requestDto.Name,
-            DisplayName = null,
+            DisplayName = requestDto.DisplayName,
             Password = requestDto.Password
         }, cancellationToken);
 
