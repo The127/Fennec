@@ -85,4 +85,25 @@ public class AuthController : UserControllerBase
             Token = keyService.GetSignedToken(session.User, requestDto.Audience),
         });
     }
+
+    [AllowAnonymous]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(
+        [FromServices] IMediator mediator,
+        CancellationToken cancellationToken
+    )
+    {
+        var authorizationHeader = Request.Headers.GetAuthorizationHeader();
+        var sessionToken = authorizationHeader.Match(
+            _ => throw new HttpUnauthorizedException("Expected session token"), 
+            sessionToken => sessionToken 
+        );
+        
+        await mediator.Send(new LogoutCommand
+        {
+            Token = sessionToken,
+        }, cancellationToken);
+        
+        return NoContent();
+    }
 }
