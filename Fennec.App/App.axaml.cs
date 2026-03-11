@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Logger;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 using Fennec.App.ViewModels;
@@ -43,7 +44,7 @@ public partial class App : Application
 #else
         builder.SetMinimumLevel(LogLevel.Information);
 #endif
-            builder.AddConsole();
+            builder.AddProvider(new ConsoleLoggerProvider());
         });
 
         services.AddSingleton<ToastManager>();
