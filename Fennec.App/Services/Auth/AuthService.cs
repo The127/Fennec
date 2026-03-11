@@ -31,11 +31,24 @@ public class AuthService(IAuthStore authStore) : IAuthService
     public async Task RegisterAsync(string username, string password, string instanceUrl, CancellationToken cancellationToken)
     {
         var client = new ClientFactory(instanceUrl).Create();
-        
+
         await client.Auth.RegisterAsync(new RegisterUserRequestDto
         {
             Name = username,
             Password = password,
         }, cancellationToken);
+    }
+
+    public async Task LogoutAsync(CancellationToken cancellationToken)
+    {
+        var session = await authStore.GetCurrentAuthSessionAsync(cancellationToken);
+        if (session is null) return;
+
+        var client = new ClientFactory(session.Url)
+            .WithSessionToken(session.SessionToken)
+            .Create();
+
+        await client.Auth.LogoutAsync(cancellationToken);
+        await authStore.RemoveSessionAsync(session, cancellationToken);
     }
 }

@@ -7,7 +7,7 @@ using Fennec.App.Services.Auth;
 
 namespace Fennec.App.ViewModels;
 
-public partial class MainAppViewModel(IRouter router, IAuthStore authStore, IMessenger messenger) : ObservableObject
+public partial class MainAppViewModel(IRouter router, IAuthStore authStore, IMessenger messenger, IAuthService authService) : ObservableObject
 {
     [ObservableProperty]
     private IRouter _router = router;
@@ -37,14 +37,9 @@ public partial class MainAppViewModel(IRouter router, IAuthStore authStore, IMes
     }
 
     [RelayCommand]
-    private async Task Logout()
+    private async Task Logout(CancellationToken cancellationToken)
     {
-        var session = await authStore.GetCurrentAuthSessionAsync();
-        if (session is not null)
-        {
-            await authStore.RemoveSessionAsync(session);
-        }
-
+        await authService.LogoutAsync(cancellationToken);
         messenger.Send(new UserLoggedOutMessage());
     }
 }

@@ -9,6 +9,7 @@ public interface IAuthClient
     Task RegisterAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default);
     Task<LoginResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default);
     Task<GetPublicTokenResponseDto> GetPublicTokenAsync(GetPublicTokenRequestDto request, CancellationToken cancellationToken = default);
+    Task LogoutAsync(CancellationToken cancellationToken);
 }
 
 public class AuthClient(HttpClient httpClient) : IAuthClient
@@ -43,15 +44,23 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
         var uri = new Uri("api/v1/auth/public-token", UriKind.Relative);
 
         var response = await httpClient.PostAsJsonAsync(
-            uri, 
+            uri,
             request,
             SharedFennecJsonContext.Default.GetPublicTokenRequestDto,
             cancellationToken);
         response.EnsureSuccessStatusCode();
-        
+
         var responseDto = await response.Content.ReadFromJsonAsync<GetPublicTokenResponseDto>(
             SharedFennecJsonContext.Default.GetPublicTokenResponseDto,
             cancellationToken);
         return responseDto ?? throw new Exception("Error decoding response.");
+    }
+
+    public async Task LogoutAsync(CancellationToken cancellationToken)
+    {
+        var uri = new Uri("api/v1/auth/logout", UriKind.Relative);
+
+        var response = await httpClient.PostAsync(uri, null, cancellationToken);
+        response.EnsureSuccessStatusCode();
     }
 }
