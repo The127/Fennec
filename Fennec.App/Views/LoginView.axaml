@@ -25,7 +25,6 @@
                              PasswordChar="•" 
                              shadui:ControlAssist.Label="Password" 
                              Text="{Binding Password}" />
-                    <TextBlock>Forgot Password?</TextBlock>
                     <Button Classes="Primary" Content="Log in" Command="{Binding LoginCommand}"/>
                     <Button Content="Need an account? Register"
                             Command="{Binding NavigateToRegisterCommand}" />
