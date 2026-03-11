@@ -57,7 +57,9 @@ public partial class App : Application
                 DataContext = mainViewModel,
             };
         }
-
+        
+        Task.Run(mainViewModel.InitializeAsync);
+        
         base.OnFrameworkInitializationCompleted();
     }
 
