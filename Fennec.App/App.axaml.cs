@@ -8,6 +8,7 @@ using Fennec.App.Services.Auth;
 using Fennec.App.ViewModels;
 using Fennec.App.Views;
 using Microsoft.Extensions.DependencyInjection;
+using ShadUI;
 
 namespace Fennec.App;
 
@@ -34,6 +35,7 @@ public partial class App : Application
 
     private void ConfigureDefaultServices(ServiceCollection services)
     {
+        services.AddSingleton<ToastManager>();
         services.AddSingleton<IRouter, Router>();
         services.AddSingleton<IAuthService, AuthService>();
         services.AddSingleton<IMessenger>(_ => WeakReferenceMessenger.Default);
@@ -54,7 +56,7 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            singleViewPlatform.MainView = new MainView
+            singleViewPlatform.MainView = new AppShellView
             {
                 DataContext = mainViewModel,
             };

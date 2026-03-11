@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
 using Microsoft.Extensions.DependencyInjection;
+using ShadUI;
 
 namespace Fennec.App.ViewModels;
 
@@ -11,14 +12,22 @@ public partial class AppShellViewModel
 {
     [ObservableProperty]
     private ObservableObject _currentViewModel;
+    
+    [ObservableProperty]
+    private ToastManager _toastManager;
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IAuthStore _authStore;
 
-    public AppShellViewModel(IServiceProvider serviceProvider, IAuthStore authStore)
+    public AppShellViewModel(
+        IServiceProvider serviceProvider,
+        IAuthStore authStore, 
+        ToastManager toastManager
+    )
     {
         _serviceProvider = serviceProvider;
         _authStore = authStore;
+        _toastManager = toastManager;
         _currentViewModel = ActivatorUtilities.CreateInstance<LoadingViewModel>(_serviceProvider);
 
         Messenger.RegisterAll(this);

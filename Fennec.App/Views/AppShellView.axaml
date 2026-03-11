@@ -3,9 +3,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Fennec.App.ViewModels"
+             xmlns:shadUi="clr-namespace:ShadUI;assembly=ShadUI"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Fennec.App.Views.MainView"
+             x:Class="Fennec.App.Views.AppShellView"
              x:DataType="vm:AppShellViewModel">
 
-    <ContentControl Content="{Binding CurrentViewModel}"/>
+    <Panel>
+        <ContentControl Content="{Binding CurrentViewModel}" />
+        <shadUi:ToastHost Manager="{Binding ToastManager}" />
+    </Panel>
 </UserControl>

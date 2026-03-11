@@ -8,7 +8,7 @@
         x:Class="Fennec.App.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
         Title="Fennec">
-        <views:MainView />
+        <views:AppShellView />
         <Window.Resources>
                 <ResourceDictionary>
                         <ResourceDictionary.ThemeDictionaries>
