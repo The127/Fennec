@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel.__Internals;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Auth;
 
@@ -26,8 +27,14 @@ public class AuthService(IAuthStore authStore) : IAuthService
         return authSession;
     }
 
-    public Task RegisterAsync(string username, string password, string instanceUrl, CancellationToken cancellationToken)
+    public async Task RegisterAsync(string username, string password, string instanceUrl, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var client = new ClientFactory(instanceUrl).Create();
+        
+        await client.Auth.RegisterAsync(new RegisterUserRequestDto
+        {
+            Name = username,
+            Password = password,
+        }, cancellationToken);
     }
 }
