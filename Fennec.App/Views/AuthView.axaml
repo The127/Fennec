@@ -5,7 +5,11 @@
              xmlns:vm="using:Fennec.App.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Fennec.App.Views.AuthView"
+             xmlns:ctrls="using:Fennec.App.Controls"
              x:DataType="vm:AuthViewModel">
 
-    <ContentControl Content="{Binding CurrentViewModel}" />
+    <Panel>
+        <ctrls:FederationBackground></ctrls:FederationBackground>
+        <ContentControl Content="{Binding CurrentViewModel}" />
+    </Panel>
 </UserControl>

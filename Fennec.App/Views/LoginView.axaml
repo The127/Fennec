@@ -7,8 +7,7 @@
              xmlns:shadui="using:ShadUI"
              x:Class="Fennec.App.Views.LoginView"
              x:DataType="vm:LoginViewModel">
-    <Panel>
-        <Image Source="{DynamicResource LoginBackground}" Stretch="UniformToFill"/>
+    <Panel Background="Transparent">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
             <shadui:Card HasShadow="True" Width="600">
                 <shadui:Card.Header>
