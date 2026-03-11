@@ -26,6 +26,8 @@ builder.Services.AddDbContext<FennecDbContext>(options =>
 
 builder.Services.AddSingleton<IClockService, ServerClockService>();
 builder.Services.AddSingleton<IKeyService, KeyService>();
+builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
+builder.Services.AddSingleton<ISessionTokenGenerator, RandomSessionTokenGenerator>();
 
 builder.Services.AddScoped<ExceptionMiddleware>();
 builder.Services.AddScoped<AuthenticationMiddleware>();

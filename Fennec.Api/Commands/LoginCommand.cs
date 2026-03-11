@@ -1,5 +1,5 @@
-using System.Security.Cryptography;
 using Fennec.Api.Models;
+using Fennec.Api.Services;
 using Fennec.Shared.Models;
 using HttpExceptions;
 using MediatR;
@@ -20,7 +20,9 @@ public class LoginResponse
 }
 
 public class LoginCommandHandler(
-    FennecDbContext dbContext
+    FennecDbContext dbContext,
+    IPasswordHasher passwordHasher,
+    ISessionTokenGenerator sessionTokenGenerator
 ) : IRequestHandler<LoginCommand, LoginResponse>
 {
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -31,7 +33,7 @@ public class LoginCommandHandler(
             .WherePasswordAuthMethod()
             .SingleOrDefaultAsync(cancellationToken);
 
-        if (passwordAuthMethod is null || !BCrypt.Net.BCrypt.Verify(request.Password, passwordAuthMethod.Details.Hash))
+        if (passwordAuthMethod is null || !passwordHasher.VerifyPassword(request.Password, passwordAuthMethod.Details.Hash))
         {
             throw new HttpUnauthorizedException();
         }
@@ -39,7 +41,7 @@ public class LoginCommandHandler(
         var session = new Session
         {
             UserId = passwordAuthMethod.UserId,
-            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            Token = sessionTokenGenerator.GenerateSessionToken(),
         };
 
         dbContext.Add(session);

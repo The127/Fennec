@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Fennec.Api.Models;
+using Fennec.Api.Services;
 using MediatR;
 
 namespace Fennec.Api.Commands;
@@ -12,7 +13,8 @@ public record RegisterUserCommand : IRequest
 }
 
 public class RegisterUserCommandHandler(
-    FennecDbContext dbContext    
+    FennecDbContext dbContext,
+    IPasswordHasher passwordHasher
 ) : IRequestHandler<RegisterUserCommand>
 {
     public async Task Handle(RegisterUserCommand request, CancellationToken cancellationToken)
@@ -24,7 +26,7 @@ public class RegisterUserCommandHandler(
             IsLocal = true,
         };
 
-        var hash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+        var hash = passwordHasher.HashPassword(request.Password);
 
         var password = new AuthMethod
         {
