@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using Avalonia.Logging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
 using Fennec.App.Validators;
+using ShadUI;
 
 namespace Fennec.App.ViewModels;
 
@@ -25,10 +27,12 @@ public partial class LoginViewModel : ObservableValidator
     private string _password = "";
 
     private readonly IAuthService _authService;
+    private readonly ToastManager _toastManager;
 
-    public LoginViewModel(IAuthService authService, IMessenger messenger)
+    public LoginViewModel(IAuthService authService, IMessenger messenger, ToastManager toastManager)
     {
         _authService = authService;
+        _toastManager = toastManager;
         Messenger = messenger;
     }
 
@@ -49,14 +53,24 @@ public partial class LoginViewModel : ObservableValidator
 
         var username = usernameParts[0];
         var instanceUrl = usernameParts[1];
-        
-        var authSession = await _authService.LoginAsync(
-            username,
-            Password,
-            instanceUrl,
-            cancellationToken);
-        
-        Messenger.Send(new LoginSucceededMessage(authSession!)); // TODO: deal with the nulablility
+
+        try
+        {
+            var authSession = await _authService.LoginAsync(
+                username,
+                Password,
+                instanceUrl,
+                cancellationToken);
+            
+            Messenger.Send(new LoginSucceededMessage(authSession!)); // TODO: deal with the nulablility
+        }
+        catch (Exception)
+        {
+            _toastManager.CreateToast("Failed to login")
+                .WithContent("An error occurred while logging in.")
+                .ShowError();
+        }
+
     }
 
     [RelayCommand]

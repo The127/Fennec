@@ -5,6 +5,7 @@ using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Validators;
+using ShadUI;
 
 namespace Fennec.App.ViewModels;
 
@@ -25,10 +26,16 @@ public partial class RegisterViewModel : ObservableValidator
     private string _password = "";
 
     private readonly IAuthService _authService;
+    private readonly ToastManager _toastManager;
 
-    public RegisterViewModel(IAuthService authService, IMessenger messenger)
+    public RegisterViewModel(
+        IAuthService authService,
+        IMessenger messenger,
+        ToastManager toastManager
+    )
     {
         _authService = authService;
+        _toastManager = toastManager;
         Messenger = messenger;
     }
 
@@ -40,8 +47,18 @@ public partial class RegisterViewModel : ObservableValidator
         var usernameParts = Username.Split('@');
         var username = usernameParts[0];
         var instanceUrl = usernameParts[1];
-        await _authService.RegisterAsync(username, Password, instanceUrl, cancellationToken);
-        Messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.Login));
+
+        try
+        {
+            await _authService.RegisterAsync(username, Password, instanceUrl, cancellationToken);
+            Messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.Login));
+        }
+        catch (Exception)
+        {
+            _toastManager.CreateToast("Failed to register")
+                .WithContent("An error occurred while registering.")
+                .ShowError();
+        }
     }
     
     [RelayCommand]
