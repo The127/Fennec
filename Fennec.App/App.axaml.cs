@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 using Fennec.App.ViewModels;
@@ -35,6 +36,7 @@ public partial class App : Application
     {
         services.AddSingleton<IRouter, Router>();
         services.AddSingleton<IAuthService, AuthService>();
+        services.AddSingleton<IMessenger>(_ => WeakReferenceMessenger.Default);
     }
 
     public override void OnFrameworkInitializationCompleted()
