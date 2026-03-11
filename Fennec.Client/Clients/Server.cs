@@ -14,7 +14,7 @@ public class ServerClient(HttpClient httpClient) : IServerClient
 {
     public async Task<CreateServerResponseDto> CreateServerAsync(CreateServerRequestDto requestDto, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/server/create", UriKind.Relative);
+        var uri = new Uri("api/v1/servers/create", UriKind.Relative);
         
         var response = await httpClient.PostAsJsonAsync(
             uri, 
@@ -31,7 +31,7 @@ public class ServerClient(HttpClient httpClient) : IServerClient
 
     public async Task JoinServerAsync(JoinServerRequestDto requestDto, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/server/join", UriKind.Relative);
+        var uri = new Uri("api/v1/servers/join", UriKind.Relative);
 
         var response = await httpClient.PostAsJsonAsync(
             uri, 

@@ -10,7 +10,7 @@ namespace Fennec.Api.Controllers.UserApi;
 
 [ApiController]
 [UserAuth]
-[Route("api/v1/server")]
+[Route("api/v1/servers")]
 public class ServerController : UserControllerBase
 {
     [HttpPost("create")]
