@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Fennec.Shared;
 using Fennec.Shared.Dtos.Server;
 
 namespace Fennec.Client.Clients;
@@ -15,10 +16,16 @@ public class ServerClient(HttpClient httpClient) : IServerClient
     {
         var uri = new Uri("api/v1/server/create", UriKind.Relative);
         
-        var response = await httpClient.PostAsJsonAsync(uri, requestDto, cancellationToken);
+        var response = await httpClient.PostAsJsonAsync(
+            uri, 
+            requestDto, 
+            SharedFennecJsonContext.Default.CreateServerRequestDto, 
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var responseDto = await response.Content.ReadFromJsonAsync<CreateServerResponseDto>(cancellationToken: cancellationToken);
+        var responseDto = await response.Content.ReadFromJsonAsync<CreateServerResponseDto>(
+            SharedFennecJsonContext.Default.CreateServerResponseDto,
+            cancellationToken: cancellationToken);
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 
@@ -26,7 +33,11 @@ public class ServerClient(HttpClient httpClient) : IServerClient
     {
         var uri = new Uri("api/v1/server/join", UriKind.Relative);
 
-        var response = await httpClient.PostAsJsonAsync(uri, requestDto, cancellationToken);
+        var response = await httpClient.PostAsJsonAsync(
+            uri, 
+            requestDto, 
+            SharedFennecJsonContext.Default.JoinServerRequestDto,
+            cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 }

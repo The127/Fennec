@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Fennec.Shared;
 using Fennec.Shared.Dtos.Auth;
 
 namespace Fennec.Client.Clients;
@@ -24,10 +25,16 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
     {
         var uri = new Uri("api/v1/auth/login", UriKind.Relative);
         
-        var response = await httpClient.PostAsJsonAsync(uri, request, cancellationToken);
+        var response = await httpClient.PostAsJsonAsync(
+            uri,
+            request,
+            SharedFennecJsonContext.Default.LoginRequestDto,
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var responseDto = await response.Content.ReadFromJsonAsync<LoginResponseDto>(cancellationToken);
+        var responseDto = await response.Content.ReadFromJsonAsync<LoginResponseDto>(
+            SharedFennecJsonContext.Default.LoginResponseDto,
+            cancellationToken);
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 
@@ -35,10 +42,16 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
     {
         var uri = new Uri("api/v1/auth/public-token", UriKind.Relative);
 
-        var response = await httpClient.PostAsJsonAsync(uri, request, cancellationToken);
+        var response = await httpClient.PostAsJsonAsync(
+            uri, 
+            request,
+            SharedFennecJsonContext.Default.GetPublicTokenRequestDto,
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var responseDto = await response.Content.ReadFromJsonAsync<GetPublicTokenResponseDto>(cancellationToken);
+        var responseDto = await response.Content.ReadFromJsonAsync<GetPublicTokenResponseDto>(
+            SharedFennecJsonContext.Default.GetPublicTokenResponseDto,
+            cancellationToken);
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 }
