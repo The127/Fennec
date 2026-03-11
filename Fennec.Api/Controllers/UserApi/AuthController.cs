@@ -60,8 +60,8 @@ public class AuthController : UserControllerBase
     [HttpPost("public-token")]
     public async Task<IActionResult> GetPublicToken(
         [FromBody] GetPublicTokenRequestDto requestDto,
-        [FromServices] IKeyService keyService,
-        [FromServices] FennecDbContext dbContext
+        [FromServices] IMediator mediator,
+        CancellationToken cancellationToken
     )
     {
         var authorizationHeader = Request.Headers.GetAuthorizationHeader();
@@ -69,20 +69,16 @@ public class AuthController : UserControllerBase
             _ => throw new HttpUnauthorizedException("Expected session token"), 
             sessionToken => sessionToken 
         );
-        
-        var session = dbContext
-            .Set<Session>()
-            .Include(x => x.User)
-            .SingleOrDefault(x => x.Token == sessionToken.Value);
 
-        if (session is null)
+        var publicTokenResponse = await mediator.Send(new CreatePublicTokenCommand
         {
-            throw new HttpUnauthorizedException("Invalid token");      
-        }
+            Token = sessionToken,
+            Audience = requestDto.Audience,
+        }, cancellationToken);
         
         return Ok(new GetPublicTokenResponseDto
         {
-            Token = keyService.GetSignedToken(session.User, requestDto.Audience),
+            Token = publicTokenResponse.Token,
         });
     }
 
