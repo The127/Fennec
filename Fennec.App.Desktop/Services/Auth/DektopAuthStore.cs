@@ -2,10 +2,11 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fennec.App.Services.Auth;
+using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.Desktop.Services.Auth;
 
-public class DesktopAuthStore : IAuthStore
+public class DesktopAuthStore(ILogger<DesktopAuthStore> logger) : IAuthStore
 {
     public class AuthConfig
     {
@@ -72,6 +73,12 @@ public class DesktopAuthStore : IAuthStore
         }
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
+            return new AuthConfig();
+        }
+        catch (JsonException)
+        {
+            logger.LogWarning("Auth config at {ConfigPath} is outdated or corrupted and has been deleted. Please log in again.", ConfigPath);
+            File.Delete(ConfigPath);
             return new AuthConfig();
         }
     }

@@ -21,6 +21,7 @@ public class AuthService(IAuthStore authStore) : IAuthService
             Url = instanceUrl,
             SessionToken = response.SessionToken,
             UserId = response.UserId,
+            Username = username,
         };
         
         await authStore.SaveSessionAsync(authSession, cancellationToken);

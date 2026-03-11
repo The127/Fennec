@@ -11,5 +11,8 @@ public record AuthSession
     public required string SessionToken { get; init; }
     
     [JsonPropertyName("userId")]
-    public required Guid UserId { get; init; }   
+    public required Guid UserId { get; init; }
+
+    [JsonPropertyName("username")]
+    public required string Username { get; init; }
 }

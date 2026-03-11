@@ -46,17 +46,17 @@
                     <Button Grid.Column="2" HorizontalAlignment="Right">
                         <Grid ColumnDefinitions="Auto * Auto" Margin="0">
                             <shadui:Avatar
-                                Fallback="J"
+                                Fallback="{Binding AvatarFallback}"
                                 Height="36"
                                 Margin="0,0,8,0"
                                 Width="36" />
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="juce" />
+                                <TextBlock Text="{Binding Username}" />
                                 <TextBlock
                                     Classes="Muted"
                                     FontSize="10"
                                     Margin="0,-4,0,0"
-                                    Text="juce@https://localhost:7017" />
+                                    Text="{Binding UserAtServer}" />
                             </StackPanel>
                             <Viewbox
                                 Grid.Column="2"

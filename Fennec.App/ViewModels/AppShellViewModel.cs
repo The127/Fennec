@@ -36,15 +36,22 @@ public partial class AppShellViewModel
     public async Task InitializeAsync()
     {
         var currentSession = await _authStore.GetCurrentAuthSessionAsync();
-        CurrentViewModel = currentSession switch
+        if (currentSession is not null)
         {
-            not null => ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider),
-            _ => ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider),
-        };
+            var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider);
+            await vm.InitializeAsync();
+            CurrentViewModel = vm;
+        }
+        else
+        {
+            CurrentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
+        }
     }
 
     public void Receive(LoginSucceededMessage message)
     {
-        CurrentViewModel = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider);
+        var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider);
+        vm.ApplySession(message.Session);
+        CurrentViewModel = vm;
     }
 }

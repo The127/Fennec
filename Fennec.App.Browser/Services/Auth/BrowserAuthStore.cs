@@ -2,10 +2,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fennec.App.Services.Auth;
 using System.Runtime.InteropServices.JavaScript;
+using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.Browser.Services.Auth;
 
-public class BrowserAuthStore : IAuthStore
+public class BrowserAuthStore(ILogger<BrowserAuthStore> logger) : IAuthStore
 {
     public class AuthConfig
     {
@@ -69,8 +70,10 @@ public class BrowserAuthStore : IAuthStore
             var config = JsonSerializer.Deserialize<AuthConfig>(json);
             return Task.FromResult(config ?? new AuthConfig());
         }
-        catch
+        catch (JsonException)
         {
+            logger.LogWarning("Auth config in localStorage is outdated or corrupted and has been cleared. Please log in again.");
+            LocalStorageInterop.RemoveItem(StorageKey);
             return Task.FromResult(new AuthConfig());
         }
     }
