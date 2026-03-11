@@ -7,6 +7,7 @@
              xmlns:shadui="using:ShadUI"
              x:Class="Fennec.App.Views.MainAppView"
              xmlns:vm="using:Fennec.App.ViewModels"
+             xmlns:ctrls="using:Fennec.App.Controls"
              x:DataType="vm:MainAppViewModel">
     <DockPanel LastChildFill="True">
         <StackPanel Spacing="8" DockPanel.Dock="Left">
@@ -15,9 +16,7 @@
                     Orientation="Vertical"
                     Spacing="8">
                     <Button Height="40" Width="40">
-                        <Viewbox Margin="6">
-                            <TextBlock>H</TextBlock>
-                        </Viewbox>
+                        <ctrls:FennecLogo/>
                     </Button>
                     <Button Height="40" Width="40">
                         <Viewbox Margin="6">
