@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Fennec.Shared.Dtos.Auth;
 using Fennec.Shared.Dtos.Server;
+using Fennec.Shared.Dtos.User;
 
 namespace Fennec.Shared;
 
@@ -15,6 +16,7 @@ using System.Text.Json.Serialization;
 [JsonSerializable(typeof(CreateServerRequestDto))]
 [JsonSerializable(typeof(CreateServerResponseDto))]
 [JsonSerializable(typeof(JoinServerRequestDto))]
+[JsonSerializable(typeof(MeResponseDto))]
 public partial class SharedFennecJsonContext : JsonSerializerContext
 {
 }
