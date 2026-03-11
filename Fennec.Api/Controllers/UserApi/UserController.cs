@@ -37,6 +37,7 @@ public class UserController : UserControllerBase
         {
             Id = meResponse.UserId,
             Name = meResponse.Username,
+            DisplayName = meResponse.DisplayName ?? meResponse.Username,
         });
     }
 }

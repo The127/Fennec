@@ -16,6 +16,7 @@ public record MeResponse
 {
     public required Guid UserId { get; init; }  
     public required string Username { get; init; }
+    public required string? DisplayName { get; init; }
 }
 
 public class MeQueryHandler(
@@ -30,6 +31,7 @@ public class MeQueryHandler(
             {
                 x.User.Id,
                 x.User.Name,
+                x.User.DisplayName,
             })
             .SingleOrDefaultAsync(cancellationToken);
         
@@ -42,6 +44,7 @@ public class MeQueryHandler(
         {
             UserId = userInfo.Id,
             Username = userInfo.Name,
+            DisplayName = userInfo.DisplayName,
         };
     }
 }

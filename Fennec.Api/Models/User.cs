@@ -6,6 +6,7 @@ namespace Fennec.Api.Models;
 public class User : EntityBase
 {
     public required string Name { get; set; }
+    public required string? DisplayName { get; set; }
     
     public required bool IsLocal { get; set; }
     

@@ -1,15 +1,11 @@
 using Fennec.Api.Commands;
-using Fennec.Api.Controllers.UserApi;
-using Fennec.Api.Models;
 using Fennec.Api.Security;
-using Fennec.Api.Services;
 using Fennec.Api.Utils;
 using Fennec.Shared.Dtos.Auth;
 using HttpExceptions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Fennec.Api.Controllers.UserApi;
 
@@ -29,6 +25,7 @@ public class AuthController : UserControllerBase
         await mediator.Send(new RegisterUserCommand
         {
             Name = requestDto.Name,
+            DisplayName = null,
             Password = requestDto.Password
         }, cancellationToken);
 

@@ -193,6 +193,8 @@ public class KeyService : IKeyService
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Name, user.Name),
+            new Claim("DisplayName", user.DisplayName ?? user.Name),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
         var expiry = Duration.FromMinutes(5);
