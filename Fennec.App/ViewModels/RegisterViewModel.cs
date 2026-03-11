@@ -5,6 +5,7 @@ using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Validators;
+using Microsoft.Extensions.Logging;
 using ShadUI;
 
 namespace Fennec.App.ViewModels;
@@ -27,15 +28,18 @@ public partial class RegisterViewModel : ObservableValidator
 
     private readonly IAuthService _authService;
     private readonly ToastManager _toastManager;
+    private readonly ILogger<RegisterViewModel> _logger;
 
     public RegisterViewModel(
         IAuthService authService,
         IMessenger messenger,
-        ToastManager toastManager
+        ToastManager toastManager,
+        ILogger<RegisterViewModel> logger
     )
     {
         _authService = authService;
         _toastManager = toastManager;
+        _logger = logger;
         Messenger = messenger;
     }
 
@@ -53,8 +57,9 @@ public partial class RegisterViewModel : ObservableValidator
             await _authService.RegisterAsync(username, Password, instanceUrl, cancellationToken);
             Messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.Login));
         }
-        catch (Exception)
+        catch (Exception e)
         {
+            _logger.LogError(e, "Failed to login");
             _toastManager.CreateToast("Failed to register")
                 .WithContent("An error occurred while registering.")
                 .ShowError();

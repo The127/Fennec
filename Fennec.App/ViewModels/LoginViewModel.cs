@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
 using Fennec.App.Validators;
+using Microsoft.Extensions.Logging;
 using ShadUI;
 
 namespace Fennec.App.ViewModels;
@@ -28,11 +29,17 @@ public partial class LoginViewModel : ObservableValidator
 
     private readonly IAuthService _authService;
     private readonly ToastManager _toastManager;
+    private readonly ILogger<LoginViewModel> _logger;
 
-    public LoginViewModel(IAuthService authService, IMessenger messenger, ToastManager toastManager)
+    public LoginViewModel(
+        IAuthService authService,
+        IMessenger messenger,
+        ToastManager toastManager,
+        ILogger<LoginViewModel> logger)
     {
         _authService = authService;
         _toastManager = toastManager;
+        _logger = logger;
         Messenger = messenger;
     }
 
@@ -64,8 +71,9 @@ public partial class LoginViewModel : ObservableValidator
             
             Messenger.Send(new LoginSucceededMessage(authSession!)); // TODO: deal with the nulablility
         }
-        catch (Exception)
+        catch (Exception e)
         {
+            _logger.LogError(e, "Failed to login");
             _toastManager.CreateToast("Failed to login")
                 .WithContent("An error occurred while logging in.")
                 .ShowError();
