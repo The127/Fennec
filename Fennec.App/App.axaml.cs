@@ -8,6 +8,7 @@ using Fennec.App.Services.Auth;
 using Fennec.App.ViewModels;
 using Fennec.App.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ShadUI;
 
 namespace Fennec.App;
@@ -15,9 +16,9 @@ namespace Fennec.App;
 public partial class App : Application
 {
     public const string AppName = "FennecApp";
-    
+
     private IServiceProvider _services = null!;
-    
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -26,15 +27,25 @@ public partial class App : Application
     public void ConfigureServices(Action<ServiceCollection>? configureAdditionalServices = null)
     {
         var services = new ServiceCollection();
-        
+
         ConfigureDefaultServices(services);
         configureAdditionalServices?.Invoke(services);
-        
+
         _services = services.BuildServiceProvider();
     }
 
     private void ConfigureDefaultServices(ServiceCollection services)
     {
+        services.AddLogging(builder =>
+        {
+#if DEBUG
+            builder.SetMinimumLevel(LogLevel.Debug);
+#else
+        builder.SetMinimumLevel(LogLevel.Information);
+#endif
+            builder.AddConsole();
+        });
+
         services.AddSingleton<ToastManager>();
         services.AddSingleton<IRouter, Router>();
         services.AddSingleton<IAuthService, AuthService>();
@@ -61,9 +72,9 @@ public partial class App : Application
                 DataContext = mainViewModel,
             };
         }
-        
+
         Task.Run(mainViewModel.InitializeAsync);
-        
+
         base.OnFrameworkInitializationCompleted();
     }
 

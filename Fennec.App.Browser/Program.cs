@@ -24,6 +24,5 @@ internal sealed partial class Program
     {
         services.AddSingleton<IRouteStore>(_ => new MemoryRouteStore(10, 100));
         services.AddSingleton<IAuthStore, BrowserAuthStore>();
-        // TODO: implement and register auth storage for browser
     }
 }
