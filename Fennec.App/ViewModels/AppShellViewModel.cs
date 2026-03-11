@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
@@ -8,11 +8,14 @@ using ShadUI;
 namespace Fennec.App.ViewModels;
 
 public partial class AppShellViewModel
-    : ObservableRecipient, IRecipient<LoginSucceededMessage>, IRecipient<LogoutRequestedMessage>
+    : ObservableRecipient, IRecipient<LoginSucceededMessage>, IRecipient<UserLoggedOutMessage>
 {
     [ObservableProperty]
     private ObservableObject _currentViewModel;
-    
+
+    [ObservableProperty]
+    private AppShellState _state = AppShellState.Loading;
+
     [ObservableProperty]
     private ToastManager _toastManager;
 
@@ -21,9 +24,10 @@ public partial class AppShellViewModel
 
     public AppShellViewModel(
         IServiceProvider serviceProvider,
-        IAuthStore authStore, 
-        ToastManager toastManager
-    )
+        IAuthStore authStore,
+        ToastManager toastManager,
+        IMessenger messenger
+    ) : base(messenger)
     {
         _serviceProvider = serviceProvider;
         _authStore = authStore;
@@ -33,36 +37,37 @@ public partial class AppShellViewModel
         Messenger.RegisterAll(this);
     }
 
+    public bool IsLoggedIn => State == AppShellState.LoggedIn;
+    public bool IsLoggedOut => State == AppShellState.LoggedOut;
+
     public async Task InitializeAsync()
     {
         var currentSession = await _authStore.GetCurrentAuthSessionAsync();
         if (currentSession is not null)
         {
-            var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider);
+            var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider, Messenger);
             await vm.InitializeAsync();
             CurrentViewModel = vm;
+            State = AppShellState.LoggedIn;
         }
         else
         {
             CurrentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
+            State = AppShellState.LoggedOut;
         }
     }
 
     public void Receive(LoginSucceededMessage message)
     {
-        var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider);
+        var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider, Messenger);
         vm.ApplySession(message.Session);
         CurrentViewModel = vm;
+        State = AppShellState.LoggedIn;
     }
 
-    public async void Receive(LogoutRequestedMessage message)
+    public void Receive(UserLoggedOutMessage message)
     {
-        var session = await _authStore.GetCurrentAuthSessionAsync();
-        if (session is not null)
-        {
-            await _authStore.RemoveSessionAsync(session);
-        }
-
         CurrentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
+        State = AppShellState.LoggedOut;
     }
 }
