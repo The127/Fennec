@@ -5,6 +5,8 @@ public class ClientFactory(string baseUrl)
     private string? _bearerToken;
     private string? _sessionToken;
 
+    private string NormalizedBaseUrl => baseUrl.Contains("://") ? baseUrl : $"https://{baseUrl}";
+
     public ClientFactory WithBearerToken(string? token)
     {
         _bearerToken = token;
@@ -31,7 +33,7 @@ public class ClientFactory(string baseUrl)
         };
         
         var httpClient = new HttpClient(authHandler);
-        httpClient.BaseAddress = new Uri(baseUrl);
+        httpClient.BaseAddress = new Uri(NormalizedBaseUrl);
         
         return new FennecClient(httpClient, tokenProvider);
     }
