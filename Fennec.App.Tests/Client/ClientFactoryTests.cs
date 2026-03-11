@@ -7,8 +7,7 @@ public class ClientFactoryTests
 {
     [Theory]
     [InlineData("fennec.chat", "https://fennec.chat/")]
-    [InlineData("http://localhost:5176", "http://localhost:5176/")]
-    [InlineData("https://localhost:7014", "https://localhost:7014/")]
+    [InlineData("localhost:5176", "https://localhost:5176/")]
     public void Create_NormalizesUrl(string inputUrl, string expectedBaseAddress)
     {
         // Arrange
@@ -19,5 +18,17 @@ public class ClientFactoryTests
 
         // Assert
         Assert.Equal(expectedBaseAddress, client.BaseAddress);
+    }
+
+    [Theory]
+    [InlineData("http://localhost:5176")]
+    [InlineData("https://fennec.chat")]
+    public void Create_ThrowsOnScheme(string inputUrl)
+    {
+        // Arrange
+        var factory = new ClientFactory(inputUrl);
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => factory.Create());
     }
 }

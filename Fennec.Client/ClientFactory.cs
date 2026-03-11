@@ -5,7 +5,9 @@ public class ClientFactory(string baseUrl)
     private string? _bearerToken;
     private string? _sessionToken;
 
-    private string NormalizedBaseUrl => baseUrl.Contains("://") ? baseUrl : $"https://{baseUrl}";
+    private string NormalizedBaseUrl => baseUrl.Contains("://") 
+        ? throw new ArgumentException("Base URL should not contain a scheme (e.g., http:// or https://).") 
+        : $"https://{baseUrl}";
 
     public ClientFactory WithBearerToken(string? token)
     {
