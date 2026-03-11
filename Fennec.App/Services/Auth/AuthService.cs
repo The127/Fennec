@@ -5,7 +5,7 @@ namespace Fennec.App.Services.Auth;
 
 public class AuthService(IAuthStore authStore) : IAuthService
 {
-    public async Task<AuthSession?> Login(string username, string password, string instanceUrl, CancellationToken cancellationToken)
+    public async Task<AuthSession?> LoginAsync(string username, string password, string instanceUrl, CancellationToken cancellationToken)
     {
         var client = new ClientFactory(instanceUrl).Create();
 
@@ -24,5 +24,10 @@ public class AuthService(IAuthStore authStore) : IAuthService
         
         await authStore.SaveSessionAsync(authSession, cancellationToken);
         return authSession;
+    }
+
+    public Task RegisterAsync(string username, string password, string instanceUrl, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
     }
 }

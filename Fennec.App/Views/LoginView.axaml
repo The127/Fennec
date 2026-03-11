@@ -25,10 +25,10 @@
                              PasswordChar="•" 
                              shadui:ControlAssist.Label="Password" 
                              Text="{Binding Password}" />
-                    <Button Content="Forgot password?"
-                            Command="{Binding NavigateToRegisterCommand}" />
+                    <TextBlock>Forgot Password?</TextBlock>
                     <Button Classes="Primary" Content="Log in" Command="{Binding LoginCommand}"/>
-                    <TextBlock>Need an account? Register</TextBlock>
+                    <Button Content="Need an account? Register"
+                            Command="{Binding NavigateToRegisterCommand}" />
                 </StackPanel>
             </shadui:Card>
         </StackPanel>

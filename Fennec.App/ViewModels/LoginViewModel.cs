@@ -10,11 +10,11 @@ public partial class LoginViewModel(IAuthService authService) : ObservableRecipi
 {
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
-    public string _username = "";
+    private string _username = "";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
-    public string _password = "";
+    private string _password = "";
 
     private bool CanLogin() => !string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password);
 
@@ -24,7 +24,7 @@ public partial class LoginViewModel(IAuthService authService) : ObservableRecipi
         var usernameParts = Username.Split('@');
         var username = usernameParts[0];
         var instanceUrl = usernameParts[1];
-        var authSession = await authService.Login(username, Password, instanceUrl, cancellationToken);
+        var authSession = await authService.LoginAsync(username, Password, instanceUrl, cancellationToken);
         Messenger.Send(new LoginSucceededMessage(authSession!)); // TODO: deal with the nulablility
     }
 
