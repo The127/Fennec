@@ -25,7 +25,8 @@
                              shadui:ControlAssist.Label="Password" 
                              Text="{Binding Password}" />
                     <Button Classes="Primary" Content="Register" Command="{Binding RegisterCommand}"/>
-                    <Button Content="Already have an account?"
+                    <Button Classes="Ghost" 
+                            Content="Already have an account?"
                             Command="{Binding NavigateToLoginCommand}" />
                 </StackPanel>
             </shadui:Card>
