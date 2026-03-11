@@ -8,7 +8,7 @@ using ShadUI;
 namespace Fennec.App.ViewModels;
 
 public partial class AppShellViewModel
-    : ObservableRecipient, IRecipient<LoginSucceededMessage>
+    : ObservableRecipient, IRecipient<LoginSucceededMessage>, IRecipient<LogoutRequestedMessage>
 {
     [ObservableProperty]
     private ObservableObject _currentViewModel;
@@ -53,5 +53,16 @@ public partial class AppShellViewModel
         var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider);
         vm.ApplySession(message.Session);
         CurrentViewModel = vm;
+    }
+
+    public async void Receive(LogoutRequestedMessage message)
+    {
+        var session = await _authStore.GetCurrentAuthSessionAsync();
+        if (session is not null)
+        {
+            await _authStore.RemoveSessionAsync(session);
+        }
+
+        CurrentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
     }
 }

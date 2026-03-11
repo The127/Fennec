@@ -1,4 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Messages;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 
@@ -31,5 +34,11 @@ public partial class MainAppViewModel(IRouter router, IAuthStore authStore) : Ob
         Username = session.Username;
         UserAtServer = $"{session.Username}@{session.Url}";
         AvatarFallback = session.Username[..1].ToUpperInvariant();
+    }
+
+    [RelayCommand]
+    private void Logout()
+    {
+        WeakReferenceMessenger.Default.Send(new LogoutRequestedMessage());
     }
 }

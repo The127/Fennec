@@ -20,11 +20,10 @@ public class DesktopAuthStore(ILogger<DesktopAuthStore> logger) : IAuthStore
     private string ConfigPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         App.AppName, "auth.json");
 
-    public Task<AuthSession?> GetCurrentAuthSessionAsync(CancellationToken cancellationToken = default)
+    public async Task<AuthSession?> GetCurrentAuthSessionAsync(CancellationToken cancellationToken = default)
     {
-        var config = LoadConfigAsync(cancellationToken).Result;
-        AuthSession? authSession = config.Sessions.FirstOrDefault(x => x.UserId == config.CurrentUserId);
-        return Task.FromResult(authSession);
+        var config = await LoadConfigAsync(cancellationToken);
+        return config.Sessions.FirstOrDefault(x => x.UserId == config.CurrentUserId);
     }
 
     public async Task<List<AuthSession>> GetSessionsAsync(CancellationToken cancellationToken = default)
@@ -48,18 +47,18 @@ public class DesktopAuthStore(ILogger<DesktopAuthStore> logger) : IAuthStore
         await SaveConfigAsync(config, cancellationToken);
     }
 
-    public Task RemoveSessionAsync(AuthSession session, CancellationToken cancellationToken = default)
+    public async Task RemoveSessionAsync(AuthSession session, CancellationToken cancellationToken = default)
     {
-        var config = LoadConfigAsync(cancellationToken).Result;
-        
+        var config = await LoadConfigAsync(cancellationToken);
+
         config.Sessions.RemoveAll(x => x.UserId == session.UserId);
 
         if (config.CurrentUserId == session.UserId)
         {
             config.CurrentUserId = null;
         }
-        
-        return SaveConfigAsync(config, cancellationToken);
+
+        await SaveConfigAsync(config, cancellationToken);
     }
 
     private async Task<AuthConfig> LoadConfigAsync(CancellationToken cancellationToken = default)
