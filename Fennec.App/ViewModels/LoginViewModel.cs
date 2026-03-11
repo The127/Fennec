@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
+using Fennec.App.Validators;
 
 namespace Fennec.App.ViewModels;
 
@@ -13,6 +14,7 @@ public partial class LoginViewModel : ObservableValidator
     [ObservableProperty]
     [NotifyDataErrorInfo]
     [Required(ErrorMessage = "Username is required")]
+    [UsernameFormat]
     [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
     private string _username = "";
 
