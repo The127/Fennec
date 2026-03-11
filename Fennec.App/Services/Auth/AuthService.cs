@@ -1,14 +1,17 @@
-using CommunityToolkit.Mvvm.ComponentModel.__Internals;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Auth;
 
 namespace Fennec.App.Services.Auth;
 
-public class AuthService(IAuthStore authStore) : IAuthService
+public class AuthService(IAuthStore authStore, IClientFactory clientFactory) : IAuthService
 {
+    private static string StripScheme(string url)
+        => url.Replace("https://", "").Replace("http://", "");
+
     public async Task<AuthSession?> LoginAsync(string username, string password, string instanceUrl, CancellationToken cancellationToken)
     {
-        var client = new ClientFactory(instanceUrl).Create();
+        instanceUrl = StripScheme(instanceUrl);
+        var client = clientFactory.Create(instanceUrl);
 
         var response = await client.Auth.LoginAsync(new LoginRequestDto
         {
@@ -23,14 +26,15 @@ public class AuthService(IAuthStore authStore) : IAuthService
             UserId = response.UserId,
             Username = username,
         };
-        
+
         await authStore.SaveSessionAsync(authSession, cancellationToken);
         return authSession;
     }
 
     public async Task RegisterAsync(string username, string? displayName, string password, string instanceUrl, CancellationToken cancellationToken)
     {
-        var client = new ClientFactory(instanceUrl).Create();
+        instanceUrl = StripScheme(instanceUrl);
+        var client = clientFactory.Create(instanceUrl);
 
         await client.Auth.RegisterAsync(new RegisterUserRequestDto
         {
@@ -45,11 +49,16 @@ public class AuthService(IAuthStore authStore) : IAuthService
         var session = await authStore.GetCurrentAuthSessionAsync(cancellationToken);
         if (session is null) return;
 
-        var client = new ClientFactory(session.Url)
-            .WithSessionToken(session.SessionToken)
-            .Create();
+        try
+        {
+            var client = clientFactory.Create(StripScheme(session.Url), session.SessionToken);
+            await client.Auth.LogoutAsync(cancellationToken);
+        }
+        catch
+        {
+            // Server unreachable - the token will expire on its own.
+        }
 
-        await client.Auth.LogoutAsync(cancellationToken);
         await authStore.RemoveSessionAsync(session, cancellationToken);
     }
 }

@@ -1,42 +1,26 @@
 namespace Fennec.Client;
 
-public class ClientFactory(string baseUrl)
+public class ClientFactory : IClientFactory
 {
-    private string? _bearerToken;
-    private string? _sessionToken;
-
-    private string NormalizedBaseUrl => baseUrl.Contains("://") 
-        ? throw new ArgumentException("Base URL should not contain a scheme (e.g., http:// or https://).") 
+    private static string NormalizeBaseUrl(string baseUrl) => baseUrl.Contains("://")
+        ? throw new ArgumentException("Base URL should not contain a scheme (e.g., http:// or https://).")
         : $"https://{baseUrl}";
 
-    public ClientFactory WithBearerToken(string? token)
-    {
-        _bearerToken = token;
-        return this;
-    }
-
-    public ClientFactory WithSessionToken(string? token)
-    {
-        _sessionToken = token;
-        return this;
-    }
-
-    public IFennecClient Create()
+    public IFennecClient Create(string baseUrl, string? sessionToken = null)
     {
         var tokenProvider = new TokenProvider
         {
-            BearerToken = _bearerToken,
-            SessionToken = _sessionToken
+            SessionToken = sessionToken
         };
 
         var authHandler = new AuthHandler(tokenProvider)
         {
             InnerHandler = new HttpClientHandler()
         };
-        
+
         var httpClient = new HttpClient(authHandler);
-        httpClient.BaseAddress = new Uri(NormalizedBaseUrl);
-        
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(baseUrl));
+
         return new FennecClient(httpClient, tokenProvider);
     }
 }

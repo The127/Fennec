@@ -43,6 +43,14 @@ public partial class LoginViewModel : ObservableValidator
         Messenger = messenger;
     }
 
+    public void NotifySchemeStripped()
+    {
+        _toastManager.CreateToast("URL scheme removed")
+            .WithContent("https:// is used automatically.")
+            .WithDelay(3)
+            .ShowInfo();
+    }
+
     private bool CanLogin() => !HasErrors && !string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password);
 
     [RelayCommand(CanExecute = nameof(CanLogin))]

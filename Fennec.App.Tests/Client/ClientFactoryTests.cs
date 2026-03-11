@@ -1,5 +1,4 @@
 using Fennec.Client;
-using Xunit;
 
 namespace Fennec.App.Tests.Client;
 
@@ -10,13 +9,10 @@ public class ClientFactoryTests
     [InlineData("localhost:5176", "https://localhost:5176/")]
     public void Create_NormalizesUrl(string inputUrl, string expectedBaseAddress)
     {
-        // Arrange
-        var factory = new ClientFactory(inputUrl);
+        var factory = new ClientFactory();
 
-        // Act
-        var client = factory.Create();
+        var client = factory.Create(inputUrl);
 
-        // Assert
         Assert.Equal(expectedBaseAddress, client.BaseAddress);
     }
 
@@ -25,10 +21,8 @@ public class ClientFactoryTests
     [InlineData("https://fennec.chat")]
     public void Create_ThrowsOnScheme(string inputUrl)
     {
-        // Arrange
-        var factory = new ClientFactory(inputUrl);
+        var factory = new ClientFactory();
 
-        // Act & Assert
-        Assert.Throws<ArgumentException>(() => factory.Create());
+        Assert.Throws<ArgumentException>(() => factory.Create(inputUrl));
     }
 }

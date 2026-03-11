@@ -19,7 +19,7 @@ public partial class RegisterViewModel : ObservableValidator
     [UsernameFormat]
     [NotifyCanExecuteChangedFor(nameof(RegisterCommand))]
     private string _username = "";
-    
+
     [ObservableProperty]
     private string? _displayName = "";
     
@@ -44,6 +44,14 @@ public partial class RegisterViewModel : ObservableValidator
         _toastManager = toastManager;
         _logger = logger;
         Messenger = messenger;
+    }
+
+    public void NotifySchemeStripped()
+    {
+        _toastManager.CreateToast("URL scheme removed")
+            .WithContent("https:// is used automatically.")
+            .WithDelay(3)
+            .ShowInfo();
     }
 
     private bool CanRegister() => !HasErrors && !string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password);

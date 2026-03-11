@@ -22,8 +22,9 @@
                     </StackPanel>
                 </shadui:Card.Header>
                 <StackPanel Spacing="16">
-                    <TextBox Watermark="username@home.instance" 
-                             shadui:ControlAssist.Label="Username" 
+                    <TextBox x:Name="UsernameTextBox"
+                             Watermark="username@home.instance"
+                             shadui:ControlAssist.Label="Username"
                              Text="{Binding Username}" />
                     <TextBox Classes="PasswordReveal" 
                              PasswordChar="•" 

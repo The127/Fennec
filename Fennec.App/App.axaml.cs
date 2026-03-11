@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Logger;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
+using Fennec.Client;
 using Fennec.App.ViewModels;
 using Fennec.App.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,6 +50,7 @@ public partial class App : Application
 
         services.AddSingleton<ToastManager>();
         services.AddSingleton<IRouter, Router>();
+        services.AddSingleton<IClientFactory, ClientFactory>();
         services.AddSingleton<IAuthService, AuthService>();
         services.AddSingleton<IMessenger>(_ => WeakReferenceMessenger.Default);
     }
