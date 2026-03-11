@@ -90,7 +90,7 @@ public class DesktopAuthStore(ILogger<DesktopAuthStore> logger) : IAuthStore
                                       throw new UnreachableException("config path is null"));
         }
 
-        await using var authConfigFile = File.OpenWrite(ConfigPath);
+        await using var authConfigFile = File.Create(ConfigPath);
         await JsonSerializer.SerializeAsync(authConfigFile, config, cancellationToken: cancellationToken);
     }
 }
