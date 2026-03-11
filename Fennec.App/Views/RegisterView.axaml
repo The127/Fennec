@@ -7,6 +7,9 @@
              xmlns:shadui="using:ShadUI"
              x:Class="Fennec.App.Views.RegisterView"
              x:DataType="vm:RegisterViewModel">
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="Enter" Command="{Binding RegisterCommand}" />
+    </UserControl.KeyBindings>
     <Panel Background="Transparent">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
             <shadui:Card HasShadow="True" Width="600">
