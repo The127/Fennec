@@ -43,11 +43,16 @@ public partial class RegisterViewModel : ObservableValidator
         Messenger = messenger;
     }
 
-    private bool CanRegister() => !string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password);
+    private bool CanRegister() => !HasErrors && !string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password);
     
     [RelayCommand(CanExecute = nameof(CanRegister))]
     private async Task Register(CancellationToken cancellationToken)
     {
+        ValidateAllProperties();
+
+        if (HasErrors)
+            return;
+        
         var usernameParts = Username.Split('@');
         var username = usernameParts[0];
         var instanceUrl = usernameParts[1];
