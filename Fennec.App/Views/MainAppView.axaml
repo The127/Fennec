@@ -4,12 +4,72 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:routing="clr-namespace:Fennec.App.Routing"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:shadui="using:ShadUI"
              x:Class="Fennec.App.Views.MainAppView"
              xmlns:vm="using:Fennec.App.ViewModels"
              x:DataType="vm:MainAppViewModel">
-
-    <StackPanel>
-        <TextBlock>Logged in</TextBlock>
-        <routing:RouteView Router="{Binding Router}" />
-    </StackPanel>
+    <DockPanel LastChildFill="True">
+        <StackPanel Spacing="8" DockPanel.Dock="Left">
+            <Border Padding="8">
+                <StackPanel
+                    Orientation="Vertical"
+                    Spacing="8">
+                    <Button Height="40" Width="40">
+                        <Viewbox Margin="6">
+                            <TextBlock>H</TextBlock>
+                        </Viewbox>
+                    </Button>
+                    <Button Height="40" Width="40">
+                        <Viewbox Margin="6">
+                            <TextBlock>F</TextBlock>
+                        </Viewbox>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Top">
+            <Border Padding="8">
+                <Grid ColumnDefinitions="* Auto *">
+                    <TextBox
+                        Grid.Column="1" 
+                        Classes="Clearable"
+                        Watermark="Search..."
+                        VerticalAlignment="Center" 
+                        Width="256">
+                        <TextBox.InnerRightContent>
+                            <PathIcon
+                                Data="{x:Static shadui:Icons.Search}"
+                                Opacity="0.75"
+                                Width="16" />
+                        </TextBox.InnerRightContent>
+                    </TextBox>
+                    <Button Grid.Column="2" HorizontalAlignment="Right">
+                        <Grid ColumnDefinitions="Auto * Auto" Margin="0">
+                            <shadui:Avatar
+                                Fallback="J"
+                                Height="36"
+                                Margin="0,0,8,0"
+                                Width="36" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="juce" />
+                                <TextBlock
+                                    Classes="Muted"
+                                    FontSize="10"
+                                    Margin="0,-4,0,0"
+                                    Text="juce@https://localhost:7017" />
+                            </StackPanel>
+                            <Viewbox
+                                Grid.Column="2"
+                                Height="16"
+                                Width="16">
+                            </Viewbox>
+                        </Grid>
+                    </Button>
+                </Grid>
+            </Border>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Bottom">
+            <routing:RouteView Router="{Binding Router}" />
+        </StackPanel>
+    </DockPanel>
 </UserControl>
