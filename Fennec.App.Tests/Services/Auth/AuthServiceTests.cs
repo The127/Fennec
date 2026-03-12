@@ -2,6 +2,7 @@ using Fennec.App.Services.Auth;
 using Fennec.Client;
 using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Auth;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -13,7 +14,7 @@ public class AuthServiceTests
     private readonly IClientFactory _clientFactory = Substitute.For<IClientFactory>();
     private readonly IFennecClient _client = Substitute.For<IFennecClient>();
 
-    private AuthService CreateService() => new(_authStore, _clientFactory);
+    private AuthService CreateService() => new(_authStore, _clientFactory, NullLogger<AuthService>.Instance);
 
     private AuthSession CreateSession() => new()
     {
@@ -24,11 +25,11 @@ public class AuthServiceTests
     };
 
     [Fact]
-    public async Task LoginAsync_strips_scheme_before_storing_session()
+    public async Task LoginAsync_stores_full_url_in_session()
     {
         var userId = Guid.NewGuid();
-        _clientFactory.Create("localhost:7014").Returns(_client);
-        _client.Auth.LoginAsync(Arg.Any<LoginRequestDto>(), Arg.Any<CancellationToken>())
+        _clientFactory.Create().Returns(_client);
+        _client.Auth.LoginAsync(Arg.Any<string>(), Arg.Any<LoginRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(new LoginResponseDto { SessionToken = "tok", UserId = userId });
 
         var service = CreateService();
@@ -36,7 +37,7 @@ public class AuthServiceTests
         await service.LoginAsync("kris", "pass", "https://localhost:7014", CancellationToken.None);
 
         await _authStore.Received(1).SaveSessionAsync(
-            Arg.Is<AuthSession>(s => s.Url == "localhost:7014"),
+            Arg.Is<AuthSession>(s => s.Url == "https://localhost:7014"),
             Arg.Any<CancellationToken>());
     }
 
@@ -45,8 +46,8 @@ public class AuthServiceTests
     {
         var session = CreateSession();
         _authStore.GetCurrentAuthSessionAsync(Arg.Any<CancellationToken>()).Returns(session);
-        _clientFactory.Create("fennec.chat", "token").Returns(_client);
-        _client.Auth.LogoutAsync(Arg.Any<CancellationToken>()).ThrowsAsync<HttpRequestException>();
+        _clientFactory.Create().Returns(_client);
+        _client.Auth.LogoutAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).ThrowsAsync<HttpRequestException>();
 
         var service = CreateService();
 

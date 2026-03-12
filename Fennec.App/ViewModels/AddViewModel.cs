@@ -7,17 +7,17 @@ using Fennec.Client;
 
 namespace Fennec.App.ViewModels;
 
-public partial class AddViewModel(IRouter router, IFennecClient client, IMessenger messenger) : ObservableObject
+public partial class AddViewModel(IRouter router, IFennecClient client, IMessenger messenger, string instanceUrl) : ObservableObject
 {
     [RelayCommand]
     private async Task NavigateToCreateServerAsync()
     {
-        await router.NavigateAsync(new CreateServerRoute(client, router, messenger));
+        await router.NavigateAsync(new CreateServerRoute(client, router, messenger, instanceUrl));
     }
 
     [RelayCommand]
     private async Task NavigateToJoinServerAsync()
     {
-        await router.NavigateAsync(new JoinServerRoute(client, router, messenger));
+        await router.NavigateAsync(new JoinServerRoute(client, router, messenger, instanceUrl));
     }
 }

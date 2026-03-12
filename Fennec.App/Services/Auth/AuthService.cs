@@ -1,23 +1,25 @@
 using Fennec.Client;
 using Fennec.Shared.Dtos.Auth;
+using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.Services.Auth;
 
-public class AuthService(IAuthStore authStore, IClientFactory clientFactory) : IAuthService
+public class AuthService(IAuthStore authStore, IClientFactory clientFactory, ILogger<AuthService> logger) : IAuthService
 {
     private static string StripScheme(string url)
         => url.Replace("https://", "").Replace("http://", "");
 
     public async Task<AuthSession?> LoginAsync(string username, string password, string instanceUrl, CancellationToken cancellationToken)
     {
-        instanceUrl = StripScheme(instanceUrl);
-        var client = clientFactory.Create(instanceUrl);
+        var client = clientFactory.Create();
 
-        var response = await client.Auth.LoginAsync(new LoginRequestDto
+        var response = await client.Auth.LoginAsync(instanceUrl, new LoginRequestDto
         {
             Name = username,
             Password = password,
         }, cancellationToken);
+
+        client.SetHomeSession(instanceUrl, response.SessionToken);
 
         var authSession = new AuthSession
         {
@@ -33,10 +35,9 @@ public class AuthService(IAuthStore authStore, IClientFactory clientFactory) : I
 
     public async Task RegisterAsync(string username, string? displayName, string password, string instanceUrl, CancellationToken cancellationToken)
     {
-        instanceUrl = StripScheme(instanceUrl);
-        var client = clientFactory.Create(instanceUrl);
+        var client = clientFactory.Create();
 
-        await client.Auth.RegisterAsync(new RegisterUserRequestDto
+        await client.Auth.RegisterAsync(instanceUrl, new RegisterUserRequestDto
         {
             Name = username,
             DisplayName = displayName,
@@ -51,11 +52,13 @@ public class AuthService(IAuthStore authStore, IClientFactory clientFactory) : I
 
         try
         {
-            var client = clientFactory.Create(StripScheme(session.Url), session.SessionToken);
-            await client.Auth.LogoutAsync(cancellationToken);
+            var client = clientFactory.Create();
+            client.SetHomeSession(session.Url, session.SessionToken);
+            await client.Auth.LogoutAsync(session.Url, cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to logout from {Url}", session.Url);
             // Server unreachable - the token will expire on its own.
         }
 

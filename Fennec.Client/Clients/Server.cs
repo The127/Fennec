@@ -6,12 +6,12 @@ namespace Fennec.Client.Clients;
 
 public interface IServerClient
 {
-    Task<CreateServerResponseDto> CreateServerAsync(CreateServerRequestDto requestDto, CancellationToken cancellationToken = default);
-    Task JoinServerAsync(JoinServerRequestDto requestDto, CancellationToken cancellationToken = default);
-    Task<ListJoinedServersResponseDto> ListJoinedServersAsync(CancellationToken cancellationToken = default);
-    Task<CreateServerInviteResponseDto> CreateInviteAsync(Guid serverId, CreateServerInviteRequestDto requestDto, CancellationToken cancellationToken = default);
-    Task<ListServerInvitesResponseDto> ListInvitesAsync(Guid serverId, CancellationToken cancellationToken = default);
-    Task DeleteInviteAsync(Guid serverId, Guid inviteId, CancellationToken cancellationToken = default);
+    Task<CreateServerResponseDto> CreateServerAsync(string baseUrl, CreateServerRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task JoinServerAsync(string baseUrl, JoinServerRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task<ListJoinedServersResponseDto> ListJoinedServersAsync(string baseUrl, CancellationToken cancellationToken = default);
+    Task<CreateServerInviteResponseDto> CreateInviteAsync(string baseUrl, Guid serverId, CreateServerInviteRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task<ListServerInvitesResponseDto> ListInvitesAsync(string baseUrl, Guid serverId, CancellationToken cancellationToken = default);
+    Task DeleteInviteAsync(string baseUrl, Guid serverId, Guid inviteId, CancellationToken cancellationToken = default);
     Task<CreateChannelGroupResponseDto> CreateChannelGroupAsync(Guid serverId, CreateChannelGroupRequestDto requestDto, CancellationToken cancellationToken = default);
     Task<ListChannelGroupsResponseDto> ListChannelGroupsAsync(Guid serverId, CancellationToken cancellationToken = default);
     Task RenameChannelGroupAsync(Guid serverId, Guid channelGroupId, RenameChannelGroupRequestDto requestDto, CancellationToken cancellationToken = default);
@@ -27,9 +27,10 @@ public interface IServerClient
 
 public class ServerClient(HttpClient httpClient) : IServerClient
 {
-    public async Task<CreateServerResponseDto> CreateServerAsync(CreateServerRequestDto requestDto, CancellationToken cancellationToken = default)
+    public async Task<CreateServerResponseDto> CreateServerAsync(string baseUrl, CreateServerRequestDto requestDto, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/servers/create", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/servers/create");
         
         var response = await httpClient.PostAsJsonAsync(
             uri, 
@@ -44,9 +45,10 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 
-    public async Task JoinServerAsync(JoinServerRequestDto requestDto, CancellationToken cancellationToken = default)
+    public async Task JoinServerAsync(string baseUrl, JoinServerRequestDto requestDto, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/servers/join", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/servers/join");
 
         var response = await httpClient.PostAsJsonAsync(
             uri,
@@ -56,9 +58,10 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         await response.EnsureSuccessAsync(cancellationToken);
     }
 
-    public async Task<ListJoinedServersResponseDto> ListJoinedServersAsync(CancellationToken cancellationToken = default)
+    public async Task<ListJoinedServersResponseDto> ListJoinedServersAsync(string baseUrl, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/servers/joined", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/servers/joined");
 
         var response = await httpClient.GetAsync(uri, cancellationToken);
         await response.EnsureSuccessAsync(cancellationToken);
@@ -69,9 +72,10 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 
-    public async Task<CreateServerInviteResponseDto> CreateInviteAsync(Guid serverId, CreateServerInviteRequestDto requestDto, CancellationToken cancellationToken = default)
+    public async Task<CreateServerInviteResponseDto> CreateInviteAsync(string baseUrl, Guid serverId, CreateServerInviteRequestDto requestDto, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri($"api/v1/servers/{serverId}/invites", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/servers/{serverId}/invites");
 
         var response = await httpClient.PostAsJsonAsync(
             uri,
@@ -86,9 +90,10 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 
-    public async Task<ListServerInvitesResponseDto> ListInvitesAsync(Guid serverId, CancellationToken cancellationToken = default)
+    public async Task<ListServerInvitesResponseDto> ListInvitesAsync(string baseUrl, Guid serverId, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri($"api/v1/servers/{serverId}/invites", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/servers/{serverId}/invites");
 
         var response = await httpClient.GetAsync(uri, cancellationToken);
         await response.EnsureSuccessAsync(cancellationToken);
@@ -99,9 +104,10 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 
-    public async Task DeleteInviteAsync(Guid serverId, Guid inviteId, CancellationToken cancellationToken = default)
+    public async Task DeleteInviteAsync(string baseUrl, Guid serverId, Guid inviteId, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri($"api/v1/servers/{serverId}/invites/{inviteId}", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/servers/{serverId}/invites/{inviteId}");
 
         var response = await httpClient.DeleteAsync(uri, cancellationToken);
         await response.EnsureSuccessAsync(cancellationToken);

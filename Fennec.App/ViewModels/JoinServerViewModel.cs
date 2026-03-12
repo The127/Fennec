@@ -7,10 +7,17 @@ using Fennec.App.Messages;
 using Fennec.App.Routing;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
+using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.ViewModels;
 
-public partial class JoinServerViewModel(IFennecClient client, IRouter router, IMessenger messenger) : ObservableObject
+public partial class JoinServerViewModel(
+    IFennecClient client,
+    IRouter router,
+    IMessenger messenger,
+    string homeInstanceUrl,
+    ILogger<JoinServerViewModel> logger
+) : ObservableObject
 {
     [ObservableProperty]
     private string _inviteLink = string.Empty;
@@ -44,7 +51,7 @@ public partial class JoinServerViewModel(IFennecClient client, IRouter router, I
             return;
         }
 
-        var instanceUrl = uri.Authority;
+        var targetInstanceUrl = uri.Authority;
         var inviteCode = segments[1];
 
         IsJoining = true;
@@ -52,10 +59,10 @@ public partial class JoinServerViewModel(IFennecClient client, IRouter router, I
 
         try
         {
-            await client.Server.JoinServerAsync(new JoinServerRequestDto
+            await client.Server.JoinServerAsync(homeInstanceUrl, new JoinServerRequestDto
             {
                 InviteCode = inviteCode,
-                InstanceUrl = instanceUrl,
+                InstanceUrl = targetInstanceUrl,
             });
 
             messenger.Send(new ServerJoinedMessage());
@@ -63,6 +70,7 @@ public partial class JoinServerViewModel(IFennecClient client, IRouter router, I
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to join server from invite {InviteLink} on {HomeInstanceUrl}", InviteLink, homeInstanceUrl);
             ErrorMessage = $"Failed to join server: {ex.Message}";
         }
         finally

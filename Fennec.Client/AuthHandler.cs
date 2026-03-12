@@ -1,28 +1,82 @@
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using Fennec.Shared;
+using Fennec.Shared.Dtos.Auth;
 
 namespace Fennec.Client;
 
-internal class AuthHandler(TokenProvider tokenProvider) : DelegatingHandler
+internal class AuthHandler(ITokenStore tokenStore) : DelegatingHandler
 {
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var path = request.RequestUri?.AbsolutePath;
+        var uri = request.RequestUri ?? throw new InvalidOperationException("Request URI is missing");
+        var baseUrl = $"{uri.Scheme}://{uri.Authority}";
+        var path = uri.AbsolutePath;
 
-        var useSession = path != null && (
-            path.EndsWith("/auth/public-token") ||
-            path.EndsWith("/auth/logout") ||
-            path.EndsWith("/users/me")
+        tokenStore.UpdateLastUsed(baseUrl);
+
+        var isHome = baseUrl == tokenStore.HomeUrl;
+        var useSession = isHome && (
+            path.Contains("/auth/public-token") ||
+            path.Contains("/auth/logout") ||
+            path.Contains("/user/me")
         );
 
-        request.Headers.Authorization = useSession switch
+        if (useSession)
         {
-            true when tokenProvider.SessionToken != null => new AuthenticationHeaderValue("Session",
-                tokenProvider.SessionToken),
-            false when tokenProvider.BearerToken != null => new AuthenticationHeaderValue("Bearer",
-                tokenProvider.BearerToken),
-            _ => request.Headers.Authorization
-        };
+            if (tokenStore.HomeSessionToken != null)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Session", tokenStore.HomeSessionToken);
+            }
+        }
+        else
+        {
+            var bearerToken = tokenStore.GetPublicToken(baseUrl);
+            
+            // Lazy-loading: if bearer token is missing and we have a home session, fetch it
+            if (bearerToken == null && tokenStore.HomeUrl != null && tokenStore.HomeSessionToken != null)
+            {
+                bearerToken = await FetchPublicTokenAsync(baseUrl, cancellationToken);
+                if (bearerToken != null)
+                {
+                    tokenStore.SetPublicToken(baseUrl, bearerToken);
+                }
+            }
+
+            if (bearerToken != null)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+            }
+        }
 
         return await base.SendAsync(request, cancellationToken);
+    }
+
+    private async Task<string?> FetchPublicTokenAsync(string targetUrl, CancellationToken cancellationToken)
+    {
+        if (tokenStore.HomeUrl == null || tokenStore.HomeSessionToken == null) return null;
+
+        var publicTokenUri = new Uri($"{tokenStore.HomeUrl}/api/v1/auth/public-token");
+        var publicTokenRequest = new HttpRequestMessage(HttpMethod.Post, publicTokenUri)
+        {
+            Content = JsonContent.Create(new GetPublicTokenRequestDto
+            {
+                Audience = targetUrl
+            }, SharedFennecJsonContext.Default.GetPublicTokenRequestDto)
+        };
+
+        publicTokenRequest.Headers.Authorization = new AuthenticationHeaderValue("Session", tokenStore.HomeSessionToken);
+
+        var response = await base.SendAsync(publicTokenRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<GetPublicTokenResponseDto>(
+            SharedFennecJsonContext.Default.GetPublicTokenResponseDto,
+            cancellationToken);
+
+        return result?.Token;
     }
 }

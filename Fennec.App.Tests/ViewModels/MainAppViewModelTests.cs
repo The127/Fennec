@@ -6,6 +6,7 @@ using Fennec.App.ViewModels;
 using Fennec.Client;
 using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Server;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using ShadUI;
 
@@ -22,19 +23,19 @@ public class MainAppViewModelTests
 
     public MainAppViewModelTests()
     {
-        _clientFactory.Create(Arg.Any<string>(), Arg.Any<string>()).Returns(_client);
+        _clientFactory.Create().Returns(_client);
         _client.Server.Returns(_serverClient);
-        _serverClient.ListJoinedServersAsync(Arg.Any<CancellationToken>())
+        _serverClient.ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ListJoinedServersResponseDto { Servers = [] });
     }
 
     private MainAppViewModel CreateViewModel()
     {
-        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager());
+        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullLogger<MainAppViewModel>.Instance);
         vm.ApplySession(new AuthSession
         {
             Username = "alice",
-            Url = "fennec.chat",
+            Url = "https://fennec.chat",
             SessionToken = "token",
             UserId = Guid.NewGuid(),
         });
@@ -59,7 +60,7 @@ public class MainAppViewModelTests
 
         _messenger.Send(new ServerJoinedMessage());
 
-        _serverClient.Received().ListJoinedServersAsync(Arg.Any<CancellationToken>());
+        _serverClient.Received().ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

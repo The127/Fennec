@@ -6,10 +6,17 @@ using Fennec.App.Routing;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.ViewModels;
 
-public partial class CreateServerViewModel(IFennecClient client, IRouter router, IMessenger messenger) : ObservableObject
+public partial class CreateServerViewModel(
+    IFennecClient client,
+    IRouter router,
+    IMessenger messenger,
+    string instanceUrl,
+    ILogger<CreateServerViewModel> logger
+) : ObservableObject
 {
     [ObservableProperty]
     private string _serverName = string.Empty;
@@ -37,7 +44,7 @@ public partial class CreateServerViewModel(IFennecClient client, IRouter router,
 
         try
         {
-            var response = await client.Server.CreateServerAsync(new CreateServerRequestDto
+            var response = await client.Server.CreateServerAsync(instanceUrl, new CreateServerRequestDto
             {
                 Name = ServerName.Trim(),
                 Visibility = IsPublic ? ServerVisibility.Public : ServerVisibility.Private,
@@ -52,6 +59,7 @@ public partial class CreateServerViewModel(IFennecClient client, IRouter router,
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to create server {ServerName} on {Url}", ServerName, instanceUrl);
             ErrorMessage = $"Failed to create server: {ex.Message}";
         }
         finally

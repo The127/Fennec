@@ -81,7 +81,7 @@ public partial class LoginViewModel : ObservableValidator
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to login");
+            _logger.LogError(e, "Failed to login for user {User} on {Url}", Username, instanceUrl);
             _toastManager.CreateToast("Failed to login")
                 .WithContent("An error occurred while logging in.")
                 .ShowError();

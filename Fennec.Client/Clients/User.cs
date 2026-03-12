@@ -6,14 +6,15 @@ namespace Fennec.Client.Clients;
 
 public interface IUserClient
 {
-    Task<MeResponseDto> GetMeAsync(CancellationToken cancellationToken = default);
+    Task<MeResponseDto> GetMeAsync(string baseUrl, CancellationToken cancellationToken = default);
 }
 
 public class UserClient(HttpClient httpClient) : IUserClient
 {
-    public async Task<MeResponseDto> GetMeAsync(CancellationToken cancellationToken = default)
+    public async Task<MeResponseDto> GetMeAsync(string baseUrl, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/user/me", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/user/me");
         
         var response = await httpClient.GetAsync(
             uri,

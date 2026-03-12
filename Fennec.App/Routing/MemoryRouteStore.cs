@@ -26,7 +26,7 @@ public class MemoryRouteStore : IRouteStore
         _maxHistory = maxHistory;
     }
 
-    public Task<ObservableObject> PushAsync(IRoute route, CancellationToken cancellationToken = default)
+    public Task<ObservableObject> PushAsync(IRoute route, IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
     {
         if (_current is not null)
         {
@@ -47,11 +47,11 @@ public class MemoryRouteStore : IRouteStore
         _forwardsStack.Clear();
         _farFuture.Clear();
 
-        _current = new HistoryEntry(route, route.GetViewModel());
+        _current = new HistoryEntry(route, route.GetViewModel(serviceProvider));
         return Task.FromResult(_current.ViewModel!);
     }
 
-    public Task<ObservableObject?> GoBackAsync(CancellationToken cancellationToken = default)
+    public Task<ObservableObject?> GoBackAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
     {
         if (_backwardsStack.Count == 0 && _ancientHistory.Count == 0)
         {
@@ -76,7 +76,7 @@ public class MemoryRouteStore : IRouteStore
             var historyEntry = _ancientHistory.Last!.Value;
             _ancientHistory.RemoveLast();
 
-            _current = historyEntry with { ViewModel = historyEntry.Route.GetViewModel() };
+            _current = historyEntry with { ViewModel = historyEntry.Route.GetViewModel(serviceProvider) };
         }
         else
         {
@@ -87,7 +87,7 @@ public class MemoryRouteStore : IRouteStore
         return Task.FromResult(_current.ViewModel);
     }
 
-    public Task<ObservableObject?> GoForwardAsync(CancellationToken cancellationToken = default)
+    public Task<ObservableObject?> GoForwardAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
     {
         if (_forwardsStack.Count == 0 && _farFuture.Count == 0)
         {
@@ -117,7 +117,7 @@ public class MemoryRouteStore : IRouteStore
             var historyEntry = _farFuture.First!.Value;
             _farFuture.RemoveFirst();
             
-            _current = historyEntry with { ViewModel = historyEntry.Route.GetViewModel() };
+            _current = historyEntry with { ViewModel = historyEntry.Route.GetViewModel(serviceProvider) };
         }
         else
         {

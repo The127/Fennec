@@ -5,6 +5,8 @@ using Fennec.App.ViewModels;
 using Fennec.Client;
 using ShadUI;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Fennec.App.Routes;
 
 public record CreateInviteRoute(
@@ -15,8 +17,8 @@ public record CreateInviteRoute(
     string InstanceUrl
 ) : IRoute
 {
-    public ObservableObject GetViewModel()
+    public ObservableObject GetViewModel(IServiceProvider serviceProvider)
     {
-        return new CreateInviteViewModel(Client, Router, ToastManager, ServerId, InstanceUrl);
+        return ActivatorUtilities.CreateInstance<CreateInviteViewModel>(serviceProvider, Client, Router, ToastManager, ServerId, InstanceUrl);
     }
 }

@@ -4,11 +4,13 @@ using Fennec.App.Routing;
 using Fennec.App.ViewModels;
 using Fennec.Client;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Fennec.App.Routes;
 
 public record ServerRoute(IFennecClient Client, Guid ServerId, string ServerName) : IRoute
 {
-    public ObservableObject GetViewModel()
+    public ObservableObject GetViewModel(IServiceProvider serviceProvider)
     {
         var vm = new ServerViewModel(Client, ServerId, ServerName);
         _ = vm.LoadAsync();

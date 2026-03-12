@@ -4,6 +4,7 @@ using Fennec.App.ViewModels;
 using Fennec.Client;
 using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Server;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using ShadUI;
 
@@ -20,6 +21,7 @@ public class CreateInviteViewModelTests
     {
         _client.Server.Returns(_serverClient);
         _serverClient.CreateInviteAsync(
+                Arg.Any<string>(),
                 Arg.Any<Guid>(),
                 Arg.Any<CreateServerInviteRequestDto>(),
                 Arg.Any<CancellationToken>())
@@ -31,7 +33,7 @@ public class CreateInviteViewModelTests
     }
 
     private CreateInviteViewModel CreateViewModel() =>
-        new(_client, _router, new ToastManager(), _serverId, "fennec.chat");
+        new(_client, _router, new ToastManager(), _serverId, "fennec.chat", NullLogger<CreateInviteViewModel>.Instance);
 
     [Fact]
     public async Task Creates_invite_and_shows_link()
@@ -41,6 +43,7 @@ public class CreateInviteViewModelTests
         await vm.CreateInviteCommand.ExecuteAsync(null);
 
         await _serverClient.Received().CreateInviteAsync(
+            "fennec.chat",
             _serverId,
             Arg.Is<CreateServerInviteRequestDto>(r =>
                 r.ExpiresAt == null && r.MaxUses == null),
@@ -58,6 +61,7 @@ public class CreateInviteViewModelTests
         await vm.CreateInviteCommand.ExecuteAsync(null);
 
         await _serverClient.Received().CreateInviteAsync(
+            "fennec.chat",
             _serverId,
             Arg.Is<CreateServerInviteRequestDto>(r => r.MaxUses == 10),
             Arg.Any<CancellationToken>());
@@ -72,6 +76,7 @@ public class CreateInviteViewModelTests
         await vm.CreateInviteCommand.ExecuteAsync(null);
 
         await _serverClient.Received().CreateInviteAsync(
+            "fennec.chat",
             _serverId,
             Arg.Is<CreateServerInviteRequestDto>(r => r.ExpiresAt != null),
             Arg.Any<CancellationToken>());
@@ -87,14 +92,14 @@ public class CreateInviteViewModelTests
 
         Assert.NotNull(vm.ErrorMessage);
         await _serverClient.DidNotReceive().CreateInviteAsync(
-            Arg.Any<Guid>(), Arg.Any<CreateServerInviteRequestDto>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CreateServerInviteRequestDto>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Api_failure_shows_error()
     {
         _serverClient.CreateInviteAsync(
-                Arg.Any<Guid>(), Arg.Any<CreateServerInviteRequestDto>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CreateServerInviteRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<CreateServerInviteResponseDto>(new Exception("Server error")));
 
         var vm = CreateViewModel();
@@ -114,6 +119,7 @@ public class CreateInviteViewModelTests
         await vm.CreateInviteCommand.ExecuteAsync(null);
 
         await _serverClient.Received().CreateInviteAsync(
+            "fennec.chat",
             _serverId,
             Arg.Is<CreateServerInviteRequestDto>(r => r.ExpiresAt == null),
             Arg.Any<CancellationToken>());

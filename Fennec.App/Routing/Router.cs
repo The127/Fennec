@@ -12,14 +12,14 @@ public class Router(IServiceProvider serviceProvider) : IRouter
 
     public async Task NavigateAsync(IRoute route, CancellationToken cancellationToken = default)
     {
-        var viewModel = await _routeStore.PushAsync(route, cancellationToken);
+        var viewModel = await _routeStore.PushAsync(route, serviceProvider, cancellationToken);
         CurrentViewModel = viewModel;
         Navigated?.Invoke(this, viewModel);
     }
 
     public async Task NavigateBackAsync(CancellationToken cancellationToken = default)
     {
-        var viewModel = await _routeStore.GoBackAsync(cancellationToken);
+        var viewModel = await _routeStore.GoBackAsync(serviceProvider, cancellationToken);
         if (viewModel is null) return;
         
         Navigated?.Invoke(this, viewModel);
@@ -27,7 +27,7 @@ public class Router(IServiceProvider serviceProvider) : IRouter
 
     public async Task NavigateForwardAsync(CancellationToken cancellationToken = default)
     {
-        var viewModel = await _routeStore.GoForwardAsync(cancellationToken);
+        var viewModel = await _routeStore.GoForwardAsync(serviceProvider, cancellationToken);
         if (viewModel is null) return;
         
         Navigated?.Invoke(this, viewModel);       

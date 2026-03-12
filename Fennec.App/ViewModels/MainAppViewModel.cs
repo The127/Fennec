@@ -10,6 +10,7 @@ using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
+using Microsoft.Extensions.Logging;
 using ShadUI;
 
 namespace Fennec.App.ViewModels;
@@ -29,8 +30,9 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private readonly IAuthService _authService;
     private readonly IClientFactory _clientFactory;
     private readonly ToastManager _toastManager;
+    private readonly ILogger<MainAppViewModel> _logger;
 
-    public MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService, IClientFactory clientFactory, ToastManager toastManager)
+    public MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService, IClientFactory clientFactory, ToastManager toastManager, ILogger<MainAppViewModel> logger)
     {
         _routerField = router;
         _router = router;
@@ -38,6 +40,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
         _authService = authService;
         _clientFactory = clientFactory;
         _toastManager = toastManager;
+        _logger = logger;
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
@@ -63,7 +66,6 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     public async Task InitializeAsync()
     {
         await NavigateToDashboardAsync();
-        await AcquireBearerTokenAsync();
         await LoadServersAsync();
     }
 
@@ -87,40 +89,20 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     public void ApplySession(AuthSession session)
     {
         _session = session;
-        _client = _clientFactory.Create(session.Url, session.SessionToken);
+        _client = _clientFactory.Create();
+        _client.SetHomeSession(session.Url, session.SessionToken);
         Username = session.Username;
         UserAtServer = $"{session.Username}@{session.Url}";
         AvatarFallback = session.Username[..1].ToUpperInvariant();
     }
 
-    private async Task AcquireBearerTokenAsync()
+    private async Task LoadServersAsync()
     {
         if (_client is null || _session is null) return;
 
         try
         {
-            var response = await _client.Auth.GetPublicTokenAsync(new Fennec.Shared.Dtos.Auth.GetPublicTokenRequestDto
-            {
-                Audience = $"https://{_session.Url}",
-            });
-            _client.SetBearerToken(response.Token);
-        }
-        catch (Exception ex)
-        {
-            _toastManager.CreateToast("Failed to acquire bearer token")
-                .WithContent(ex.Message)
-                .WithDelay(5)
-                .ShowError();
-        }
-    }
-
-    private async Task LoadServersAsync()
-    {
-        if (_client is null) return;
-
-        try
-        {
-            var response = await _client.Server.ListJoinedServersAsync();
+            var response = await _client.Server.ListJoinedServersAsync(_session.Url);
 
             Servers.Clear();
             foreach (var server in response.Servers)
@@ -128,8 +110,9 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
                 Servers.Add(new SidebarServer(server.Id, server.Name, server.InstanceUrl));
             }
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed to load servers for user {User} on {Url}", UserAtServer, _session.Url);
             // Server unreachable — sidebar stays empty.
         }
     }
@@ -156,8 +139,8 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     [RelayCommand]
     private async Task NavigateToAddAsync()
     {
-        if (_client is null) return;
-        await _routerField.NavigateAsync(new AddRoute(_routerField, _client, _messenger));
+        if (_client is null || _session is null) return;
+        await _routerField.NavigateAsync(new AddRoute(_routerField, _client, _messenger, _session.Url));
     }
 
     [RelayCommand]
@@ -179,7 +162,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private async Task CreateInviteLinkAsync(SidebarServer server)
     {
         if (_client is null || _session is null) return;
-        await _routerField.NavigateAsync(new CreateInviteRoute(_client, _routerField, _toastManager, server.Id, _session.Url));
+        await _routerField.NavigateAsync(new CreateInviteRoute(_client, _routerField, _toastManager, server.Id, server.InstanceUrl));
     }
 
     [RelayCommand]

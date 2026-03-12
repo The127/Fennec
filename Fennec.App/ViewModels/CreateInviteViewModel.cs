@@ -11,6 +11,7 @@ using Fennec.Shared.Dtos.Server;
 using NodaTime;
 using NodaTime.Text;
 using ShadUI;
+using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.ViewModels;
 
@@ -19,7 +20,8 @@ public partial class CreateInviteViewModel(
     IRouter router,
     ToastManager toastManager,
     Guid serverId,
-    string instanceUrl
+    string instanceUrl,
+    ILogger<CreateInviteViewModel> logger
 ) : ObservableObject
 {
     public List<string> ExpiryOptions { get; } =
@@ -90,7 +92,7 @@ public partial class CreateInviteViewModel(
 
         try
         {
-            var response = await client.Server.CreateInviteAsync(serverId, new CreateServerInviteRequestDto
+            var response = await client.Server.CreateInviteAsync(instanceUrl, serverId, new CreateServerInviteRequestDto
             {
                 ExpiresAt = expiresAt,
                 MaxUses = maxUses,
@@ -101,6 +103,7 @@ public partial class CreateInviteViewModel(
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to create invite for server {ServerId} on {Url}", serverId, instanceUrl);
             ErrorMessage = $"Failed to create invite: {ex.Message}";
         }
         finally

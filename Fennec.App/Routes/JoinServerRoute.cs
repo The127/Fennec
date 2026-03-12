@@ -4,12 +4,14 @@ using Fennec.App.Routing;
 using Fennec.App.ViewModels;
 using Fennec.Client;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Fennec.App.Routes;
 
-public record JoinServerRoute(IFennecClient Client, IRouter Router, IMessenger Messenger) : IRoute
+public record JoinServerRoute(IFennecClient Client, IRouter Router, IMessenger Messenger, string InstanceUrl) : IRoute
 {
-    public ObservableObject GetViewModel()
+    public ObservableObject GetViewModel(IServiceProvider serviceProvider)
     {
-        return new JoinServerViewModel(Client, Router, Messenger);
+        return ActivatorUtilities.CreateInstance<JoinServerViewModel>(serviceProvider, Client, Router, Messenger, InstanceUrl);
     }
 }

@@ -6,25 +6,27 @@ namespace Fennec.Client.Clients;
 
 public interface IAuthClient
 {
-    Task RegisterAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default);
-    Task<LoginResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default);
-    Task<GetPublicTokenResponseDto> GetPublicTokenAsync(GetPublicTokenRequestDto request, CancellationToken cancellationToken = default);
-    Task LogoutAsync(CancellationToken cancellationToken);
+    Task RegisterAsync(string baseUrl, RegisterUserRequestDto request, CancellationToken cancellationToken = default);
+    Task<LoginResponseDto> LoginAsync(string baseUrl, LoginRequestDto request, CancellationToken cancellationToken = default);
+    Task<GetPublicTokenResponseDto> GetPublicTokenAsync(string baseUrl, GetPublicTokenRequestDto request, CancellationToken cancellationToken = default);
+    Task LogoutAsync(string baseUrl, CancellationToken cancellationToken = default);
 }
 
 public class AuthClient(HttpClient httpClient) : IAuthClient
 {
-    public async Task RegisterAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
+    public async Task RegisterAsync(string baseUrl, RegisterUserRequestDto request, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/auth/register", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/auth/register");
         
         var response = await httpClient.PostAsJsonAsync(uri, request, cancellationToken);
         await response.EnsureSuccessAsync(cancellationToken);
     }
 
-    public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<LoginResponseDto> LoginAsync(string baseUrl, LoginRequestDto request, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/auth/login", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/auth/login");
         
         var response = await httpClient.PostAsJsonAsync(
             uri,
@@ -39,9 +41,10 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 
-    public async Task<GetPublicTokenResponseDto> GetPublicTokenAsync(GetPublicTokenRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<GetPublicTokenResponseDto> GetPublicTokenAsync(string baseUrl, GetPublicTokenRequestDto request, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/auth/public-token", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/auth/public-token");
 
         var response = await httpClient.PostAsJsonAsync(
             uri,
@@ -56,9 +59,10 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 
-    public async Task LogoutAsync(CancellationToken cancellationToken)
+    public async Task LogoutAsync(string baseUrl, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri("api/v1/auth/logout", UriKind.Relative);
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/auth/logout");
 
         var response = await httpClient.PostAsync(uri, null, cancellationToken);
         await response.EnsureSuccessAsync(cancellationToken);

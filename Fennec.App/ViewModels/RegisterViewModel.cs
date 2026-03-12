@@ -75,7 +75,7 @@ public partial class RegisterViewModel : ObservableValidator
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to login");
+            _logger.LogError(e, "Failed to register {User} on {Url}", Username, instanceUrl);
             _toastManager.CreateToast("Failed to register")
                 .WithContent("An error occurred while registering.")
                 .ShowError();

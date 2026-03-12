@@ -5,6 +5,7 @@ using Fennec.App.ViewModels;
 using Fennec.Client;
 using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Server;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Fennec.App.Tests.ViewModels;
@@ -19,10 +20,9 @@ public class JoinServerViewModelTests
     public JoinServerViewModelTests()
     {
         _client.Server.Returns(_serverClient);
-        _client.BaseAddress.Returns("https://my.fennec.chat");
     }
 
-    private JoinServerViewModel CreateViewModel() => new(_client, _router, _messenger);
+    private JoinServerViewModel CreateViewModel() => new(_client, _router, _messenger, "https://my.fennec.chat", NullLogger<JoinServerViewModel>.Instance);
 
     [Fact]
     public async Task Valid_invite_link_joins_server_and_navigates_back()
@@ -33,6 +33,7 @@ public class JoinServerViewModelTests
         await vm.JoinServerCommand.ExecuteAsync(null);
 
         await _serverClient.Received().JoinServerAsync(
+            "https://my.fennec.chat",
             Arg.Is<JoinServerRequestDto>(r =>
                 r.InviteCode == "aBcD1234" &&
                 r.InstanceUrl == "fennec.chat"),
@@ -63,7 +64,7 @@ public class JoinServerViewModelTests
 
         Assert.NotNull(vm.ErrorMessage);
         await _serverClient.DidNotReceive().JoinServerAsync(
-            Arg.Any<JoinServerRequestDto>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<JoinServerRequestDto>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -76,7 +77,7 @@ public class JoinServerViewModelTests
 
         Assert.NotNull(vm.ErrorMessage);
         await _serverClient.DidNotReceive().JoinServerAsync(
-            Arg.Any<JoinServerRequestDto>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<JoinServerRequestDto>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public class JoinServerViewModelTests
 
         Assert.NotNull(vm.ErrorMessage);
         await _serverClient.DidNotReceive().JoinServerAsync(
-            Arg.Any<JoinServerRequestDto>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<JoinServerRequestDto>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -101,6 +102,7 @@ public class JoinServerViewModelTests
         await vm.JoinServerCommand.ExecuteAsync(null);
 
         await _serverClient.Received().JoinServerAsync(
+            Arg.Any<string>(),
             Arg.Is<JoinServerRequestDto>(r =>
                 r.InviteCode == "xYz789" &&
                 r.InstanceUrl == "localhost:7014"),
@@ -112,7 +114,7 @@ public class JoinServerViewModelTests
     {
         var vm = CreateViewModel();
         vm.InviteLink = "https://fennec.chat/invite/aBcD1234";
-        _serverClient.JoinServerAsync(Arg.Any<JoinServerRequestDto>(), Arg.Any<CancellationToken>())
+        _serverClient.JoinServerAsync(Arg.Any<string>(), Arg.Any<JoinServerRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new Exception("Server error")));
 
         await vm.JoinServerCommand.ExecuteAsync(null);
