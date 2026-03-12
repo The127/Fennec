@@ -12,6 +12,12 @@ internal sealed partial class Program
 {
     private static Task Main(string[] _) => BuildAvaloniaApp()
         .WithInterFont()
+        .ConfigureFonts(fontManager =>
+        {
+            fontManager.AddFontCollection(new Avalonia.Media.Fonts.EmbeddedFontCollection(
+                new Uri("fonts:NotoColorEmoji", UriKind.Absolute),
+                new Uri("avares://Fennec.App/Assets/Fonts", UriKind.Absolute)));
+        })
         .StartBrowserAppAsync("out");
 
     public static AppBuilder BuildAvaloniaApp()

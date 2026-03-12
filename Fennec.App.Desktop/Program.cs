@@ -29,6 +29,12 @@ sealed class Program
             })
             .UsePlatformDetect()
             .WithInterFont()
+            .ConfigureFonts(fontManager =>
+            {
+                fontManager.AddFontCollection(new Avalonia.Media.Fonts.EmbeddedFontCollection(
+                    new Uri("fonts:NotoColorEmoji", UriKind.Absolute),
+                    new Uri("avares://Fennec.App/Assets/Fonts", UriKind.Absolute)));
+            })
             .WithDeveloperTools()
             .LogToTrace();
     
