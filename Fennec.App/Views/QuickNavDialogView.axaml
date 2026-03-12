@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             xmlns:shadui="using:ShadUI"
+             x:DataType="vm:QuickNavDialogViewModel"
+             x:Class="Fennec.App.Views.QuickNavDialogView"
+             MinWidth="400" MaxWidth="500">
+    <StackPanel Spacing="8" Margin="16,32,16,16">
+        <TextBox x:Name="SearchBox"
+                 Watermark="Where do you want to go?"
+                 Text="{Binding SearchText}"
+                 KeyDown="OnKeyDown">
+            <TextBox.InnerRightContent>
+                <PathIcon
+                    Data="{x:Static shadui:Icons.Search}"
+                    Opacity="0.75"
+                    Width="16" />
+            </TextBox.InnerRightContent>
+        </TextBox>
+
+        <ListBox ItemsSource="{Binding FilteredItems}"
+                 SelectedIndex="{Binding SelectedIndex}"
+                 MaxHeight="320"
+                 Background="Transparent"
+                 BorderThickness="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:QuickNavItem">
+                    <Button Classes="Ghost"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Command="{Binding $parent[UserControl].((vm:QuickNavDialogViewModel)DataContext).SelectItemCommand}"
+                            CommandParameter="{Binding}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="{Binding Icon}"
+                                       VerticalAlignment="Center"
+                                       FontSize="16" />
+                            <TextBlock Text="{Binding Name}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Classes="Muted" FontSize="11" HorizontalAlignment="Center"
+                   Text="↑↓ to navigate · Enter to go · Esc to close" />
+    </StackPanel>
+</UserControl>
