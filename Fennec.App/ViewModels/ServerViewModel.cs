@@ -71,6 +71,20 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
     [ObservableProperty]
     private string _messageText = "";
 
+    public const int MaxMessageLength = 10_000;
+    private const int CharCountVisibleThreshold = 9_000;
+
+    public int MessageCharsRemaining => MaxMessageLength - MessageText.Length;
+    public bool ShowCharCount => MessageText.Length >= CharCountVisibleThreshold;
+    public bool IsOverLimit => MessageText.Length > MaxMessageLength;
+
+    partial void OnMessageTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(MessageCharsRemaining));
+        OnPropertyChanged(nameof(ShowCharCount));
+        OnPropertyChanged(nameof(IsOverLimit));
+    }
+
     public Guid ServerId { get; } = serverId;
 
     public ObservableCollection<ChannelGroupItem> ChannelGroups { get; } = [];
@@ -191,7 +205,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
     [RelayCommand]
     private async Task SendMessage()
     {
-        if (SelectedChannel is null || string.IsNullOrWhiteSpace(MessageText))
+        if (SelectedChannel is null || string.IsNullOrWhiteSpace(MessageText) || IsOverLimit)
             return;
 
         var content = ReplaceShortcodes(MessageText.Trim());
@@ -224,19 +238,24 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
 
             Messages.Clear();
 
+            var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
             Guid? lastAuthorId = null;
             Instant? lastTimestamp = null;
+            LocalDate? lastDate = null;
             foreach (var msg in response.Messages)
             {
                 var parsed = InstantPattern.ExtendedIso.Parse(msg.CreatedAt);
                 var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
+                var msgDate = timestamp?.InZone(zone).Date;
 
+                var isNewDay = lastDate is not null && msgDate is not null && msgDate != lastDate;
                 var hasTimeGap = lastTimestamp is not null && timestamp is not null
                     && (timestamp.Value - lastTimestamp.Value).TotalMinutes >= 5;
 
-                var showAuthor = msg.AuthorId != lastAuthorId || hasTimeGap;
+                var showAuthor = msg.AuthorId != lastAuthorId || hasTimeGap || isNewDay;
                 lastAuthorId = msg.AuthorId;
                 lastTimestamp = timestamp;
+                lastDate = msgDate;
 
                 Messages.Add(new MessageItem
                 {
@@ -249,8 +268,8 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
                     LocalTime = FormatLocalTime(msg.CreatedAt),
                     ExactTime = FormatExactTime(msg.CreatedAt),
                     ShowAuthor = showAuthor,
-                    ShowTimeSeparator = hasTimeGap,
-                    TimeSeparatorText = hasTimeGap ? FormatTimeSeparator(msg.CreatedAt) : "",
+                    ShowTimeSeparator = isNewDay,
+                    TimeSeparatorText = isNewDay ? FormatTimeSeparator(msg.CreatedAt) : "",
                 });
             }
         }
@@ -295,10 +314,10 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
         var now = SystemClock.Instance.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
 
         if (local.Date == now.Date)
-            return $"Today at {local.ToString("HH:mm", null)}";
+            return "Today";
 
         if (local.Date == now.Date.PlusDays(-1))
-            return $"Yesterday at {local.ToString("HH:mm", null)}";
+            return "Yesterday";
 
         return local.ToString("MMMM d, yyyy", null);
     }

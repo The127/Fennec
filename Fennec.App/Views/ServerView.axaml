@@ -14,6 +14,9 @@
         <conv:BoolToBrushConverter x:Key="SelectedBackgroundConverter"
                                    TrueBrush="#20808080"
                                    FalseBrush="Transparent" />
+        <conv:BoolToBrushConverter x:Key="OverLimitBrushConverter"
+                                   TrueBrush="#E74C3C"
+                                   FalseBrush="#A0A0A0" />
     </UserControl.Resources>
     <Grid ColumnDefinitions="240 *">
         <!-- Left: Channels -->
@@ -128,40 +131,50 @@
                                 <Setter Property="BorderThickness" Value="0" />
                             </Style>
                         </Border.Styles>
-                        <Grid ColumnDefinitions="* Auto Auto" MinHeight="32">
-                            <TextBox x:Name="MessageTextBox"
-                                     Classes="Naked"
-                                     Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
-                                     Text="{Binding MessageText}"
-                                     TextWrapping="Wrap"
-                                     Padding="14,8"
-                                     shadui:ControlAssist.Height="100"
-                                     KeyDown="MessageBox_KeyDown" />
-                            <Button Grid.Column="1"
-                                    Classes="Ghost"
-                                    VerticalAlignment="Top"
-                                    Width="32" Height="32"
-                                    Margin="2,4,0,0"
-                                    Padding="0"
-                                    ToolTip.Tip="Emoji">
-                                <Button.Flyout>
-                                    <Flyout Placement="TopEdgeAlignedRight" ShowMode="TransientWithDismissOnPointerMoveAway"
-                                           FlyoutPresenterClasses="PopupPanel">
-                                        <views:EmojiPickerView x:Name="EmojiPicker" />
-                                    </Flyout>
-                                </Button.Flyout>
-                                <TextBlock FontSize="20" Text="&#x1F60A;" />
-                            </Button>
-                            <Button Grid.Column="2"
-                                    Classes="Ghost"
-                                    VerticalAlignment="Top"
-                                    Width="32" Height="32"
-                                    Margin="0,4,6,0"
-                                    Padding="0"
-                                    ToolTip.Tip="Send"
-                                    Command="{Binding SendMessageCommand}">
-                                <mi:MaterialIcon Kind="Send" Width="18" Height="18" Opacity="0.5" />
-                            </Button>
+                        <Grid RowDefinitions="* Auto">
+                            <Grid ColumnDefinitions="* Auto Auto" MinHeight="32">
+                                <TextBox x:Name="MessageTextBox"
+                                         Classes="Naked"
+                                         Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
+                                         Text="{Binding MessageText}"
+                                         TextWrapping="Wrap"
+                                         Padding="14,8"
+                                         shadui:ControlAssist.Height="100"
+                                         KeyDown="MessageBox_KeyDown" />
+                                <Button Grid.Column="1"
+                                        Classes="Ghost"
+                                        VerticalAlignment="Top"
+                                        Width="32" Height="32"
+                                        Margin="2,4,0,0"
+                                        Padding="0"
+                                        ToolTip.Tip="Emoji">
+                                    <Button.Flyout>
+                                        <Flyout Placement="TopEdgeAlignedRight" ShowMode="TransientWithDismissOnPointerMoveAway"
+                                               FlyoutPresenterClasses="PopupPanel">
+                                            <views:EmojiPickerView x:Name="EmojiPicker" />
+                                        </Flyout>
+                                    </Button.Flyout>
+                                    <TextBlock FontSize="20" Text="&#x1F60A;" />
+                                </Button>
+                                <Button Grid.Column="2"
+                                        Classes="Ghost"
+                                        VerticalAlignment="Top"
+                                        Width="32" Height="32"
+                                        Margin="0,4,6,0"
+                                        Padding="0"
+                                        ToolTip.Tip="Send"
+                                        Command="{Binding SendMessageCommand}">
+                                    <mi:MaterialIcon Kind="Send" Width="18" Height="18" Opacity="0.5" />
+                                </Button>
+                            </Grid>
+                            <TextBlock Grid.Row="1"
+                                       HorizontalAlignment="Right"
+                                       Margin="0,0,8,4"
+                                       FontSize="11"
+                                       IsVisible="{Binding ShowCharCount}"
+                                       Text="{Binding MessageCharsRemaining, StringFormat='{}{0}'}"
+                                       Foreground="{Binding IsOverLimit, Converter={StaticResource OverLimitBrushConverter}}"
+                                       Opacity="0.7" />
                         </Grid>
                     </Border>
                 </Panel>
