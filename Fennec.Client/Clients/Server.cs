@@ -21,6 +21,8 @@ public interface IServerClient
     Task RenameChannelAsync(Guid serverId, Guid channelGroupId, Guid channelId, RenameChannelRequestDto requestDto, CancellationToken cancellationToken = default);
     Task UpdateChannelTypeAsync(Guid serverId, Guid channelGroupId, Guid channelId, UpdateChannelTypeRequestDto requestDto, CancellationToken cancellationToken = default);
     Task DeleteChannelAsync(Guid serverId, Guid channelGroupId, Guid channelId, CancellationToken cancellationToken = default);
+    Task<SendMessageResponseDto> SendMessageAsync(Guid serverId, Guid channelId, SendMessageRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task<ListMessagesResponseDto> ListMessagesAsync(Guid serverId, Guid channelId, CancellationToken cancellationToken = default);
 }
 
 public class ServerClient(HttpClient httpClient) : IServerClient
@@ -187,5 +189,27 @@ public class ServerClient(HttpClient httpClient) : IServerClient
 
         var response = await httpClient.DeleteAsync(uri, cancellationToken);
         await response.EnsureSuccessAsync(cancellationToken);
+    }
+
+    public async Task<SendMessageResponseDto> SendMessageAsync(Guid serverId, Guid channelId, SendMessageRequestDto requestDto, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channels/{channelId}/messages", UriKind.Relative);
+
+        var response = await httpClient.PostAsJsonAsync(uri, requestDto, SharedFennecJsonContext.Default.SendMessageRequestDto, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+
+        var responseDto = await response.Content.ReadFromJsonAsync(SharedFennecJsonContext.Default.SendMessageResponseDto, cancellationToken: cancellationToken);
+        return responseDto ?? throw new Exception("Error decoding response.");
+    }
+
+    public async Task<ListMessagesResponseDto> ListMessagesAsync(Guid serverId, Guid channelId, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channels/{channelId}/messages", UriKind.Relative);
+
+        var response = await httpClient.GetAsync(uri, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+
+        var responseDto = await response.Content.ReadFromJsonAsync(SharedFennecJsonContext.Default.ListMessagesResponseDto, cancellationToken: cancellationToken);
+        return responseDto ?? throw new Exception("Error decoding response.");
     }
 }

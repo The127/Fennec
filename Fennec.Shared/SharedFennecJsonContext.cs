@@ -30,6 +30,9 @@ using System.Text.Json.Serialization;
 [JsonSerializable(typeof(RenameChannelRequestDto))]
 [JsonSerializable(typeof(UpdateChannelTypeRequestDto))]
 [JsonSerializable(typeof(ListChannelsResponseDto))]
+[JsonSerializable(typeof(SendMessageRequestDto))]
+[JsonSerializable(typeof(SendMessageResponseDto))]
+[JsonSerializable(typeof(ListMessagesResponseDto))]
 public partial class SharedFennecJsonContext : JsonSerializerContext
 {
 }

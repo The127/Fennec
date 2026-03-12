@@ -64,16 +64,50 @@
             <Border DockPanel.Dock="Bottom" Padding="16,8"
                     IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
                 <TextBox Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
+                         Text="{Binding MessageText}"
+                         KeyDown="MessageBox_KeyDown"
                          Classes="Clearable" />
             </Border>
 
-            <!-- Placeholder -->
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
-                <mi:MaterialIcon Kind="MessageText" Width="48" Height="48" Opacity="0.3"
-                                 HorizontalAlignment="Center" />
-                <TextBlock Classes="Muted" Text="Select a channel to start chatting"
-                           HorizontalAlignment="Center" />
-            </StackPanel>
+            <!-- Messages or placeholder -->
+            <Panel>
+                <!-- Placeholder when no channel selected -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
+                            IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNull}}">
+                    <mi:MaterialIcon Kind="MessageText" Width="48" Height="48" Opacity="0.3"
+                                     HorizontalAlignment="Center" />
+                    <TextBlock Classes="Muted" Text="Select a channel to start chatting"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Message list -->
+                <ScrollViewer IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <ItemsControl ItemsSource="{Binding Messages}" Margin="16,8">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:MessageItem">
+                                <StackPanel>
+                                    <!-- Author header (avatar + name) — only shown for first message in a group -->
+                                    <StackPanel Orientation="Horizontal" Spacing="10"
+                                                Margin="0,12,0,4"
+                                                IsVisible="{Binding ShowAuthor}">
+                                        <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="32" Width="32" />
+                                        <TextBlock Text="{Binding AuthorName}" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+
+                                    <!-- Message content -->
+                                    <Border Background="{DynamicResource ShadMuted}"
+                                            CornerRadius="8"
+                                            Padding="12,8"
+                                            Margin="42,2,48,2">
+                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap" />
+                                    </Border>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Panel>
         </DockPanel>
     </Grid>
 </UserControl>
