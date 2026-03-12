@@ -31,8 +31,9 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private readonly IClientFactory _clientFactory;
     private readonly ToastManager _toastManager;
     private readonly IExceptionHandler _exceptionHandler;
+    private readonly DialogManager _dialogManager;
 
-    public MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService, IClientFactory clientFactory, ToastManager toastManager, IExceptionHandler exceptionHandler)
+    public MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService, IClientFactory clientFactory, ToastManager toastManager, IExceptionHandler exceptionHandler, DialogManager dialogManager)
     {
         _routerField = router;
         _router = router;
@@ -41,6 +42,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
         _clientFactory = clientFactory;
         _toastManager = toastManager;
         _exceptionHandler = exceptionHandler;
+        _dialogManager = dialogManager;
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
@@ -78,7 +80,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     {
         await LoadServersAsync();
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, serverId, serverName));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, serverId, serverName));
     }
 
     public void Receive(ServerJoinedMessage message)
@@ -133,7 +135,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private async Task NavigateToServerAsync(SidebarServer server)
     {
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, server.Id, server.Name));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, server.Id, server.Name));
     }
 
     [RelayCommand]

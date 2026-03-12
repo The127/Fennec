@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             x:DataType="vm:CreateChannelDialogViewModel"
+             x:Class="Fennec.App.Views.CreateChannelDialogView"
+             MinWidth="320" MaxWidth="400">
+    <StackPanel Spacing="16" Margin="24">
+        <TextBlock Classes="H4" Text="Create Channel" />
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Channel name" Classes="Muted" FontSize="12" />
+            <TextBox Watermark="general"
+                     Text="{Binding ChannelName}"
+                     KeyDown="OnKeyDown" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Channel type" Classes="Muted" FontSize="12" />
+            <StackPanel Spacing="8">
+                <RadioButton GroupName="ChannelType"
+                             IsChecked="{Binding !IsTextOnly}"
+                             Content="Text + Voice" />
+                <RadioButton GroupName="ChannelType"
+                             IsChecked="{Binding IsTextOnly}"
+                             Content="Text only" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+            <Button Content="Create" Command="{Binding ConfirmCommand}" Classes="Primary" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

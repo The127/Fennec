@@ -4,46 +4,86 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:shadui="using:ShadUI"
              xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:conv="using:Fennec.App.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              xmlns:vm="using:Fennec.App.ViewModels"
              x:DataType="vm:ServerViewModel"
              x:Class="Fennec.App.Views.ServerView">
+    <UserControl.Resources>
+        <conv:BoolToBrushConverter x:Key="SelectedBackgroundConverter"
+                                   TrueBrush="#20808080"
+                                   FalseBrush="Transparent" />
+    </UserControl.Resources>
     <Grid ColumnDefinitions="240 *">
         <!-- Left: Channels -->
         <Border Grid.Column="0" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,1,0">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Classes="H4" Text="{Binding ServerName}" Margin="16,16,16,8" />
+                <TextBlock DockPanel.Dock="Top" Classes="H4" Text="{Binding ServerName}" Margin="16,16,16,8">
+                    <TextBlock.ContextFlyout>
+                        <MenuFlyout>
+                            <MenuItem Header="Add Group" Command="{Binding CreateChannelGroupCommand}" />
+                        </MenuFlyout>
+                    </TextBlock.ContextFlyout>
+                </TextBlock>
                 <ScrollViewer>
-                    <ItemsControl ItemsSource="{Binding ChannelGroups}" Margin="4,0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:ChannelGroupItem">
-                                <StackPanel>
-                                    <TextBlock Classes="Muted" Text="{Binding Name}"
-                                               FontSize="11" Margin="12,12,0,4" />
-                                    <ItemsControl ItemsSource="{Binding Channels}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="vm:ChannelItem">
-                                                <Button HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Left"
-                                                        Padding="12,6"
-                                                        Margin="0,1"
-                                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).SelectChannelCommand}"
-                                                        CommandParameter="{Binding}">
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                        <mi:MaterialIcon Kind="Pound" Width="14" Height="14" Opacity="0.5"
-                                                                         IsVisible="{Binding IsTextOnly}" />
-                                                        <mi:MaterialIcon Kind="VolumeHigh" Width="14" Height="14" Opacity="0.5"
-                                                                         IsVisible="{Binding !IsTextOnly}" />
-                                                        <TextBlock Text="{Binding Name}" />
-                                                    </StackPanel>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <StackPanel Margin="4,0">
+                        <ItemsControl ItemsSource="{Binding ChannelGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ChannelGroupItem">
+                                    <StackPanel>
+                                        <Grid ColumnDefinitions="* Auto" Margin="12,12,8,4">
+                                            <!-- Display name (visible when not renaming) -->
+                                            <TextBlock Classes="Muted" Text="{Binding Name}" FontSize="11"
+                                                       IsVisible="{Binding !IsRenaming}">
+                                                <TextBlock.ContextFlyout>
+                                                    <MenuFlyout>
+                                                        <MenuItem Header="Rename"
+                                                                  Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).StartRenameChannelGroupCommand}"
+                                                                  CommandParameter="{Binding}" />
+                                                    </MenuFlyout>
+                                                </TextBlock.ContextFlyout>
+                                            </TextBlock>
+                                            <!-- Rename input (visible when renaming) -->
+                                            <TextBox Grid.Column="0" FontSize="11" Padding="4,2"
+                                                     Text="{Binding RenamingText}"
+                                                     IsVisible="{Binding IsRenaming}"
+                                                     KeyDown="RenameChannelGroup_KeyDown" />
+                                            <Button Grid.Column="1" Padding="2" Height="18" Width="18"
+                                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).ShowAddChannelDialogCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Add channel">
+                                                <mi:MaterialIcon Kind="Plus" Width="12" Height="12" />
+                                            </Button>
+                                        </Grid>
+                                        <ItemsControl ItemsSource="{Binding Channels}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:ChannelItem">
+                                                    <Border CornerRadius="4"
+                                                            Margin="0,1"
+                                                            Background="{Binding IsSelected, Converter={StaticResource SelectedBackgroundConverter}}">
+                                                        <Button HorizontalAlignment="Stretch"
+                                                                HorizontalContentAlignment="Left"
+                                                                Padding="12,6"
+                                                                Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).SelectChannelCommand}"
+                                                                CommandParameter="{Binding}">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <mi:MaterialIcon Kind="Pound" Width="14" Height="14"
+                                                                                 IsVisible="{Binding IsTextOnly}" />
+                                                                <mi:MaterialIcon Kind="VolumeHigh" Width="14" Height="14"
+                                                                                 IsVisible="{Binding !IsTextOnly}" />
+                                                                <TextBlock Text="{Binding Name}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                    </StackPanel>
                 </ScrollViewer>
             </DockPanel>
         </Border>
@@ -92,6 +132,8 @@
                                                 IsVisible="{Binding ShowAuthor}">
                                         <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="32" Width="32" />
                                         <TextBlock Text="{Binding AuthorName}" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding LocalTime}" Classes="Muted" FontSize="11"
                                                    VerticalAlignment="Center" />
                                     </StackPanel>
 

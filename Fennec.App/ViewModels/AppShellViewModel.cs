@@ -19,6 +19,9 @@ public partial class AppShellViewModel
     [ObservableProperty]
     private ToastManager _toastManager;
 
+    [ObservableProperty]
+    private DialogManager _dialogManager;
+
     private readonly IServiceProvider _serviceProvider;
     private readonly IAuthStore _authStore;
 
@@ -26,12 +29,14 @@ public partial class AppShellViewModel
         IServiceProvider serviceProvider,
         IAuthStore authStore,
         ToastManager toastManager,
+        DialogManager dialogManager,
         IMessenger messenger
     ) : base(messenger)
     {
         _serviceProvider = serviceProvider;
         _authStore = authStore;
         _toastManager = toastManager;
+        _dialogManager = dialogManager;
         _currentViewModel = ActivatorUtilities.CreateInstance<LoadingViewModel>(_serviceProvider);
 
         Messenger.RegisterAll(this);

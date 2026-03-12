@@ -51,6 +51,8 @@ public partial class App : Application
 
         services.AddSingleton<ToastManager>();
         services.AddSingleton<IExceptionHandler, ExceptionHandler>();
+        services.AddSingleton(new DialogManager()
+            .Register<Views.CreateChannelDialogView, ViewModels.CreateChannelDialogViewModel>());
         services.AddSingleton<IRouter, Router>();
         services.AddSingleton<IClientFactory, ClientFactory>();
         services.AddSingleton<IAuthService, AuthService>();

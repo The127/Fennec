@@ -3,12 +3,19 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="using:Fennec.App.Views"
+        xmlns:vm="using:Fennec.App.ViewModels"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         xmlns:shadui="using:ShadUI"
         x:Class="Fennec.App.Views.MainWindow"
+        x:DataType="vm:AppShellViewModel"
         Icon="/Assets/logo.ico"
         Title="Fennec">
-        <views:AppShellView />
+        <Panel>
+                <views:AppShellView />
+                <shadui:DialogHost
+                        x:Name="PART_DialogHost"
+                        Manager="{Binding DialogManager}" />
+        </Panel>
         <Window.Resources>
                 <ResourceDictionary>
                         <ResourceDictionary.ThemeDictionaries>

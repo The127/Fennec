@@ -26,10 +26,11 @@ public class AppShellViewModelTests
         services.AddSingleton(Substitute.For<IClientFactory>());
         services.AddSingleton<IExceptionHandler>(NullExceptionHandler.Instance);
         services.AddSingleton(new ToastManager());
+        services.AddSingleton(new DialogManager());
         services.AddLogging();
         var sp = services.BuildServiceProvider();
 
-        return new AppShellViewModel(sp, _authStore, new ToastManager(), _messenger);
+        return new AppShellViewModel(sp, _authStore, new ToastManager(), new DialogManager(), _messenger);
     }
 
     private static AuthSession CreateSession(string username = "alice", string url = "fennec.chat") =>

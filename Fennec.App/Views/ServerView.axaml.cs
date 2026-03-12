@@ -19,4 +19,21 @@ public partial class ServerView : UserControl
             e.Handled = true;
         }
     }
+
+    private void RenameChannelGroup_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not ServerViewModel vm) return;
+        if (sender is not TextBox { DataContext: ChannelGroupItem group }) return;
+
+        if (e.Key == Key.Enter)
+        {
+            vm.ConfirmRenameChannelGroupCommand.Execute(group);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            vm.CancelRenameChannelGroupCommand.Execute(group);
+            e.Handled = true;
+        }
+    }
 }

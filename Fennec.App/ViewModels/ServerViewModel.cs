@@ -8,23 +8,38 @@ using CommunityToolkit.Mvvm.Input;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
+using NodaTime;
+using NodaTime.Text;
+using ShadUI;
 
 namespace Fennec.App.ViewModels;
 
-public class ChannelItem(Guid id, string name, ChannelType channelType, Guid channelGroupId)
+public partial class ChannelItem(Guid id, string name, ChannelType channelType, Guid channelGroupId) : ObservableObject
 {
     public Guid Id { get; } = id;
     public string Name { get; } = name;
     public ChannelType ChannelType { get; } = channelType;
     public Guid ChannelGroupId { get; } = channelGroupId;
     public bool IsTextOnly => ChannelType == ChannelType.TextOnly;
+
+    [ObservableProperty]
+    private bool _isSelected;
 }
 
-public class ChannelGroupItem(Guid id, string name, List<ChannelItem> channels)
+public partial class ChannelGroupItem(Guid id, string name, List<ChannelItem> channels) : ObservableObject
 {
     public Guid Id { get; } = id;
-    public string Name { get; } = name;
+
+    [ObservableProperty]
+    private string _name = name;
+
     public List<ChannelItem> Channels { get; } = channels;
+
+    [ObservableProperty]
+    private bool _isRenaming;
+
+    [ObservableProperty]
+    private string _renamingText = name;
 }
 
 public class MessageItem
@@ -35,10 +50,11 @@ public class MessageItem
     public required string AuthorName { get; init; }
     public required string AvatarFallback { get; init; }
     public required string CreatedAt { get; init; }
+    public required string LocalTime { get; init; }
     public required bool ShowAuthor { get; init; }
 }
 
-public partial class ServerViewModel(IFennecClient client, Guid serverId, string serverName) : ObservableObject
+public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, Guid serverId, string serverName) : ObservableObject
 {
     [ObservableProperty]
     private string _serverName = serverName;
@@ -58,8 +74,112 @@ public partial class ServerViewModel(IFennecClient client, Guid serverId, string
     [RelayCommand]
     private async Task SelectChannel(ChannelItem channel)
     {
+        if (SelectedChannel is not null)
+            SelectedChannel.IsSelected = false;
+
         SelectedChannel = channel;
+        channel.IsSelected = true;
         await LoadMessagesAsync();
+    }
+
+    [RelayCommand]
+    private async Task CreateChannelGroup()
+    {
+        try
+        {
+            await client.Server.CreateChannelGroupAsync(ServerId, new CreateChannelGroupRequestDto
+            {
+                Name = "New Group",
+            });
+
+            await LoadAsync();
+
+            // Start renaming the newly created group
+            var newGroup = ChannelGroups.LastOrDefault();
+            if (newGroup is not null)
+            {
+                newGroup.RenamingText = "";
+                newGroup.IsRenaming = true;
+            }
+        }
+        catch
+        {
+            // Failed to create channel group.
+        }
+    }
+
+    [RelayCommand]
+    private void StartRenameChannelGroup(ChannelGroupItem group)
+    {
+        group.RenamingText = group.Name;
+        group.IsRenaming = true;
+    }
+
+    [RelayCommand]
+    private async Task ConfirmRenameChannelGroup(ChannelGroupItem group)
+    {
+        if (string.IsNullOrWhiteSpace(group.RenamingText))
+        {
+            group.IsRenaming = false;
+            return;
+        }
+
+        var newName = group.RenamingText.Trim();
+        if (newName == group.Name)
+        {
+            group.IsRenaming = false;
+            return;
+        }
+
+        try
+        {
+            await client.Server.RenameChannelGroupAsync(ServerId, group.Id, new RenameChannelGroupRequestDto
+            {
+                Name = newName,
+            });
+
+            group.Name = newName;
+        }
+        catch
+        {
+            // Failed to rename.
+        }
+        finally
+        {
+            group.IsRenaming = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelRenameChannelGroup(ChannelGroupItem group)
+    {
+        group.IsRenaming = false;
+    }
+
+    [RelayCommand]
+    private void ShowAddChannelDialog(ChannelGroupItem group)
+    {
+        var vm = new CreateChannelDialogViewModel(dialogManager);
+        dialogManager.CreateDialog(vm)
+            .Dismissible()
+            .WithSuccessCallback<CreateChannelDialogViewModel>(async ctx =>
+            {
+                try
+                {
+                    await client.Server.CreateChannelAsync(ServerId, group.Id, new CreateChannelRequestDto
+                    {
+                        Name = ctx.ChannelName.Trim(),
+                        ChannelType = ctx.ChannelType,
+                    });
+
+                    await LoadAsync();
+                }
+                catch
+                {
+                    // Failed to create channel.
+                }
+            })
+            .Show();
     }
 
     [RelayCommand]
@@ -112,6 +232,7 @@ public partial class ServerViewModel(IFennecClient client, Guid serverId, string
                     AuthorName = msg.AuthorName,
                     AvatarFallback = msg.AuthorName.Length > 0 ? msg.AuthorName[..1].ToUpper() : "?",
                     CreatedAt = msg.CreatedAt,
+                    LocalTime = FormatLocalTime(msg.CreatedAt),
                     ShowAuthor = showAuthor,
                 });
             }
@@ -120,6 +241,23 @@ public partial class ServerViewModel(IFennecClient client, Guid serverId, string
         {
             // Failed to load messages.
         }
+    }
+
+    private static string FormatLocalTime(string instantString)
+    {
+        var result = InstantPattern.ExtendedIso.Parse(instantString);
+        if (!result.Success) return "";
+
+        var local = result.Value.InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
+        var now = SystemClock.Instance.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
+
+        if (local.Date == now.Date)
+            return local.ToString("HH:mm", null);
+
+        if (local.Year == now.Year)
+            return local.ToString("MMM dd, HH:mm", null);
+
+        return local.ToString("yyyy MMM dd, HH:mm", null);
     }
 
     public async Task LoadAsync()

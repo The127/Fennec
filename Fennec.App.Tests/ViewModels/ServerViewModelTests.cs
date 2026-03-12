@@ -4,6 +4,7 @@ using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
 using NSubstitute;
+using ShadUI;
 
 namespace Fennec.App.Tests.ViewModels;
 
@@ -18,7 +19,7 @@ public class ServerViewModelTests
         _client.Server.Returns(_serverClient);
     }
 
-    private ServerViewModel CreateViewModel() => new(_client, _serverId, "Test Server");
+    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverId, "Test Server");
 
     [Fact]
     public async Task Loading_populates_channel_groups_with_channels()
