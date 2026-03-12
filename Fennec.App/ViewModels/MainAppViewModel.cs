@@ -69,7 +69,14 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
 
     public void Receive(ServerCreatedMessage message)
     {
-        _ = LoadServersAsync();
+        _ = LoadServersAndNavigateToServerAsync(message.ServerId, message.ServerName);
+    }
+
+    private async Task LoadServersAndNavigateToServerAsync(Guid serverId, string serverName)
+    {
+        await LoadServersAsync();
+        if (_client is null) return;
+        await _routerField.NavigateAsync(new ServerRoute(_client, serverId, serverName));
     }
 
     public void Receive(ServerJoinedMessage message)

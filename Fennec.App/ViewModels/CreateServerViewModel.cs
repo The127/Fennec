@@ -37,13 +37,13 @@ public partial class CreateServerViewModel(IFennecClient client, IRouter router,
 
         try
         {
-            await client.Server.CreateServerAsync(new CreateServerRequestDto
+            var response = await client.Server.CreateServerAsync(new CreateServerRequestDto
             {
                 Name = ServerName.Trim(),
                 Visibility = IsPublic ? ServerVisibility.Public : ServerVisibility.Private,
             });
 
-            messenger.Send(new ServerCreatedMessage());
+            messenger.Send(new ServerCreatedMessage(response.ServerId, ServerName.Trim()));
             await router.NavigateBackAsync();
         }
         catch (ApiException ex)
