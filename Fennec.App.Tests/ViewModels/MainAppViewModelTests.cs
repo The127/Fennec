@@ -5,6 +5,7 @@ using Fennec.App.Routes;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
+using Fennec.App.Shortcuts;
 using Fennec.App.ViewModels;
 using Fennec.Client;
 using Fennec.Client.Clients;
@@ -23,6 +24,7 @@ public class MainAppViewModelTests
     private readonly IFennecClient _client = Substitute.For<IFennecClient>();
     private readonly IServerClient _serverClient = Substitute.For<IServerClient>();
     private readonly IServerStore _serverStore = Substitute.For<IServerStore>();
+    private readonly IKeymapService _keymapService = new KeymapService();
 
     public MainAppViewModelTests()
     {
@@ -36,7 +38,7 @@ public class MainAppViewModelTests
 
     private MainAppViewModel CreateViewModel()
     {
-        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullExceptionHandler.Instance, new DialogManager(), _serverStore);
+        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullExceptionHandler.Instance, new DialogManager(), _serverStore, _keymapService);
         vm.ApplySession(new AuthSession
         {
             Username = "alice",

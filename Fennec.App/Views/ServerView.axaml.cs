@@ -39,7 +39,10 @@ public partial class ServerView : UserControl
         DataContextChanged += (_, _) =>
         {
             if (DataContext is ServerViewModel vm)
+            {
                 vm.Messages.CollectionChanged += OnMessagesChanged;
+                vm.MessageInputFocusRequested += () => MessageTextBox.Focus();
+            }
         };
     }
 

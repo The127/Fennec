@@ -10,6 +10,8 @@ using Fennec.App.Routes;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
+using Fennec.App.Shortcuts;
+using Fennec.App.ViewModels.Settings;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
 using ShadUI;
@@ -24,7 +26,7 @@ public partial class SidebarServer(Guid id, string name, string instanceUrl) : O
     public string AvatarFallback { get; } = name[..1].ToUpperInvariant();
 }
 
-public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>
+public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>
 {
     private readonly IRouter _routerField;
     private readonly IMessenger _messenger;
@@ -34,16 +36,18 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private readonly IExceptionHandler _exceptionHandler;
     private readonly DialogManager _dialogManager;
     private readonly IServerStore _serverStore;
+    private readonly IKeymapService _keymapService;
 
     public MainAppViewModel(
-        IRouter router, 
-        IMessenger messenger, 
-        IAuthService authService, 
-        IClientFactory clientFactory, 
-        ToastManager toastManager, 
-        IExceptionHandler exceptionHandler, 
+        IRouter router,
+        IMessenger messenger,
+        IAuthService authService,
+        IClientFactory clientFactory,
+        ToastManager toastManager,
+        IExceptionHandler exceptionHandler,
         DialogManager dialogManager,
-        IServerStore serverStore)
+        IServerStore serverStore,
+        IKeymapService keymapService)
     {
         _routerField = router;
         _router = router;
@@ -54,6 +58,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
         _exceptionHandler = exceptionHandler;
         _dialogManager = dialogManager;
         _serverStore = serverStore;
+        _keymapService = keymapService;
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
@@ -74,7 +79,58 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private AuthSession? _session;
     private IFennecClient? _client;
 
+    [ObservableProperty]
+    private bool _isSettingsOpen;
+
+    [ObservableProperty]
+    private SettingsViewModel? _settingsViewModel;
+
     public ObservableCollection<SidebarServer> Servers { get; } = [];
+
+    public ShortcutContext ShortcutContext => ShortcutContext.MainApp;
+
+    public bool HandleShortcut(string shortcutId)
+    {
+        // When settings is open, only allow closing or toggling theme
+        if (IsSettingsOpen)
+        {
+            switch (shortcutId)
+            {
+                case "app.toggleTheme":
+                    ToggleTheme();
+                    return true;
+                case "app.openSettings":
+                    CloseSettings();
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        switch (shortcutId)
+        {
+            case "app.toggleTheme":
+                ToggleTheme();
+                return true;
+            case "app.openSettings":
+                OpenSettings();
+                return true;
+            case "nav.dashboard":
+                NavigateToDashboardCommand.Execute(null);
+                return true;
+            case "nav.friends":
+                NavigateToFriendsCommand.Execute(null);
+                return true;
+            case "nav.calls":
+                NavigateToCallsCommand.Execute(null);
+                return true;
+            case "nav.add":
+                NavigateToAddCommand.Execute(null);
+                return true;
+            default:
+                return false;
+        }
+    }
 
     public async Task InitializeAsync()
     {
@@ -202,6 +258,24 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     {
         if (_client is null || _session is null) return;
         await _routerField.NavigateAsync(new CreateInviteRoute(_client, _routerField, _toastManager, server.Id, server.InstanceUrl));
+    }
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        if (IsSettingsOpen) return;
+        SettingsViewModel = new SettingsViewModel(
+            _keymapService,
+            Username,
+            _session?.Url ?? "",
+            CloseSettings);
+        IsSettingsOpen = true;
+    }
+
+    private void CloseSettings()
+    {
+        IsSettingsOpen = false;
+        SettingsViewModel = null;
     }
 
     [RelayCommand]

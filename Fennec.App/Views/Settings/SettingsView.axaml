@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Fennec.App.ViewModels.Settings"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="Fennec.App.Views.Settings.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+    <Border Background="{DynamicResource CardBackgroundColor}"
+            CornerRadius="8"
+            BorderBrush="{DynamicResource BorderColor}"
+            BorderThickness="1"
+            ClipToBounds="True"
+            BoxShadow="0 8 32 0 #40000000">
+        <Grid ColumnDefinitions="220 *">
+            <!-- Sidebar -->
+            <Border Grid.Column="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0" Padding="16">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Settings" FontSize="20" FontWeight="Bold" Margin="0,0,0,16" />
+                    <ListBox ItemsSource="{Binding Categories}"
+                             SelectedItem="{Binding SelectedCategory}"
+                             Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SettingsCategory">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <mi:MaterialIcon Kind="{Binding Icon}" Width="18" Height="18" />
+                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- Content Area -->
+            <DockPanel Grid.Column="1">
+                <!-- Header with close button -->
+                <Grid DockPanel.Dock="Top" Margin="24,16,16,0">
+                    <TextBlock Text="{Binding SelectedCategory.Label}"
+                               FontSize="18" FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                    <Button HorizontalAlignment="Right"
+                            Command="{Binding CloseCommand}"
+                            Classes="ghost"
+                            ToolTip.Tip="Close (Escape)">
+                        <mi:MaterialIcon Kind="Close" Width="20" Height="20" />
+                    </Button>
+                </Grid>
+
+                <!-- Content -->
+                <ContentControl Content="{Binding SelectedCategory.ViewModel}"
+                                Margin="24,16" />
+            </DockPanel>
+        </Grid>
+    </Border>
+</UserControl>

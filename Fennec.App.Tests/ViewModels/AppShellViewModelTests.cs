@@ -5,6 +5,7 @@ using Fennec.App.ViewModels;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
+using Fennec.App.Shortcuts;
 using Fennec.Client;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -27,6 +28,7 @@ public class AppShellViewModelTests
         services.AddSingleton(Substitute.For<IClientFactory>());
         services.AddSingleton(Substitute.For<IServerStore>());
         services.AddSingleton<IExceptionHandler>(NullExceptionHandler.Instance);
+        services.AddSingleton<IKeymapService, KeymapService>();
         services.AddSingleton(new ToastManager());
         services.AddSingleton(new DialogManager());
         services.AddLogging();

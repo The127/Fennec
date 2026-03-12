@@ -8,6 +8,7 @@ using Fennec.App.Logger;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
+using Fennec.App.Shortcuts;
 using Fennec.Client;
 using Fennec.App.Services.Storage;
 using Fennec.App.ViewModels;
@@ -87,6 +88,7 @@ public partial class App : Application
         services.AddSingleton<IClientFactory, ClientFactory>();
         services.AddSingleton<IAuthService, AuthService>();
         services.AddSingleton<IServerStore, ServerStore>();
+        services.AddSingleton<IKeymapService, KeymapService>();
         services.AddSingleton<IMessenger>(_ => WeakReferenceMessenger.Default);
     }
 
@@ -98,10 +100,12 @@ public partial class App : Application
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
-            desktop.MainWindow = new MainWindow
+            var mainWindow = new MainWindow
             {
                 DataContext = mainViewModel,
             };
+            mainWindow.AttachShortcutDispatcher(_services.GetRequiredService<IKeymapService>());
+            desktop.MainWindow = mainWindow;
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {

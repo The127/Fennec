@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Fennec.App.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
+             x:Class="Fennec.App.Views.Settings.AppearanceSettingsView"
+             x:DataType="vm:AppearanceSettingsViewModel">
+    <StackPanel Spacing="16" Margin="0,8">
+        <StackPanel Spacing="8">
+            <TextBlock Text="Theme" FontWeight="SemiBold" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <ToggleSwitch IsChecked="{Binding IsDarkTheme}" />
+                <TextBlock Text="Dark Mode" VerticalAlignment="Center" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

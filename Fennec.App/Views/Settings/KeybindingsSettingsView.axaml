@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Fennec.App.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
+             x:Class="Fennec.App.Views.Settings.KeybindingsSettingsView"
+             x:DataType="vm:KeybindingsSettingsViewModel">
+    <Grid RowDefinitions="Auto *">
+        <Grid ColumnDefinitions="* Auto Auto" Margin="0,0,0,8">
+            <TextBlock Text="Action" FontWeight="SemiBold" />
+            <TextBlock Text="Shortcut" FontWeight="SemiBold" Grid.Column="1" Width="160" />
+            <TextBlock Text="Context" FontWeight="SemiBold" Grid.Column="2" Width="100" />
+        </Grid>
+        <ItemsControl Grid.Row="1" ItemsSource="{Binding Bindings}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ShortcutBindingItem">
+                    <Grid ColumnDefinitions="* Auto Auto" Margin="0,4">
+                        <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Width="160"
+                                Background="{DynamicResource SecondaryColor}"
+                                CornerRadius="4" Padding="6,3">
+                            <TextBlock Text="{Binding GestureText}"
+                                       HorizontalAlignment="Center"
+                                       FontFamily="Consolas,Menlo,monospace"
+                                       FontSize="12" />
+                        </Border>
+                        <TextBlock Grid.Column="2" Text="{Binding ContextLabel}"
+                                   Width="100" Classes="Muted"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Grid>
+</UserControl>

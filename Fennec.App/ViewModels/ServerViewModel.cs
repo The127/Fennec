@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Fennec.App.Models;
 using Fennec.App.Services;
+using Fennec.App.Shortcuts;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
@@ -60,7 +61,7 @@ public class MessageItem
     public required string TimeSeparatorText { get; init; }
 }
 
-public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, Guid serverId, string serverName, string instanceUrl) : ObservableObject
+public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, Guid serverId, string serverName, string instanceUrl) : ObservableObject, IShortcutHandler
 {
     [ObservableProperty]
     private string _serverName = serverName;
@@ -86,6 +87,22 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
     }
 
     public Guid ServerId { get; } = serverId;
+
+    public ShortcutContext ShortcutContext => ShortcutContext.Server;
+
+    public bool HandleShortcut(string shortcutId)
+    {
+        switch (shortcutId)
+        {
+            case "server.focusMessage":
+                MessageInputFocusRequested?.Invoke();
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public event Action? MessageInputFocusRequested;
 
     public ObservableCollection<ChannelGroupItem> ChannelGroups { get; } = [];
 
