@@ -4,13 +4,19 @@ namespace Fennec.Client;
 
 public class TokenStore : ITokenStore
 {
-    public string? HomeUrl { get; set; }
+    private string? _homeUrl;
+    public string? HomeUrl 
+    { 
+        get => _homeUrl; 
+        set => _homeUrl = value != null ? UrlUtils.NormalizeBaseUrl(value) : null; 
+    }
     public string? HomeSessionToken { get; set; }
     
     private readonly ConcurrentDictionary<string, (string Token, DateTime LastUsedUtc)> _publicTokens = new();
 
     public string? GetPublicToken(string targetUrl)
     {
+        targetUrl = UrlUtils.NormalizeBaseUrl(targetUrl);
         if (_publicTokens.TryGetValue(targetUrl, out var data))
         {
             return data.Token;
@@ -20,11 +26,13 @@ public class TokenStore : ITokenStore
 
     public void SetPublicToken(string targetUrl, string token)
     {
+        targetUrl = UrlUtils.NormalizeBaseUrl(targetUrl);
         _publicTokens[targetUrl] = (token, DateTime.UtcNow);
     }
 
     public void UpdateLastUsed(string targetUrl)
     {
+        targetUrl = UrlUtils.NormalizeBaseUrl(targetUrl);
         if (_publicTokens.TryGetValue(targetUrl, out var data))
         {
             _publicTokens[targetUrl] = (data.Token, DateTime.UtcNow);

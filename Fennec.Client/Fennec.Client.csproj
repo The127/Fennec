@@ -7,6 +7,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+        <_Parameter1>Fennec.App.Tests</_Parameter1>
+      </AssemblyAttribute>
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="..\Fennec.Shared\Fennec.Shared.csproj" />
     </ItemGroup>
 

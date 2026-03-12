@@ -56,7 +56,7 @@ internal class AuthHandler(ITokenStore tokenStore) : DelegatingHandler
     {
         if (tokenStore.HomeUrl == null || tokenStore.HomeSessionToken == null) return null;
 
-        var publicTokenUri = new Uri($"{tokenStore.HomeUrl}/api/v1/auth/public-token");
+        var publicTokenUri = new Uri($"{UrlUtils.NormalizeBaseUrl(tokenStore.HomeUrl!)}/api/v1/auth/public-token");
         var publicTokenRequest = new HttpRequestMessage(HttpMethod.Post, publicTokenUri)
         {
             Content = JsonContent.Create(new GetPublicTokenRequestDto
