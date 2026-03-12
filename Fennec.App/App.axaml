@@ -14,5 +14,15 @@
     <Application.Styles>
         <themes:ShadTheme />
         <materialIcons:MaterialIconStyles />
+
+        <!-- Reusable floating panel style for popups (emoji picker, autocomplete) -->
+        <Style Selector="Border.PopupPanel">
+            <Setter Property="Background" Value="{DynamicResource ShadBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ShadBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BoxShadow" Value="0 8 24 0 #30000000" />
+            <Setter Property="Padding" Value="6" />
+        </Style>
     </Application.Styles>
 </Application>

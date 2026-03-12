@@ -6,6 +6,7 @@
              xmlns:mi="using:Material.Icons.Avalonia"
              xmlns:conv="using:Fennec.App.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:views="using:Fennec.App.Views"
              xmlns:vm="using:Fennec.App.ViewModels"
              x:DataType="vm:ServerViewModel"
              x:Class="Fennec.App.Views.ServerView">
@@ -103,10 +104,57 @@
             <!-- Message input -->
             <Border DockPanel.Dock="Bottom" Padding="16,8"
                     IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <TextBox Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
-                         Text="{Binding MessageText}"
-                         KeyDown="MessageBox_KeyDown"
-                         Classes="Clearable" />
+                <Panel>
+                    <Popup x:Name="AutocompletePopup"
+                           PlacementTarget="{Binding #MessageTextBox}"
+                           Placement="Top"
+                           IsLightDismissEnabled="False"
+                           IsOpen="False">
+                        <views:ShortcodeAutocompleteView x:Name="AutocompleteView" />
+                    </Popup>
+                    <Border BorderBrush="{DynamicResource BorderColor}"
+                            BorderThickness="1"
+                            CornerRadius="{DynamicResource LgCornerRadius}"
+                            Padding="0,4">
+                        <Border.Styles>
+                            <Style Selector="TextBox.Naked /template/ Border#Border">
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="TextBox.Naked:pointerover /template/ Border#Border">
+                                <Setter Property="BorderThickness" Value="0" />
+                            </Style>
+                            <Style Selector="TextBox.Naked:focus /template/ Border#Border">
+                                <Setter Property="BorderThickness" Value="0" />
+                            </Style>
+                        </Border.Styles>
+                        <Grid ColumnDefinitions="* Auto">
+                            <TextBox x:Name="MessageTextBox"
+                                     Classes="Naked"
+                                     Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
+                                     Text="{Binding MessageText}"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="False"
+                                     MaxHeight="200"
+                                     Padding="14,8"
+                                     KeyDown="MessageBox_KeyDown" />
+                            <Button Grid.Column="1"
+                                    Classes="Ghost"
+                                    VerticalAlignment="Center"
+                                    Width="32" Height="32"
+                                    Margin="2,0,6,0"
+                                    Padding="0"
+                                    ToolTip.Tip="Emoji">
+                                <Button.Flyout>
+                                    <Flyout Placement="TopEdgeAlignedRight" ShowMode="TransientWithDismissOnPointerMoveAway">
+                                        <views:EmojiPickerView x:Name="EmojiPicker" />
+                                    </Flyout>
+                                </Button.Flyout>
+                                <TextBlock FontSize="20" Text="&#x1F60A;" />
+                            </Button>
+                        </Grid>
+                    </Border>
+                </Panel>
             </Border>
 
             <!-- Messages or placeholder -->

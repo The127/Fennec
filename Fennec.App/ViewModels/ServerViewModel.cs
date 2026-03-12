@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fennec.App.Models;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
@@ -188,7 +190,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
         if (SelectedChannel is null || string.IsNullOrWhiteSpace(MessageText))
             return;
 
-        var content = MessageText.Trim();
+        var content = ReplaceShortcodes(MessageText.Trim());
         MessageText = "";
 
         try
@@ -258,6 +260,14 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
             return local.ToString("MMM dd, HH:mm", null);
 
         return local.ToString("yyyy MMM dd, HH:mm", null);
+    }
+
+    internal static string ReplaceShortcodes(string text)
+    {
+        return Regex.Replace(text, @":([a-z0-9_]+):", match =>
+            EmojiDatabase.ByShortcode.TryGetValue(match.Groups[1].Value, out var entry)
+                ? entry.Unicode
+                : match.Value);
     }
 
     public async Task LoadAsync()

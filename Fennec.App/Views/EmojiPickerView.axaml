@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             xmlns:models="using:Fennec.App.Models"
+             x:DataType="vm:EmojiPickerViewModel"
+             x:Class="Fennec.App.Views.EmojiPickerView"
+             Width="352" Height="380">
+    <Border Classes="PopupPanel">
+        <DockPanel>
+            <!-- Search bar -->
+            <TextBox DockPanel.Dock="Top"
+                     Watermark="Search emoji..."
+                     Text="{Binding SearchText}"
+                     Margin="2,2,2,6" />
+
+            <!-- Category tabs -->
+            <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,0,1"
+                    Margin="0,0,0,4">
+                <ItemsControl ItemsSource="{Binding Categories}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4" Spacing="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:EmojiCategory">
+                            <Button Padding="5,3" MinWidth="0" MinHeight="0"
+                                    FontSize="16"
+                                    Content="{Binding Icon}"
+                                    ToolTip.Tip="{Binding Name}"
+                                    Command="{Binding $parent[UserControl].((vm:EmojiPickerViewModel)DataContext).SelectCategoryCommand}"
+                                    CommandParameter="{Binding Name}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+
+            <!-- Category name -->
+            <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedCategoryName}"
+                       Classes="Muted" FontSize="11" Margin="6,0,6,2" />
+
+            <!-- Emoji grid -->
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding FilteredEmojis}" Margin="2">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:EmojiEntry">
+                            <Button Padding="0" MinWidth="0" MinHeight="0"
+                                    Width="38" Height="38"
+                                    FontSize="22"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"
+                                    Content="{Binding Unicode}"
+                                    ToolTip.Tip="{Binding Shortcode, StringFormat=':{0}:'}"
+                                    Click="EmojiButton_Click" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>

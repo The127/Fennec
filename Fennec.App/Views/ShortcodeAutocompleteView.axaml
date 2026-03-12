@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             xmlns:models="using:Fennec.App.Models"
+             x:DataType="vm:ShortcodeAutocompleteViewModel"
+             x:Class="Fennec.App.Views.ShortcodeAutocompleteView"
+             Width="280">
+    <Border Classes="PopupPanel">
+        <ItemsControl ItemsSource="{Binding Suggestions}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:EmojiEntry">
+                    <Border x:Name="Row" Padding="8,5" CornerRadius="4"
+                            Background="Transparent"
+                            PointerPressed="Row_PointerPressed">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="{Binding Unicode}" FontSize="18" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Shortcode, StringFormat=':{0}:'}"
+                                       VerticalAlignment="Center" Opacity="0.7" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Border>
+</UserControl>
