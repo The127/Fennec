@@ -44,6 +44,9 @@ public partial class ServerView : UserControl
                 vm.MessageInputFocusRequested += () => MessageTextBox.Focus();
             }
         };
+
+        AttachedToVisualTree += (_, _) =>
+            Dispatcher.UIThread.Post(() => MessageTextBox.Focus(), DispatcherPriority.Loaded);
     }
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
