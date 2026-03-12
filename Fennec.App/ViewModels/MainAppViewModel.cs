@@ -62,6 +62,32 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
+
+        _routerField.Navigated += OnRouteNavigated;
+    }
+
+    private void OnRouteNavigated(object? sender, ObservableObject viewModel)
+    {
+        // Clear search on the previous route
+        if (_currentSearchableRoute is not null)
+        {
+            _currentSearchableRoute.ClearSearch();
+            _currentSearchableRoute = null;
+        }
+
+        SearchText = string.Empty;
+
+        if (viewModel is ISearchableRoute searchable)
+        {
+            _currentSearchableRoute = searchable;
+            SearchWatermark = searchable.SearchWatermark;
+            IsSearchable = true;
+        }
+        else
+        {
+            SearchWatermark = "Search...";
+            IsSearchable = false;
+        }
     }
 
     [ObservableProperty]
@@ -80,10 +106,20 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private IFennecClient? _client;
 
     [ObservableProperty]
-    private bool _isSettingsOpen;
+    private string _searchText = string.Empty;
 
     [ObservableProperty]
-    private SettingsViewModel? _settingsViewModel;
+    private string _searchWatermark = "Search...";
+
+    [ObservableProperty]
+    private bool _isSearchable;
+
+    private ISearchableRoute? _currentSearchableRoute;
+
+    partial void OnSearchTextChanged(string value)
+    {
+        _currentSearchableRoute?.ApplySearch(value);
+    }
 
     public ObservableCollection<SidebarServer> Servers { get; } = [];
 
@@ -91,22 +127,6 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
     public bool HandleShortcut(string shortcutId)
     {
-        // When settings is open, only allow closing or toggling theme
-        if (IsSettingsOpen)
-        {
-            switch (shortcutId)
-            {
-                case "app.toggleTheme":
-                    ToggleTheme();
-                    return true;
-                case "app.openSettings":
-                    CloseSettings();
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
         switch (shortcutId)
         {
             case "app.toggleTheme":
@@ -114,6 +134,9 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
                 return true;
             case "app.openSettings":
                 OpenSettings();
+                return true;
+            case "nav.quickNav":
+                OpenQuickNavCommand.Execute(null);
                 return true;
             case "nav.dashboard":
                 NavigateToDashboardCommand.Execute(null);
@@ -261,21 +284,38 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     }
 
     [RelayCommand]
-    private void OpenSettings()
+    private void OpenQuickNav()
     {
-        if (IsSettingsOpen) return;
-        SettingsViewModel = new SettingsViewModel(
-            _keymapService,
-            Username,
-            _session?.Url ?? "",
-            CloseSettings);
-        IsSettingsOpen = true;
+        var items = new List<QuickNavItem>
+        {
+            new("Dashboard", "Navigation", "\ud83c\udfe0", () => NavigateToDashboardCommand.Execute(null)),
+            new("Friends", "Navigation", "\ud83d\udc65", () => NavigateToFriendsCommand.Execute(null)),
+            new("Calls", "Navigation", "\ud83d\udcde", () => NavigateToCallsCommand.Execute(null)),
+            new("Add / Join Server", "Navigation", "\u2795", () => NavigateToAddCommand.Execute(null)),
+        };
+
+        foreach (var server in Servers)
+        {
+            var s = server;
+            items.Add(new QuickNavItem(s.Name, "Server", "\ud83d\udda5\ufe0f", () => NavigateToServerCommand.Execute(s)));
+        }
+
+        var vm = new QuickNavDialogViewModel(_dialogManager, items);
+        _dialogManager.CreateDialog(vm)
+            .Dismissible()
+            .Show();
     }
 
-    private void CloseSettings()
+    [RelayCommand]
+    private void OpenSettings()
     {
-        IsSettingsOpen = false;
-        SettingsViewModel = null;
+        var vm = new SettingsViewModel(
+            _keymapService,
+            Username,
+            _session?.Url ?? "");
+        _dialogManager.CreateDialog(vm)
+            .Dismissible()
+            .Show();
     }
 
     [RelayCommand]

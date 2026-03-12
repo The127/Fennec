@@ -9,9 +9,7 @@
              xmlns:vm="using:Fennec.App.ViewModels"
              xmlns:ctrls="using:Fennec.App.Controls"
              xmlns:mi="using:Material.Icons.Avalonia"
-             xmlns:settings="using:Fennec.App.Views.Settings"
              x:DataType="vm:MainAppViewModel">
-    <Panel>
     <DockPanel LastChildFill="True">
         <Border Padding="8" DockPanel.Dock="Left">
             <DockPanel LastChildFill="False">
@@ -58,11 +56,14 @@
             <Border Padding="8">
                 <Grid ColumnDefinitions="Auto * Auto *">
                     <TextBox
+                        x:Name="SearchBox"
                         Grid.Column="2"
                         Classes="Clearable"
-                        Watermark="Search..."
-                        VerticalAlignment="Center" 
-                        Width="256">
+                        Text="{Binding SearchText}"
+                        Watermark="{Binding SearchWatermark}"
+                        VerticalAlignment="Center"
+                        Width="256"
+                        GotFocus="SearchBox_GotFocus">
                         <TextBox.InnerRightContent>
                             <PathIcon
                                 Data="{x:Static shadui:Icons.Search}"
@@ -104,14 +105,4 @@
         </StackPanel>
         <routing:RouteView Router="{Binding Router}" />
     </DockPanel>
-
-    <!-- Settings Overlay: scrim + settings panel -->
-    <Panel IsVisible="{Binding IsSettingsOpen}">
-        <!-- Semi-transparent scrim to dim the main app -->
-        <Border Background="#80000000" />
-        <!-- Settings content with margin so the scrim peeks through -->
-        <settings:SettingsView DataContext="{Binding SettingsViewModel}"
-                               Margin="40" />
-    </Panel>
-    </Panel>
 </UserControl>

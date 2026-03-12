@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Fennec.App.Models;
+using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Shortcuts;
 using Fennec.Client;
@@ -61,7 +62,7 @@ public class MessageItem
     public required string TimeSeparatorText { get; init; }
 }
 
-public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, Guid serverId, string serverName, string instanceUrl) : ObservableObject, IShortcutHandler
+public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, Guid serverId, string serverName, string instanceUrl) : ObservableObject, IShortcutHandler, ISearchableRoute
 {
     [ObservableProperty]
     private string _serverName = serverName;
@@ -289,6 +290,8 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
                     TimeSeparatorText = isNewDay ? FormatTimeSeparator(msg.CreatedAt) : "",
                 });
             }
+
+            _allMessages = Messages.ToList();
         }
         catch
         {
@@ -345,6 +348,38 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
             EmojiDatabase.ByShortcode.TryGetValue(match.Groups[1].Value, out var entry)
                 ? entry.Unicode
                 : match.Value);
+    }
+
+    public string SearchWatermark => "Search messages...";
+
+    private List<MessageItem> _allMessages = [];
+
+    public void ApplySearch(string query)
+    {
+        Messages.Clear();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            foreach (var msg in _allMessages)
+                Messages.Add(msg);
+        }
+        else
+        {
+            foreach (var msg in _allMessages)
+            {
+                if (msg.Content.Contains(query, StringComparison.OrdinalIgnoreCase)
+                    || msg.AuthorName.Contains(query, StringComparison.OrdinalIgnoreCase))
+                {
+                    Messages.Add(msg);
+                }
+            }
+        }
+    }
+
+    public void ClearSearch()
+    {
+        Messages.Clear();
+        foreach (var msg in _allMessages)
+            Messages.Add(msg);
     }
 
     public async Task LoadAsync()

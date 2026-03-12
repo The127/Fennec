@@ -7,12 +7,7 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="Fennec.App.Views.Settings.SettingsView"
              x:DataType="vm:SettingsViewModel">
-    <Border Background="{DynamicResource CardBackgroundColor}"
-            CornerRadius="8"
-            BorderBrush="{DynamicResource BorderColor}"
-            BorderThickness="1"
-            ClipToBounds="True"
-            BoxShadow="0 8 32 0 #40000000">
+    <Border ClipToBounds="True">
         <Grid ColumnDefinitions="220 *">
             <!-- Sidebar -->
             <Border Grid.Column="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0" Padding="16">
@@ -35,18 +30,10 @@
 
             <!-- Content Area -->
             <DockPanel Grid.Column="1">
-                <!-- Header with close button -->
-                <Grid DockPanel.Dock="Top" Margin="24,16,16,0">
-                    <TextBlock Text="{Binding SelectedCategory.Label}"
-                               FontSize="18" FontWeight="SemiBold"
-                               VerticalAlignment="Center" />
-                    <Button HorizontalAlignment="Right"
-                            Command="{Binding CloseCommand}"
-                            Classes="ghost"
-                            ToolTip.Tip="Close (Escape)">
-                        <mi:MaterialIcon Kind="Close" Width="20" Height="20" />
-                    </Button>
-                </Grid>
+                <!-- Header -->
+                <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedCategory.Label}"
+                           FontSize="18" FontWeight="SemiBold"
+                           Margin="24,16,16,0" />
 
                 <!-- Content -->
                 <ContentControl Content="{Binding SelectedCategory.ViewModel}"

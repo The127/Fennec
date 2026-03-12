@@ -9,15 +9,16 @@ public partial class MainAppView : UserControl
     public MainAppView()
     {
         InitializeComponent();
-        KeyDown += OnKeyDown;
     }
 
-    private void OnKeyDown(object? sender, KeyEventArgs e)
+    private void SearchBox_GotFocus(object? sender, GotFocusEventArgs e)
     {
-        if (e.Key == Key.Escape && DataContext is MainAppViewModel { IsSettingsOpen: true } vm)
+        if (DataContext is MainAppViewModel { IsSearchable: false } vm)
         {
-            vm.SettingsViewModel?.CloseCommand.Execute(null);
-            e.Handled = true;
+            // Unfocus the search box and open quick nav instead
+            var topLevel = TopLevel.GetTopLevel(this);
+            topLevel?.FocusManager?.ClearFocus();
+            vm.OpenQuickNavCommand.Execute(null);
         }
     }
 }
