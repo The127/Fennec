@@ -132,7 +132,7 @@
                             </Style>
                         </Border.Styles>
                         <Grid RowDefinitions="* Auto">
-                            <Grid ColumnDefinitions="* Auto Auto" MinHeight="32">
+                            <Grid ColumnDefinitions="* Auto Auto Auto" MinHeight="32">
                                 <TextBox x:Name="MessageTextBox"
                                          Classes="Naked"
                                          Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
@@ -147,6 +147,15 @@
                                         Width="32" Height="32"
                                         Margin="2,4,0,0"
                                         Padding="0"
+                                        ToolTip.Tip="Attach file">
+                                    <mi:MaterialIcon Kind="Paperclip" Width="18" Height="18" Opacity="0.5" />
+                                </Button>
+                                <Button Grid.Column="2"
+                                        Classes="Ghost"
+                                        VerticalAlignment="Top"
+                                        Width="32" Height="32"
+                                        Margin="2,4,0,0"
+                                        Padding="0"
                                         ToolTip.Tip="Emoji">
                                     <Button.Flyout>
                                         <Flyout Placement="TopEdgeAlignedRight" ShowMode="TransientWithDismissOnPointerMoveAway"
@@ -156,7 +165,7 @@
                                     </Button.Flyout>
                                     <TextBlock FontSize="20" Text="&#x1F60A;" />
                                 </Button>
-                                <Button Grid.Column="2"
+                                <Button Grid.Column="3"
                                         Classes="Ghost"
                                         VerticalAlignment="Top"
                                         Width="32" Height="32"
