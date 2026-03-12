@@ -20,7 +20,7 @@
     </UserControl.Resources>
     <Grid ColumnDefinitions="240 *">
         <!-- Left: Channels -->
-        <Border Grid.Column="0" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,1,0">
+        <Border Grid.Column="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Classes="H4" Text="{Binding ServerName}" Margin="16,16,16,8">
                     <TextBlock.ContextFlyout>
@@ -95,7 +95,7 @@
         <!-- Right: Chat area -->
         <DockPanel Grid.Column="1">
             <!-- Channel header -->
-            <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,0,1"
+            <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1"
                     Padding="16,12">
                 <StackPanel Orientation="Horizontal" Spacing="8"
                             IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -227,7 +227,7 @@
                                     </StackPanel>
 
                                     <!-- Message content -->
-                                    <Border Background="{DynamicResource ShadMuted}"
+                                    <Border Background="{DynamicResource SecondaryColor50}"
                                             CornerRadius="8"
                                             Padding="12,8"
                                             Margin="42,2,48,2"

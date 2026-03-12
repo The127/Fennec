@@ -14,7 +14,7 @@
                      Margin="2,2,2,6" />
 
             <!-- Category tabs -->
-            <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,0,1"
+            <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1"
                     Margin="0,0,0,4">
                 <ItemsControl ItemsSource="{Binding Categories}">
                     <ItemsControl.ItemsPanel>

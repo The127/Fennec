@@ -10,7 +10,7 @@
              x:Class="Fennec.App.Views.FriendsView">
     <Grid ColumnDefinitions="240 *">
         <!-- Left: Friends list -->
-        <Border Grid.Column="0" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,1,0">
+        <Border Grid.Column="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Classes="H4" Text="Friends" Margin="16,16,16,8" />
                 <TextBox DockPanel.Dock="Top" Watermark="Search friends..." Classes="Clearable" Margin="16,0,16,8">

@@ -10,7 +10,7 @@
              x:Class="Fennec.App.Views.CallsView">
     <Grid ColumnDefinitions="300 *">
         <!-- Left: Call history -->
-        <Border Grid.Column="0" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,1,0">
+        <Border Grid.Column="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Classes="H4" Text="Calls" Margin="16,16,16,8" />
                 <StackPanel Margin="4,0">

@@ -20,11 +20,11 @@
                         Command="{Binding NavigateToCreateServerCommand}">
                     <Grid ColumnDefinitions="Auto *">
                         <StackPanel Orientation="Horizontal" Spacing="16">
-                            <Border Background="{DynamicResource ShadAccent}" CornerRadius="8" Width="48" Height="48"
+                            <Border Background="{DynamicResource SecondaryColor}" CornerRadius="8" Width="48" Height="48"
                                     VerticalAlignment="Center">
                                 <mi:MaterialIcon Kind="Server" Width="24" Height="24"
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource ShadAccentForeground}" />
+                                                 Foreground="{DynamicResource SecondaryForegroundColor}" />
                             </Border>
                             <StackPanel VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Create a Server" FontWeight="Bold" />
@@ -44,11 +44,11 @@
                         Command="{Binding NavigateToJoinServerCommand}">
                     <Grid ColumnDefinitions="Auto *">
                         <StackPanel Orientation="Horizontal" Spacing="16">
-                            <Border Background="{DynamicResource ShadAccent}" CornerRadius="8" Width="48" Height="48"
+                            <Border Background="{DynamicResource SecondaryColor}" CornerRadius="8" Width="48" Height="48"
                                     VerticalAlignment="Center">
                                 <mi:MaterialIcon Kind="LoginVariant" Width="24" Height="24"
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource ShadAccentForeground}" />
+                                                 Foreground="{DynamicResource SecondaryForegroundColor}" />
                             </Border>
                             <StackPanel VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Join a Server" FontWeight="Bold" />
@@ -67,11 +67,11 @@
                 <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16">
                     <Grid ColumnDefinitions="Auto *">
                         <StackPanel Orientation="Horizontal" Spacing="16">
-                            <Border Background="{DynamicResource ShadAccent}" CornerRadius="8" Width="48" Height="48"
+                            <Border Background="{DynamicResource SecondaryColor}" CornerRadius="8" Width="48" Height="48"
                                     VerticalAlignment="Center">
                                 <mi:MaterialIcon Kind="AccountPlus" Width="24" Height="24"
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource ShadAccentForeground}" />
+                                                 Foreground="{DynamicResource SecondaryForegroundColor}" />
                             </Border>
                             <StackPanel VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Add a Friend" FontWeight="Bold" />
