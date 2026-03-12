@@ -47,6 +47,12 @@ public partial class ChannelGroupItem(Guid id, string name, List<ChannelItem> ch
     private string _renamingText = name;
 }
 
+public class AttachmentItem(string fileName, Uri path)
+{
+    public string FileName { get; } = fileName;
+    public Uri Path { get; } = path;
+}
+
 public class MessageItem
 {
     public required Guid MessageId { get; init; }
@@ -98,16 +104,38 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
             case "server.focusMessage":
                 MessageInputFocusRequested?.Invoke();
                 return true;
+            case "server.openEmoji":
+                EmojiPickerRequested?.Invoke();
+                return true;
+            case "server.attachFile":
+                AttachFileRequested?.Invoke();
+                return true;
             default:
                 return false;
         }
     }
 
     public event Action? MessageInputFocusRequested;
+    public event Action? EmojiPickerRequested;
+    public event Action? AttachFileRequested;
 
     public ObservableCollection<ChannelGroupItem> ChannelGroups { get; } = [];
 
     public ObservableCollection<MessageItem> Messages { get; } = [];
+
+    public ObservableCollection<AttachmentItem> Attachments { get; } = [];
+
+    public void AddAttachments(IReadOnlyList<Avalonia.Platform.Storage.IStorageFile> files)
+    {
+        foreach (var file in files)
+            Attachments.Add(new AttachmentItem(file.Name, file.Path));
+    }
+
+    [RelayCommand]
+    private void RemoveAttachment(AttachmentItem item)
+    {
+        Attachments.Remove(item);
+    }
 
     [RelayCommand]
     private async Task SelectChannel(ChannelItem channel)

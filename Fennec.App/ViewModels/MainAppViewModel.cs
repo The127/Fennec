@@ -119,6 +119,8 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
     private ISearchableRoute? _currentSearchableRoute;
 
+    public event Action? SearchFocusRequested;
+
     partial void OnSearchTextChanged(string value)
     {
         _currentSearchableRoute?.ApplySearch(value);
@@ -152,6 +154,9 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
                 return true;
             case "nav.add":
                 NavigateToAddCommand.Execute(null);
+                return true;
+            case "nav.focusSearch":
+                SearchFocusRequested?.Invoke();
                 return true;
             default:
                 return false;

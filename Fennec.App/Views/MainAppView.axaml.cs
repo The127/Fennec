@@ -9,6 +9,12 @@ public partial class MainAppView : UserControl
     public MainAppView()
     {
         InitializeComponent();
+
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is MainAppViewModel vm)
+                vm.SearchFocusRequested += () => SearchBox.Focus();
+        };
     }
 
     private void SearchBox_GotFocus(object? sender, GotFocusEventArgs e)

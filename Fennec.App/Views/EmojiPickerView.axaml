@@ -8,7 +8,8 @@
     <Border Classes="PopupPanel">
         <DockPanel>
             <!-- Search bar -->
-            <TextBox DockPanel.Dock="Top"
+            <TextBox x:Name="SearchBox"
+                     DockPanel.Dock="Top"
                      Watermark="Search emoji..."
                      Text="{Binding SearchText}"
                      Margin="2,2,2,6" />

@@ -3,6 +3,8 @@ using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Avalonia.Threading;
@@ -23,6 +25,7 @@ public partial class ServerView : UserControl
         // Emoji picker setup
         EmojiPicker.DataContext = new EmojiPickerViewModel();
         EmojiPicker.EmojiSelected += InsertEmoji;
+        EmojiButton.Flyout!.Opened += (_, _) => EmojiPicker.FocusSearch();
 
         // Autocomplete setup
         AutocompleteView.DataContext = _autocompleteVm;
@@ -42,6 +45,8 @@ public partial class ServerView : UserControl
             {
                 vm.Messages.CollectionChanged += OnMessagesChanged;
                 vm.MessageInputFocusRequested += () => MessageTextBox.Focus();
+                vm.EmojiPickerRequested += OpenEmojiPicker;
+                vm.AttachFileRequested += () => _ = OpenFilePickerAsync();
             }
         };
 
@@ -87,6 +92,33 @@ public partial class ServerView : UserControl
 
         var newHeight = Math.Clamp(desiredHeight, minHeight, maxHeight);
         ControlAssist.SetHeight(MessageTextBox, newHeight);
+    }
+
+    private void AttachFileButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _ = OpenFilePickerAsync();
+    }
+
+    private async Task OpenFilePickerAsync()
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel is null) return;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Attach files",
+            AllowMultiple = true,
+        });
+
+        if (files.Count > 0 && DataContext is ServerViewModel vm)
+        {
+            vm.AddAttachments(files);
+        }
+    }
+
+    private void OpenEmojiPicker()
+    {
+        EmojiButton.Flyout!.ShowAt(EmojiButton);
     }
 
     private void InsertEmoji(string emoji)

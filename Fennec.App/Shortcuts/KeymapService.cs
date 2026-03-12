@@ -15,7 +15,10 @@ public class KeymapService : IKeymapService
         Register("nav.calls",           "Go to Calls",        "Ctrl+D3",      ShortcutContext.MainApp);
         Register("nav.add",             "Add/Join Server",    "Ctrl+N",       ShortcutContext.MainApp);
         Register("nav.quickNav",        "Quick Navigation",    "Ctrl+K",       ShortcutContext.MainApp);
-        Register("server.focusMessage", "Focus Message Input", "Escape",      ShortcutContext.Server);
+        Register("server.focusMessage", "Focus Message Input", "Escape",       ShortcutContext.Server);
+        Register("server.openEmoji",    "Open Emoji Picker",   "Ctrl+E",       ShortcutContext.Server);
+        Register("server.attachFile",   "Attach File",         "Ctrl+Shift+A", ShortcutContext.Server);
+        Register("nav.focusSearch",     "Focus Search",        "Ctrl+F",       ShortcutContext.MainApp);
     }
 
     private void Register(string id, string displayName, string gesture, ShortcutContext context)
