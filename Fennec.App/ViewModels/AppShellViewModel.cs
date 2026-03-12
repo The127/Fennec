@@ -46,9 +46,10 @@ public partial class AppShellViewModel
         if (currentSession is not null)
         {
             var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider, Messenger);
-            await vm.InitializeAsync();
+            vm.ApplySession(currentSession);
             CurrentViewModel = vm;
             State = AppShellState.LoggedIn;
+            await vm.InitializeAsync();
         }
         else
         {
@@ -63,6 +64,7 @@ public partial class AppShellViewModel
         vm.ApplySession(message.Session);
         CurrentViewModel = vm;
         State = AppShellState.LoggedIn;
+        _ = vm.InitializeAsync();
     }
 
     public void Receive(UserLoggedOutMessage message)

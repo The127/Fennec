@@ -13,7 +13,7 @@ public class MainAppViewModelTests
     private readonly IMessenger _messenger = new WeakReferenceMessenger();
 
     private MainAppViewModel CreateViewModel() =>
-        new(Substitute.For<IRouter>(), Substitute.For<IAuthStore>(), _messenger, _authService);
+        new(Substitute.For<IRouter>(), _messenger, _authService);
 
     [Fact]
     public async Task Logging_out_calls_the_auth_service()

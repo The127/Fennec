@@ -3,7 +3,8 @@
              x:Class="Fennec.App.App"
              xmlns:local="using:Fennec.App"
              RequestedThemeVariant="Default"
-             xmlns:themes="clr-namespace:ShadUI;assembly=ShadUI">
+             xmlns:themes="clr-namespace:ShadUI;assembly=ShadUI"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
@@ -12,5 +13,6 @@
 
     <Application.Styles>
         <themes:ShadTheme />
+        <materialIcons:MaterialIconStyles />
     </Application.Styles>
 </Application>

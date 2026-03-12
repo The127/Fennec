@@ -7,12 +7,13 @@ public class Router(IServiceProvider serviceProvider) : IRouter
 {
     private readonly IRouteStore _routeStore = serviceProvider.GetRequiredService<IRouteStore>();
 
+    public ObservableObject? CurrentViewModel { get; private set; }
     public event EventHandler<ObservableObject>? Navigated;
-
 
     public async Task NavigateAsync(IRoute route, CancellationToken cancellationToken = default)
     {
         var viewModel = await _routeStore.PushAsync(route, cancellationToken);
+        CurrentViewModel = viewModel;
         Navigated?.Invoke(this, viewModel);
     }
 

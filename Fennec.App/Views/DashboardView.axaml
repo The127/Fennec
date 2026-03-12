@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:shadui="using:ShadUI"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             x:DataType="vm:DashboardViewModel"
+             x:Class="Fennec.App.Views.DashboardView">
+    <Grid ColumnDefinitions="* * *" Margin="16">
+        <shadui:Card Grid.Column="0" Margin="0,0,8,0">
+            <StackPanel>
+                <TextBlock Classes="H4" Text="Friend activity" Margin="0,0,0,8" />
+            </StackPanel>
+        </shadui:Card>
+        <shadui:Card Grid.Column="1" Margin="8,0">
+            <StackPanel>
+                <TextBlock Classes="H4" Text="Server activity" Margin="0,0,0,8" />
+            </StackPanel>
+        </shadui:Card>
+        <shadui:Card Grid.Column="2" Margin="8,0,0,0">
+            <StackPanel>
+                <TextBlock Classes="H4" Text="Instance activity" Margin="0,0,0,8" />
+            </StackPanel>
+        </shadui:Card>
+    </Grid>
+</UserControl>

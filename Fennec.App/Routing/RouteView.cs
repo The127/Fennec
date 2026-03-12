@@ -37,6 +37,11 @@ public class RouteView : ContentControl
         if (_router != null)
         {
             _router.Navigated += OnNavigated;
+
+            if (_router.CurrentViewModel is { } current)
+            {
+                Content = current;
+            }
         }
     }
 

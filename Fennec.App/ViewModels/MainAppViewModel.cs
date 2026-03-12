@@ -2,12 +2,13 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
+using Fennec.App.Routes;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 
 namespace Fennec.App.ViewModels;
 
-public partial class MainAppViewModel(IRouter router, IAuthStore authStore, IMessenger messenger, IAuthService authService) : ObservableObject
+public partial class MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService) : ObservableObject
 {
     [ObservableProperty]
     private IRouter _router = router;
@@ -23,10 +24,7 @@ public partial class MainAppViewModel(IRouter router, IAuthStore authStore, IMes
 
     public async Task InitializeAsync()
     {
-        var session = await authStore.GetCurrentAuthSessionAsync();
-        if (session is null) return;
-
-        ApplySession(session);
+        await NavigateToDashboardAsync();
     }
 
     public void ApplySession(AuthSession session)
@@ -34,6 +32,12 @@ public partial class MainAppViewModel(IRouter router, IAuthStore authStore, IMes
         Username = session.Username;
         UserAtServer = $"{session.Username}@{session.Url}";
         AvatarFallback = session.Username[..1].ToUpperInvariant();
+    }
+
+    [RelayCommand]
+    private async Task NavigateToDashboardAsync()
+    {
+        await router.NavigateAsync(new DashboardRoute());
     }
 
     [RelayCommand]
