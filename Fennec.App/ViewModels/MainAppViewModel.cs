@@ -37,6 +37,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private readonly DialogManager _dialogManager;
     private readonly IServerStore _serverStore;
     private readonly IKeymapService _keymapService;
+    private readonly ISettingsStore _settingsStore;
 
     public MainAppViewModel(
         IRouter router,
@@ -47,7 +48,8 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         IExceptionHandler exceptionHandler,
         DialogManager dialogManager,
         IServerStore serverStore,
-        IKeymapService keymapService)
+        IKeymapService keymapService,
+        ISettingsStore settingsStore)
     {
         _routerField = router;
         _router = router;
@@ -59,6 +61,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         _dialogManager = dialogManager;
         _serverStore = serverStore;
         _keymapService = keymapService;
+        _settingsStore = settingsStore;
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
@@ -130,7 +133,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         switch (shortcutId)
         {
             case "app.toggleTheme":
-                ToggleTheme();
+                ToggleThemeCommand.Execute(null);
                 return true;
             case "app.openSettings":
                 OpenSettings();
@@ -268,12 +271,14 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     }
 
     [RelayCommand]
-    private void ToggleTheme()
+    private async Task ToggleThemeAsync()
     {
         var app = Application.Current!;
-        app.RequestedThemeVariant = app.ActualThemeVariant == ThemeVariant.Dark
+        var newTheme = app.ActualThemeVariant == ThemeVariant.Dark
             ? ThemeVariant.Light
             : ThemeVariant.Dark;
+        app.RequestedThemeVariant = newTheme;
+        await _settingsStore.SaveAsync(new AppSettings { Theme = newTheme == ThemeVariant.Dark ? "Dark" : "Light" });
     }
 
     [RelayCommand]
@@ -311,6 +316,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     {
         var vm = new SettingsViewModel(
             _keymapService,
+            _settingsStore,
             Username,
             _session?.Url ?? "");
         _dialogManager.CreateDialog(vm)

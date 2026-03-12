@@ -1,5 +1,7 @@
 ﻿using Avalonia;
+using Fennec.App.Services;
 using Fennec.App.Services.Auth;
+using Fennec.App.Desktop.Services;
 using Fennec.App.Desktop.Services.Auth;
 using Fennec.App.Routing;
 using Fennec.App.Services.Storage;
@@ -27,12 +29,14 @@ sealed class Program
             })
             .UsePlatformDetect()
             .WithInterFont()
+            .WithDeveloperTools()
             .LogToTrace();
     
     private static void ConfigureAdditionalServices(ServiceCollection services)
     {
         services.AddSingleton<IRouteStore>(sp => new MemoryRouteStore(10, 100));
         services.AddSingleton<IAuthStore, DesktopAuthStore>();
+        services.AddSingleton<ISettingsStore, DesktopSettingsStore>();
         
         var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             App.AppName, "app.db");

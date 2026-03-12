@@ -96,6 +96,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        ApplySavedTheme();
+
         var mainViewModel = ActivatorUtilities.CreateInstance<AppShellViewModel>(_services);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -120,6 +122,17 @@ public partial class App : Application
         Task.Run(mainViewModel.InitializeAsync);
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void ApplySavedTheme()
+    {
+        var settingsStore = _services.GetService<ISettingsStore>();
+        if (settingsStore is null) return;
+
+        var settings = Task.Run(() => settingsStore.LoadAsync()).GetAwaiter().GetResult();
+        RequestedThemeVariant = settings.Theme == "Light"
+            ? Avalonia.Styling.ThemeVariant.Light
+            : Avalonia.Styling.ThemeVariant.Dark;
     }
 
     private void DisableAvaloniaDataAnnotationValidation()
