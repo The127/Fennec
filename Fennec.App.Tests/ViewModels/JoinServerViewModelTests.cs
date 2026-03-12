@@ -93,6 +93,21 @@ public class JoinServerViewModelTests
     }
 
     [Fact]
+    public async Task Invite_link_with_port_preserves_port()
+    {
+        var vm = CreateViewModel();
+        vm.InviteLink = "https://localhost:7014/invite/xYz789";
+
+        await vm.JoinServerCommand.ExecuteAsync(null);
+
+        await _serverClient.Received().JoinServerAsync(
+            Arg.Is<JoinServerRequestDto>(r =>
+                r.InviteCode == "xYz789" &&
+                r.InstanceUrl == "localhost:7014"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Api_failure_shows_error_message()
     {
         var vm = CreateViewModel();

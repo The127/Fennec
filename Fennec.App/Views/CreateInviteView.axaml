@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:shadui="using:ShadUI"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             x:DataType="vm:CreateInviteViewModel"
+             x:Class="Fennec.App.Views.CreateInviteView">
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                MaxWidth="400" Spacing="16" Margin="32">
+        <mi:MaterialIcon Kind="LinkVariant" Width="48" Height="48" Opacity="0.5"
+                         HorizontalAlignment="Center" />
+
+        <!-- Before creation -->
+        <StackPanel Spacing="16" IsVisible="{Binding !IsCreated}">
+            <TextBlock Classes="H3" Text="Create Invite Link" HorizontalAlignment="Center" />
+            <TextBlock Classes="Muted" Text="Generate a shareable link for this server."
+                       HorizontalAlignment="Center" Margin="0,0,0,8" />
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Expires after" FontWeight="Bold" FontSize="12" />
+                <ComboBox ItemsSource="{Binding ExpiryOptions}"
+                          SelectedItem="{Binding SelectedExpiry}"
+                          HorizontalAlignment="Stretch" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Max uses (optional)" FontWeight="Bold" FontSize="12" />
+                <TextBox Text="{Binding MaxUsesText}" Watermark="No limit" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+            <Button Content="Create Invite"
+                    Command="{Binding CreateInviteCommand}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Classes="Primary"
+                    IsEnabled="{Binding !IsCreating}" />
+        </StackPanel>
+
+        <!-- After creation -->
+        <StackPanel Spacing="16" IsVisible="{Binding IsCreated}">
+            <TextBlock Classes="H3" Text="Invite Link Ready" HorizontalAlignment="Center" />
+            <TextBlock Classes="Muted" Text="Share this link with anyone you want to invite."
+                       HorizontalAlignment="Center" Margin="0,0,0,8" />
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Invite link" FontWeight="Bold" FontSize="12" />
+                <Grid ColumnDefinitions="* Auto" >
+                    <TextBox Grid.Column="0" Text="{Binding InviteUrl}" IsReadOnly="True" />
+                    <Button Grid.Column="1" Margin="8,0,0,0"
+                            Command="{Binding CopyInviteUrlCommand}"
+                            ToolTip.Tip="Copy to clipboard">
+                        <mi:MaterialIcon Kind="ContentCopy" Width="16" Height="16" />
+                    </Button>
+                </Grid>
+            </StackPanel>
+
+            <Button Content="Done"
+                    Command="{Binding GoBackCommand}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Classes="Primary" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

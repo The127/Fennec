@@ -30,7 +30,7 @@ public class ListUserJoinedServersQueryHandler(
             .Select(x => new ListUserJoinedServersResponse
             {
                 InstanceUrl = x.KnownServer.InstanceUrl,
-                ServerId = x.KnownServer.Id,
+                ServerId = x.KnownServer.RemoteId,
                 Name = x.KnownServer.Name,
             }));
     }

@@ -1,4 +1,5 @@
 using Fennec.Api.FederationClient;
+using HttpExceptions;
 using Fennec.Api.Middlewares;
 using Fennec.Api.Models;
 using Fennec.Api.Services;
@@ -60,8 +61,10 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+app.UseRouting();
 app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseHttpExceptions();
 app.UseHttpsRedirection();
 app.MapControllers();
 

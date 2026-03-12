@@ -63,27 +63,14 @@ public class MainAppViewModelTests
     }
 
     [Fact]
-    public async Task Create_invite_link_calls_api_with_server_id()
+    public async Task Create_invite_link_navigates_to_create_invite_view()
     {
         var serverId = Guid.NewGuid();
         var vm = CreateViewModel();
         var server = new SidebarServer(serverId, "Test", "fennec.chat");
 
-        _serverClient.CreateInviteAsync(
-                Arg.Any<Guid>(),
-                Arg.Any<CreateServerInviteRequestDto>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new CreateServerInviteResponseDto
-            {
-                InviteId = Guid.NewGuid(),
-                Code = "aBcD1234",
-            });
-
         await vm.CreateInviteLinkCommand.ExecuteAsync(server);
 
-        await _serverClient.Received().CreateInviteAsync(
-            serverId,
-            Arg.Any<CreateServerInviteRequestDto>(),
-            Arg.Any<CancellationToken>());
+        await _router.Received().NavigateAsync(Arg.Any<IRoute>());
     }
 }

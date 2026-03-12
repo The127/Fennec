@@ -63,9 +63,11 @@ public class JoinServerCommandTests
                 r.UserInfo.UserId == _userId),
             Arg.Any<CancellationToken>());
 
+        _federationClient.Received().For("https://remote.fennec.chat");
+
         _dbContext.Received().Add(Arg.Is<KnownServer>(k =>
             k.RemoteId == _remoteServerId &&
-            k.InstanceUrl == "remote.fennec.chat" &&
+            k.InstanceUrl == "https://remote.fennec.chat" &&
             k.Name == "Remote Server"));
 
         _dbContext.Received().Add(Arg.Is<UserJoinedKnownServer>(j =>
@@ -78,7 +80,7 @@ public class JoinServerCommandTests
         var existingKnownServer = new KnownServer
         {
             RemoteId = _remoteServerId,
-            InstanceUrl = "remote.fennec.chat",
+            InstanceUrl = "https://remote.fennec.chat",
             Name = "Remote Server",
         };
 

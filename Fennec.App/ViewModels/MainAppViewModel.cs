@@ -98,9 +98,12 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
             });
             _client.SetBearerToken(response.Token);
         }
-        catch
+        catch (Exception ex)
         {
-            // Server unreachable — API calls will fail gracefully.
+            _toastManager.CreateToast("Failed to acquire bearer token")
+                .WithContent(ex.Message)
+                .WithDelay(5)
+                .ShowError();
         }
     }
 
@@ -168,23 +171,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private async Task CreateInviteLinkAsync(SidebarServer server)
     {
         if (_client is null || _session is null) return;
-
-        try
-        {
-            var response = await _client.Server.CreateInviteAsync(server.Id, new CreateServerInviteRequestDto());
-            var inviteUrl = $"https://{_session.Url}/invite/{response.Code}";
-
-            _toastManager.CreateToast("Invite link created")
-                .WithContent(inviteUrl)
-                .WithDelay(5)
-                .ShowInfo();
-        }
-        catch
-        {
-            _toastManager.CreateToast("Failed to create invite link")
-                .WithDelay(3)
-                .ShowError();
-        }
+        await _routerField.NavigateAsync(new CreateInviteRoute(_client, _routerField, _toastManager, server.Id, _session.Url));
     }
 
     [RelayCommand]

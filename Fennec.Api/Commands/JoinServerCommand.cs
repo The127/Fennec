@@ -21,7 +21,11 @@ public class JoinServerCommandHandler(
 {
     public async Task Handle(JoinServerCommand request, CancellationToken cancellationToken)
     {
-        var redeemResponse = await federationClient.For(request.InstanceUrl)
+        var normalizedUrl = request.InstanceUrl.Contains("://")
+            ? request.InstanceUrl
+            : $"https://{request.InstanceUrl}";
+
+        var redeemResponse = await federationClient.For(normalizedUrl)
             .Server.RedeemInviteAsync(new FederationServerController.ServerRedeemInviteFederateRequestDto
             {
                 InviteCode = request.InviteCode,
@@ -34,7 +38,7 @@ public class JoinServerCommandHandler(
 
         var knownServer = await dbContext.Set<KnownServer>()
             .Where(x => x.RemoteId == redeemResponse.ServerId)
-            .Where(x => x.InstanceUrl == request.InstanceUrl)
+            .Where(x => x.InstanceUrl == normalizedUrl)
             .SingleOrDefaultAsync(cancellationToken);
 
         if (knownServer is null)
@@ -42,7 +46,7 @@ public class JoinServerCommandHandler(
             knownServer = new KnownServer
             {
                 RemoteId = redeemResponse.ServerId,
-                InstanceUrl = request.InstanceUrl,
+                InstanceUrl = normalizedUrl,
                 Name = redeemResponse.Name,
             };
             dbContext.Add(knownServer);

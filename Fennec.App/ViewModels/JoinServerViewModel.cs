@@ -44,7 +44,7 @@ public partial class JoinServerViewModel(IFennecClient client, IRouter router, I
             return;
         }
 
-        var instanceUrl = uri.Host;
+        var instanceUrl = uri.Authority;
         var inviteCode = segments[1];
 
         IsJoining = true;

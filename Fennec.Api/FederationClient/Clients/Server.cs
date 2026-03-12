@@ -15,7 +15,8 @@ public class ServerClient(HttpClient httpClient, string instanceUrl) : IServerCl
         FederationServerController.ServerRedeemInviteFederateRequestDto requestDto,
         CancellationToken cancellationToken = default)
     {
-        var uri = new Uri(new Uri(instanceUrl), "federation/v1/server/invite/redeem");
+        var baseUri = instanceUrl.EndsWith('/') ? new Uri(instanceUrl) : new Uri(instanceUrl + "/");
+        var uri = new Uri(baseUri, "federation/v1/server/invite/redeem");
 
         var response = await httpClient.PostAsJsonAsync(uri, requestDto, cancellationToken);
         response.EnsureSuccessStatusCode();
