@@ -53,7 +53,10 @@ public class MessageItem
     public required string AvatarFallback { get; init; }
     public required string CreatedAt { get; init; }
     public required string LocalTime { get; init; }
+    public required string ExactTime { get; init; }
     public required bool ShowAuthor { get; init; }
+    public required bool ShowTimeSeparator { get; init; }
+    public required string TimeSeparatorText { get; init; }
 }
 
 public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, Guid serverId, string serverName, string instanceUrl) : ObservableObject
@@ -221,10 +224,18 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
             Messages.Clear();
 
             Guid? lastAuthorId = null;
+            Instant? lastTimestamp = null;
             foreach (var msg in response.Messages)
             {
-                var showAuthor = msg.AuthorId != lastAuthorId;
+                var parsed = InstantPattern.ExtendedIso.Parse(msg.CreatedAt);
+                var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
+
+                var hasTimeGap = lastTimestamp is not null && timestamp is not null
+                    && (timestamp.Value - lastTimestamp.Value).TotalMinutes >= 5;
+
+                var showAuthor = msg.AuthorId != lastAuthorId || hasTimeGap;
                 lastAuthorId = msg.AuthorId;
+                lastTimestamp = timestamp;
 
                 Messages.Add(new MessageItem
                 {
@@ -235,7 +246,10 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
                     AvatarFallback = msg.AuthorName.Length > 0 ? msg.AuthorName[..1].ToUpper() : "?",
                     CreatedAt = msg.CreatedAt,
                     LocalTime = FormatLocalTime(msg.CreatedAt),
+                    ExactTime = FormatExactTime(msg.CreatedAt),
                     ShowAuthor = showAuthor,
+                    ShowTimeSeparator = hasTimeGap,
+                    TimeSeparatorText = hasTimeGap ? FormatTimeSeparator(msg.CreatedAt) : "",
                 });
             }
         }
@@ -260,6 +274,32 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
             return local.ToString("MMM dd, HH:mm", null);
 
         return local.ToString("yyyy MMM dd, HH:mm", null);
+    }
+
+    private static string FormatExactTime(string instantString)
+    {
+        var result = InstantPattern.ExtendedIso.Parse(instantString);
+        if (!result.Success) return "";
+
+        var local = result.Value.InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
+        return local.ToString("dddd, MMMM d, yyyy 'at' HH:mm:ss", null);
+    }
+
+    private static string FormatTimeSeparator(string instantString)
+    {
+        var result = InstantPattern.ExtendedIso.Parse(instantString);
+        if (!result.Success) return "";
+
+        var local = result.Value.InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
+        var now = SystemClock.Instance.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
+
+        if (local.Date == now.Date)
+            return $"Today at {local.ToString("HH:mm", null)}";
+
+        if (local.Date == now.Date.PlusDays(-1))
+            return $"Yesterday at {local.ToString("HH:mm", null)}";
+
+        return local.ToString("MMMM d, yyyy", null);
     }
 
     internal static string ReplaceShortcodes(string text)

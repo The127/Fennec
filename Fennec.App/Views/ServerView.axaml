@@ -179,11 +179,20 @@
                 </StackPanel>
 
                 <!-- Message list -->
-                <ScrollViewer IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <ScrollViewer x:Name="MessageScrollViewer" IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <ItemsControl ItemsSource="{Binding Messages}" Margin="16,8">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:MessageItem">
                                 <StackPanel>
+                                    <!-- Time separator for messages with a gap -->
+                                    <Grid ColumnDefinitions="* Auto *" Margin="0,16,0,4"
+                                          IsVisible="{Binding ShowTimeSeparator}">
+                                        <Separator Grid.Column="0" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding TimeSeparatorText}"
+                                                   Classes="Muted" FontSize="11" Margin="12,0" />
+                                        <Separator Grid.Column="2" VerticalAlignment="Center" />
+                                    </Grid>
+
                                     <!-- Author header (avatar + name) — only shown for first message in a group -->
                                     <StackPanel Orientation="Horizontal" Spacing="10"
                                                 Margin="0,12,0,4"
@@ -199,7 +208,8 @@
                                     <Border Background="{DynamicResource ShadMuted}"
                                             CornerRadius="8"
                                             Padding="12,8"
-                                            Margin="42,2,48,2">
+                                            Margin="42,2,48,2"
+                                            ToolTip.Tip="{Binding ExactTime}">
                                         <TextBlock Text="{Binding Content}" TextWrapping="Wrap" />
                                     </Border>
                                 </StackPanel>

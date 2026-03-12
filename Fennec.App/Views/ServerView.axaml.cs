@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
+using Avalonia.Threading;
 using Fennec.App.Models;
 using Fennec.App.ViewModels;
 using ShadUI;
@@ -33,6 +35,17 @@ public partial class ServerView : UserControl
             if (args.Property == TextBox.TextProperty || args.Property == Visual.BoundsProperty)
                 AdjustTextBoxHeight();
         };
+
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is ServerViewModel vm)
+                vm.Messages.CollectionChanged += OnMessagesChanged;
+        };
+    }
+
+    private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        Dispatcher.UIThread.Post(() => MessageScrollViewer.ScrollToEnd(), DispatcherPriority.Loaded);
     }
 
     private void AdjustTextBoxHeight()
