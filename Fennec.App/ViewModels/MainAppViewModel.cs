@@ -8,6 +8,7 @@ using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Routes;
 using Fennec.App.Routing;
+using Fennec.App.Services;
 using Fennec.App.Services.Auth;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
@@ -32,8 +33,17 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private readonly ToastManager _toastManager;
     private readonly IExceptionHandler _exceptionHandler;
     private readonly DialogManager _dialogManager;
+    private readonly IServerStore _serverStore;
 
-    public MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService, IClientFactory clientFactory, ToastManager toastManager, IExceptionHandler exceptionHandler, DialogManager dialogManager)
+    public MainAppViewModel(
+        IRouter router, 
+        IMessenger messenger, 
+        IAuthService authService, 
+        IClientFactory clientFactory, 
+        ToastManager toastManager, 
+        IExceptionHandler exceptionHandler, 
+        DialogManager dialogManager,
+        IServerStore serverStore)
     {
         _routerField = router;
         _router = router;
@@ -43,6 +53,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
         _toastManager = toastManager;
         _exceptionHandler = exceptionHandler;
         _dialogManager = dialogManager;
+        _serverStore = serverStore;
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
@@ -102,20 +113,28 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     {
         if (_client is null || _session is null) return;
 
+        var storedServers = await _serverStore.GetJoinedServersAsync();
+        UpdateServersList(storedServers);
+
         try
         {
             var response = await _client.Server.ListJoinedServersAsync(_session.Url);
-
-            Servers.Clear();
-            foreach (var server in response.Servers)
-            {
-                Servers.Add(new SidebarServer(server.Id, server.Name, server.InstanceUrl));
-            }
+            await _serverStore.SetJoinedServersAsync(response.Servers);
+            UpdateServersList(response.Servers);
         }
         catch (Exception ex)
         {
             _exceptionHandler.Handle(ex, "Failed to load servers for user {User} on {Url}", UserAtServer, _session.Url);
-            // Server unreachable — sidebar stays empty.
+        }
+    }
+
+    private void UpdateServersList(List<ListJoinedServersResponseItemDto>? servers)
+    {
+        if (servers == null) return;
+        Servers.Clear();
+        foreach (var server in servers)
+        {
+            Servers.Add(new SidebarServer(server.Id, server.Name, server.InstanceUrl));
         }
     }
 

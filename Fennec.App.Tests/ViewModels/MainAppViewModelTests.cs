@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Routing;
+using Fennec.App.Services;
 using Fennec.App.Services.Auth;
 using Fennec.App.ViewModels;
 using Fennec.Client;
@@ -20,6 +21,7 @@ public class MainAppViewModelTests
     private readonly IClientFactory _clientFactory = Substitute.For<IClientFactory>();
     private readonly IFennecClient _client = Substitute.For<IFennecClient>();
     private readonly IServerClient _serverClient = Substitute.For<IServerClient>();
+    private readonly IServerStore _serverStore = Substitute.For<IServerStore>();
 
     public MainAppViewModelTests()
     {
@@ -27,11 +29,13 @@ public class MainAppViewModelTests
         _client.Server.Returns(_serverClient);
         _serverClient.ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ListJoinedServersResponseDto { Servers = [] });
+        _serverStore.GetJoinedServersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new List<ListJoinedServersResponseItemDto>()));
     }
 
     private MainAppViewModel CreateViewModel()
     {
-        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullExceptionHandler.Instance, new DialogManager());
+        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullExceptionHandler.Instance, new DialogManager(), _serverStore);
         vm.ApplySession(new AuthSession
         {
             Username = "alice",

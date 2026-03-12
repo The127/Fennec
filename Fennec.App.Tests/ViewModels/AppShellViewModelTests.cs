@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.ViewModels;
 using Fennec.App.Routing;
+using Fennec.App.Services;
 using Fennec.App.Services.Auth;
 using Fennec.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,7 @@ public class AppShellViewModelTests
         services.AddSingleton<IMessenger>(_messenger);
         services.AddSingleton(Substitute.For<IAuthService>());
         services.AddSingleton(Substitute.For<IClientFactory>());
+        services.AddSingleton(Substitute.For<IServerStore>());
         services.AddSingleton<IExceptionHandler>(NullExceptionHandler.Instance);
         services.AddSingleton(new ToastManager());
         services.AddSingleton(new DialogManager());

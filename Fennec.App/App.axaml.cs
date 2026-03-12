@@ -6,10 +6,13 @@ using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Exceptions;
 using Fennec.App.Logger;
 using Fennec.App.Routing;
+using Fennec.App.Services;
 using Fennec.App.Services.Auth;
 using Fennec.Client;
+using Fennec.App.Services.Storage;
 using Fennec.App.ViewModels;
 using Fennec.App.Views;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ShadUI;
@@ -35,6 +38,11 @@ public partial class App : Application
         configureAdditionalServices?.Invoke(services);
 
         _services = services.BuildServiceProvider();
+        
+        // Ensure database is created
+        using var scope = _services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.EnsureCreated();
     }
 
     private void ConfigureDefaultServices(ServiceCollection services)
@@ -56,6 +64,7 @@ public partial class App : Application
         services.AddSingleton<IRouter, Router>();
         services.AddSingleton<IClientFactory, ClientFactory>();
         services.AddSingleton<IAuthService, AuthService>();
+        services.AddSingleton<IServerStore, ServerStore>();
         services.AddSingleton<IMessenger>(_ => WeakReferenceMessenger.Default);
     }
 
