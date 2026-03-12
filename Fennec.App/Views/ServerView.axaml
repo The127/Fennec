@@ -128,21 +128,20 @@
                                 <Setter Property="BorderThickness" Value="0" />
                             </Style>
                         </Border.Styles>
-                        <Grid ColumnDefinitions="* Auto">
+                        <Grid ColumnDefinitions="* Auto" MinHeight="32">
                             <TextBox x:Name="MessageTextBox"
                                      Classes="Naked"
                                      Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
                                      Text="{Binding MessageText}"
                                      TextWrapping="Wrap"
-                                     AcceptsReturn="False"
-                                     MaxHeight="200"
                                      Padding="14,8"
+                                     shadui:ControlAssist.Height="100"
                                      KeyDown="MessageBox_KeyDown" />
                             <Button Grid.Column="1"
                                     Classes="Ghost"
-                                    VerticalAlignment="Center"
+                                    VerticalAlignment="Top"
                                     Width="32" Height="32"
-                                    Margin="2,0,6,0"
+                                    Margin="2,4,6,0"
                                     Padding="0"
                                     ToolTip.Tip="Emoji">
                                 <Button.Flyout>

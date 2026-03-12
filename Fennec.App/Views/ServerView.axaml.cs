@@ -1,7 +1,12 @@
+using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using Fennec.App.Models;
 using Fennec.App.ViewModels;
+using ShadUI;
 
 namespace Fennec.App.Views;
 
@@ -25,7 +30,44 @@ public partial class ServerView : UserControl
         {
             if (args.Property == TextBox.TextProperty || args.Property == TextBox.CaretIndexProperty)
                 UpdateAutocomplete();
+            if (args.Property == TextBox.TextProperty || args.Property == Visual.BoundsProperty)
+                AdjustTextBoxHeight();
         };
+    }
+
+    private void AdjustTextBoxHeight()
+    {
+        var text = MessageTextBox.Text ?? "";
+        if (string.IsNullOrEmpty(text))
+            text = " ";
+
+        var availableWidth = MessageTextBox.Bounds.Width
+                             - MessageTextBox.Padding.Left
+                             - MessageTextBox.Padding.Right;
+        if (availableWidth <= 0)
+            return;
+
+        var typeface = new Typeface(
+            MessageTextBox.FontFamily,
+            MessageTextBox.FontStyle,
+            MessageTextBox.FontWeight);
+
+        var textLayout = new TextLayout(
+            text,
+            typeface,
+            MessageTextBox.FontSize,
+            foreground: null,
+            maxWidth: availableWidth,
+            textWrapping: TextWrapping.Wrap);
+
+        var padding = MessageTextBox.Padding.Top + MessageTextBox.Padding.Bottom + 20;
+        var desiredHeight = textLayout.Height + padding;
+
+        const double minHeight = 36.0;
+        const double maxHeight = 200.0;
+
+        var newHeight = Math.Clamp(desiredHeight, minHeight, maxHeight);
+        ControlAssist.SetHeight(MessageTextBox, newHeight);
     }
 
     private void InsertEmoji(string emoji)
@@ -95,7 +137,15 @@ public partial class ServerView : UserControl
             }
         }
 
-        if (e.Key == Key.Enter && DataContext is ServerViewModel vm)
+        if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.Shift)
+        {
+            var caretIndex = MessageTextBox.CaretIndex;
+            var text = MessageTextBox.Text ?? "";
+            MessageTextBox.Text = text.Insert(caretIndex, "\n");
+            MessageTextBox.CaretIndex = caretIndex + 1;
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && DataContext is ServerViewModel vm)
         {
             vm.SendMessageCommand.Execute(null);
             e.Handled = true;
