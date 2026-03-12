@@ -142,7 +142,8 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     [RelayCommand]
     private async Task NavigateToServerAsync(SidebarServer server)
     {
-        await _routerField.NavigateAsync(new ServerRoute(server.Id, server.Name));
+        if (_client is null) return;
+        await _routerField.NavigateAsync(new ServerRoute(_client, server.Id, server.Name));
     }
 
     [RelayCommand]

@@ -13,44 +13,38 @@
         <Border Grid.Column="0" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,1,0">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Classes="H4" Text="{Binding ServerName}" Margin="16,16,16,8" />
-                <StackPanel Margin="4,0">
-                    <TextBlock Classes="Muted" Text="TEXT CHANNELS" FontSize="11" Margin="12,8,0,4" />
-                    <ListBox>
-                        <ListBoxItem IsSelected="True">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <mi:MaterialIcon Kind="Pound" Width="14" Height="14" Opacity="0.5" />
-                                <TextBlock Text="general" />
-                            </StackPanel>
-                        </ListBoxItem>
-                        <ListBoxItem>
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <mi:MaterialIcon Kind="Pound" Width="14" Height="14" Opacity="0.5" />
-                                <TextBlock Text="random" />
-                            </StackPanel>
-                        </ListBoxItem>
-                        <ListBoxItem>
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <mi:MaterialIcon Kind="Pound" Width="14" Height="14" Opacity="0.5" />
-                                <TextBlock Text="help" />
-                            </StackPanel>
-                        </ListBoxItem>
-                    </ListBox>
-                    <TextBlock Classes="Muted" Text="VOICE CHANNELS" FontSize="11" Margin="12,12,0,4" />
-                    <ListBox>
-                        <ListBoxItem>
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <mi:MaterialIcon Kind="VolumeHigh" Width="14" Height="14" Opacity="0.5" />
-                                <TextBlock Text="Lounge" />
-                            </StackPanel>
-                        </ListBoxItem>
-                        <ListBoxItem>
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <mi:MaterialIcon Kind="VolumeHigh" Width="14" Height="14" Opacity="0.5" />
-                                <TextBlock Text="Pair Programming" />
-                            </StackPanel>
-                        </ListBoxItem>
-                    </ListBox>
-                </StackPanel>
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding ChannelGroups}" Margin="4,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ChannelGroupItem">
+                                <StackPanel>
+                                    <TextBlock Classes="Muted" Text="{Binding Name}"
+                                               FontSize="11" Margin="12,12,0,4" />
+                                    <ItemsControl ItemsSource="{Binding Channels}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ChannelItem">
+                                                <Button HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Left"
+                                                        Padding="12,6"
+                                                        Margin="0,1"
+                                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).SelectChannelCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <mi:MaterialIcon Kind="Pound" Width="14" Height="14" Opacity="0.5"
+                                                                         IsVisible="{Binding IsTextOnly}" />
+                                                        <mi:MaterialIcon Kind="VolumeHigh" Width="14" Height="14" Opacity="0.5"
+                                                                         IsVisible="{Binding !IsTextOnly}" />
+                                                        <TextBlock Text="{Binding Name}" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </DockPanel>
         </Border>
 
@@ -59,57 +53,27 @@
             <!-- Channel header -->
             <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,0,1"
                     Padding="16,12">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <mi:MaterialIcon Kind="Pound" Width="16" Height="16" Opacity="0.5" />
-                    <TextBlock Classes="H4" Text="general" />
+                    <TextBlock Classes="H4" Text="{Binding SelectedChannel.Name}" />
                 </StackPanel>
             </Border>
 
             <!-- Message input -->
-            <Border DockPanel.Dock="Bottom" Padding="16,8">
-                <TextBox Watermark="Message #general" Classes="Clearable" />
+            <Border DockPanel.Dock="Bottom" Padding="16,8"
+                    IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBox Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
+                         Classes="Clearable" />
             </Border>
 
-            <!-- Messages -->
-            <ScrollViewer Padding="16,8">
-                <StackPanel Spacing="12">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <shadui:Avatar Fallback="A" Height="32" Width="32" VerticalAlignment="Top" />
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="Alice" FontWeight="Bold" />
-                                <TextBlock Classes="Muted" FontSize="10" Text="Today at 14:32"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                            <TextBlock Text="Has anyone tried the new Fennec federation feature?" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <shadui:Avatar Fallback="B" Height="32" Width="32" VerticalAlignment="Top" />
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="Bob" FontWeight="Bold" />
-                                <TextBlock Classes="Muted" FontSize="10" Text="Today at 14:35"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                            <TextBlock Text="Yeah, I joined a server on another instance yesterday. Works great!"
-                                       TextWrapping="Wrap" />
-                        </StackPanel>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <shadui:Avatar Fallback="C" Height="32" Width="32" VerticalAlignment="Top" />
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="Charlie" FontWeight="Bold" />
-                                <TextBlock Classes="Muted" FontSize="10" Text="Today at 14:38"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                            <TextBlock Text="Nice! How do you discover servers on other instances?"
-                                       TextWrapping="Wrap" />
-                        </StackPanel>
-                    </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
+            <!-- Placeholder -->
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                <mi:MaterialIcon Kind="MessageText" Width="48" Height="48" Opacity="0.3"
+                                 HorizontalAlignment="Center" />
+                <TextBlock Classes="Muted" Text="Select a channel to start chatting"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
         </DockPanel>
     </Grid>
 </UserControl>

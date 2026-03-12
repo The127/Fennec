@@ -19,7 +19,7 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
         var uri = new Uri("api/v1/auth/register", UriKind.Relative);
         
         var response = await httpClient.PostAsJsonAsync(uri, request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
     }
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
@@ -31,7 +31,7 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
             request,
             SharedFennecJsonContext.Default.LoginRequestDto,
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
         
         var responseDto = await response.Content.ReadFromJsonAsync<LoginResponseDto>(
             SharedFennecJsonContext.Default.LoginResponseDto,
@@ -48,7 +48,7 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
             request,
             SharedFennecJsonContext.Default.GetPublicTokenRequestDto,
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
 
         var responseDto = await response.Content.ReadFromJsonAsync<GetPublicTokenResponseDto>(
             SharedFennecJsonContext.Default.GetPublicTokenResponseDto,
@@ -61,6 +61,6 @@ public class AuthClient(HttpClient httpClient) : IAuthClient
         var uri = new Uri("api/v1/auth/logout", UriKind.Relative);
 
         var response = await httpClient.PostAsync(uri, null, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
     }
 }

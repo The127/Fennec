@@ -46,6 +46,10 @@ public partial class CreateServerViewModel(IFennecClient client, IRouter router,
             messenger.Send(new ServerCreatedMessage());
             await router.NavigateBackAsync();
         }
+        catch (ApiException ex)
+        {
+            ErrorMessage = ex.Message;
+        }
         catch (Exception ex)
         {
             ErrorMessage = $"Failed to create server: {ex.Message}";

@@ -12,6 +12,15 @@ public interface IServerClient
     Task<CreateServerInviteResponseDto> CreateInviteAsync(Guid serverId, CreateServerInviteRequestDto requestDto, CancellationToken cancellationToken = default);
     Task<ListServerInvitesResponseDto> ListInvitesAsync(Guid serverId, CancellationToken cancellationToken = default);
     Task DeleteInviteAsync(Guid serverId, Guid inviteId, CancellationToken cancellationToken = default);
+    Task<CreateChannelGroupResponseDto> CreateChannelGroupAsync(Guid serverId, CreateChannelGroupRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task<ListChannelGroupsResponseDto> ListChannelGroupsAsync(Guid serverId, CancellationToken cancellationToken = default);
+    Task RenameChannelGroupAsync(Guid serverId, Guid channelGroupId, RenameChannelGroupRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task DeleteChannelGroupAsync(Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default);
+    Task<CreateChannelResponseDto> CreateChannelAsync(Guid serverId, Guid channelGroupId, CreateChannelRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task<ListChannelsResponseDto> ListChannelsAsync(Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default);
+    Task RenameChannelAsync(Guid serverId, Guid channelGroupId, Guid channelId, RenameChannelRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task UpdateChannelTypeAsync(Guid serverId, Guid channelGroupId, Guid channelId, UpdateChannelTypeRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task DeleteChannelAsync(Guid serverId, Guid channelGroupId, Guid channelId, CancellationToken cancellationToken = default);
 }
 
 public class ServerClient(HttpClient httpClient) : IServerClient
@@ -25,7 +34,7 @@ public class ServerClient(HttpClient httpClient) : IServerClient
             requestDto, 
             SharedFennecJsonContext.Default.CreateServerRequestDto, 
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
         
         var responseDto = await response.Content.ReadFromJsonAsync<CreateServerResponseDto>(
             SharedFennecJsonContext.Default.CreateServerResponseDto,
@@ -42,7 +51,7 @@ public class ServerClient(HttpClient httpClient) : IServerClient
             requestDto,
             SharedFennecJsonContext.Default.JoinServerRequestDto,
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
     }
 
     public async Task<ListJoinedServersResponseDto> ListJoinedServersAsync(CancellationToken cancellationToken = default)
@@ -50,7 +59,7 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         var uri = new Uri("api/v1/servers/joined", UriKind.Relative);
 
         var response = await httpClient.GetAsync(uri, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
 
         var responseDto = await response.Content.ReadFromJsonAsync(
             SharedFennecJsonContext.Default.ListJoinedServersResponseDto,
@@ -67,7 +76,7 @@ public class ServerClient(HttpClient httpClient) : IServerClient
             requestDto,
             SharedFennecJsonContext.Default.CreateServerInviteRequestDto,
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
 
         var responseDto = await response.Content.ReadFromJsonAsync(
             SharedFennecJsonContext.Default.CreateServerInviteResponseDto,
@@ -80,7 +89,7 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         var uri = new Uri($"api/v1/servers/{serverId}/invites", UriKind.Relative);
 
         var response = await httpClient.GetAsync(uri, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
 
         var responseDto = await response.Content.ReadFromJsonAsync(
             SharedFennecJsonContext.Default.ListServerInvitesResponseDto,
@@ -93,6 +102,90 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         var uri = new Uri($"api/v1/servers/{serverId}/invites/{inviteId}", UriKind.Relative);
 
         var response = await httpClient.DeleteAsync(uri, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
+    }
+
+    public async Task<CreateChannelGroupResponseDto> CreateChannelGroupAsync(Guid serverId, CreateChannelGroupRequestDto requestDto, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channel-groups", UriKind.Relative);
+
+        var response = await httpClient.PostAsJsonAsync(uri, requestDto, SharedFennecJsonContext.Default.CreateChannelGroupRequestDto, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+
+        var responseDto = await response.Content.ReadFromJsonAsync(SharedFennecJsonContext.Default.CreateChannelGroupResponseDto, cancellationToken: cancellationToken);
+        return responseDto ?? throw new Exception("Error decoding response.");
+    }
+
+    public async Task<ListChannelGroupsResponseDto> ListChannelGroupsAsync(Guid serverId, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channel-groups", UriKind.Relative);
+
+        var response = await httpClient.GetAsync(uri, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+
+        var responseDto = await response.Content.ReadFromJsonAsync(SharedFennecJsonContext.Default.ListChannelGroupsResponseDto, cancellationToken: cancellationToken);
+        return responseDto ?? throw new Exception("Error decoding response.");
+    }
+
+    public async Task RenameChannelGroupAsync(Guid serverId, Guid channelGroupId, RenameChannelGroupRequestDto requestDto, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channel-groups/{channelGroupId}/name", UriKind.Relative);
+
+        var response = await httpClient.PutAsJsonAsync(uri, requestDto, SharedFennecJsonContext.Default.RenameChannelGroupRequestDto, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+    }
+
+    public async Task DeleteChannelGroupAsync(Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channel-groups/{channelGroupId}", UriKind.Relative);
+
+        var response = await httpClient.DeleteAsync(uri, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+    }
+
+    public async Task<CreateChannelResponseDto> CreateChannelAsync(Guid serverId, Guid channelGroupId, CreateChannelRequestDto requestDto, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channel-groups/{channelGroupId}/channels", UriKind.Relative);
+
+        var response = await httpClient.PostAsJsonAsync(uri, requestDto, SharedFennecJsonContext.Default.CreateChannelRequestDto, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+
+        var responseDto = await response.Content.ReadFromJsonAsync(SharedFennecJsonContext.Default.CreateChannelResponseDto, cancellationToken: cancellationToken);
+        return responseDto ?? throw new Exception("Error decoding response.");
+    }
+
+    public async Task<ListChannelsResponseDto> ListChannelsAsync(Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channel-groups/{channelGroupId}/channels", UriKind.Relative);
+
+        var response = await httpClient.GetAsync(uri, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+
+        var responseDto = await response.Content.ReadFromJsonAsync(SharedFennecJsonContext.Default.ListChannelsResponseDto, cancellationToken: cancellationToken);
+        return responseDto ?? throw new Exception("Error decoding response.");
+    }
+
+    public async Task RenameChannelAsync(Guid serverId, Guid channelGroupId, Guid channelId, RenameChannelRequestDto requestDto, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channel-groups/{channelGroupId}/channels/{channelId}/name", UriKind.Relative);
+
+        var response = await httpClient.PutAsJsonAsync(uri, requestDto, SharedFennecJsonContext.Default.RenameChannelRequestDto, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+    }
+
+    public async Task UpdateChannelTypeAsync(Guid serverId, Guid channelGroupId, Guid channelId, UpdateChannelTypeRequestDto requestDto, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channel-groups/{channelGroupId}/channels/{channelId}/type", UriKind.Relative);
+
+        var response = await httpClient.PutAsJsonAsync(uri, requestDto, SharedFennecJsonContext.Default.UpdateChannelTypeRequestDto, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+    }
+
+    public async Task DeleteChannelAsync(Guid serverId, Guid channelGroupId, Guid channelId, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"api/v1/servers/{serverId}/channel-groups/{channelGroupId}/channels/{channelId}", UriKind.Relative);
+
+        var response = await httpClient.DeleteAsync(uri, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
     }
 }

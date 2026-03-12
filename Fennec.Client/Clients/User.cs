@@ -18,7 +18,7 @@ public class UserClient(HttpClient httpClient) : IUserClient
         var response = await httpClient.GetAsync(
             uri,
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessAsync(cancellationToken);
         
         var responseDto = await response.Content.ReadFromJsonAsync<MeResponseDto>(
             SharedFennecJsonContext.Default.MeResponseDto,

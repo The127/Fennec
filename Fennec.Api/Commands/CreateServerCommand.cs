@@ -1,7 +1,9 @@
-﻿using Fennec.Api.Models;
+﻿using EntityFramework.Exceptions.Common;
+using Fennec.Api.Models;
 using Fennec.Api.Security;
 using Fennec.Api.Settings;
 using Fennec.Shared.Models;
+using HttpExceptions;
 using MediatR;
 using Microsoft.Extensions.Options;
 
@@ -54,6 +56,7 @@ public class CreateServerCommandHandler(
             Name = "default channel",
             ServerId = server.Id,
             ChannelGroupId = defaultGroup.Id,
+            ChannelType = ChannelType.TextAndVoice,
         };
 
         var knownServer = new KnownServer
@@ -70,7 +73,15 @@ public class CreateServerCommandHandler(
         };
 
         dbContext.AddRange(server, member, defaultGroup, defaultChannel, knownServer, joinedKnownServer);
-        await dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueConstraintException)
+        {
+            throw new HttpBadRequestException("Server name already taken");
+        }
         
         return new CreateServerResponse
         {

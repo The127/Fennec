@@ -21,6 +21,15 @@ using System.Text.Json.Serialization;
 [JsonSerializable(typeof(CreateServerInviteRequestDto))]
 [JsonSerializable(typeof(CreateServerInviteResponseDto))]
 [JsonSerializable(typeof(ListServerInvitesResponseDto))]
+[JsonSerializable(typeof(CreateChannelGroupRequestDto))]
+[JsonSerializable(typeof(CreateChannelGroupResponseDto))]
+[JsonSerializable(typeof(RenameChannelGroupRequestDto))]
+[JsonSerializable(typeof(ListChannelGroupsResponseDto))]
+[JsonSerializable(typeof(CreateChannelRequestDto))]
+[JsonSerializable(typeof(CreateChannelResponseDto))]
+[JsonSerializable(typeof(RenameChannelRequestDto))]
+[JsonSerializable(typeof(UpdateChannelTypeRequestDto))]
+[JsonSerializable(typeof(ListChannelsResponseDto))]
 public partial class SharedFennecJsonContext : JsonSerializerContext
 {
 }
