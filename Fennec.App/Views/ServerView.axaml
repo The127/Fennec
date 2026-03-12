@@ -145,7 +145,8 @@
                                     Padding="0"
                                     ToolTip.Tip="Emoji">
                                 <Button.Flyout>
-                                    <Flyout Placement="TopEdgeAlignedRight" ShowMode="TransientWithDismissOnPointerMoveAway">
+                                    <Flyout Placement="TopEdgeAlignedRight" ShowMode="TransientWithDismissOnPointerMoveAway"
+                                           FlyoutPresenterClasses="PopupPanel">
                                         <views:EmojiPickerView x:Name="EmojiPicker" />
                                     </Flyout>
                                 </Button.Flyout>

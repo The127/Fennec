@@ -24,5 +24,13 @@
             <Setter Property="BoxShadow" Value="0 8 24 0 #30000000" />
             <Setter Property="Padding" Value="6" />
         </Style>
+
+        <!-- Make flyout presenter transparent so PopupPanel styling shows through -->
+        <Style Selector="FlyoutPresenter.PopupPanel">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="12" />
+        </Style>
     </Application.Styles>
 </Application>
