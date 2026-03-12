@@ -80,7 +80,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     {
         await LoadServersAsync();
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, serverId, serverName));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, serverId, serverName, _session!.Url));
     }
 
     public void Receive(ServerJoinedMessage message)
@@ -135,7 +135,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private async Task NavigateToServerAsync(SidebarServer server)
     {
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, server.Id, server.Name));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, server.Id, server.Name, server.InstanceUrl));
     }
 
     [RelayCommand]

@@ -19,14 +19,14 @@ public class ServerViewModelTests
         _client.Server.Returns(_serverClient);
     }
 
-    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverId, "Test Server");
+    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverId, "Test Server", "https://fennec.chat");
 
     [Fact]
     public async Task Loading_populates_channel_groups_with_channels()
     {
         var groupId = Guid.NewGuid();
 
-        _serverClient.ListChannelGroupsAsync(_serverId, Arg.Any<CancellationToken>())
+        _serverClient.ListChannelGroupsAsync(Arg.Any<string>(), _serverId, Arg.Any<CancellationToken>())
             .Returns(new ListChannelGroupsResponseDto
             {
                 ChannelGroups =
@@ -35,7 +35,7 @@ public class ServerViewModelTests
                 ],
             });
 
-        _serverClient.ListChannelsAsync(_serverId, groupId, Arg.Any<CancellationToken>())
+        _serverClient.ListChannelsAsync(Arg.Any<string>(), _serverId, groupId, Arg.Any<CancellationToken>())
             .Returns(new ListChannelsResponseDto
             {
                 Channels =
@@ -66,7 +66,7 @@ public class ServerViewModelTests
         var group1Id = Guid.NewGuid();
         var group2Id = Guid.NewGuid();
 
-        _serverClient.ListChannelGroupsAsync(_serverId, Arg.Any<CancellationToken>())
+        _serverClient.ListChannelGroupsAsync(Arg.Any<string>(), _serverId, Arg.Any<CancellationToken>())
             .Returns(new ListChannelGroupsResponseDto
             {
                 ChannelGroups =
@@ -76,7 +76,7 @@ public class ServerViewModelTests
                 ],
             });
 
-        _serverClient.ListChannelsAsync(_serverId, group1Id, Arg.Any<CancellationToken>())
+        _serverClient.ListChannelsAsync(Arg.Any<string>(), _serverId, group1Id, Arg.Any<CancellationToken>())
             .Returns(new ListChannelsResponseDto
             {
                 Channels =
@@ -86,7 +86,7 @@ public class ServerViewModelTests
                 ],
             });
 
-        _serverClient.ListChannelsAsync(_serverId, group2Id, Arg.Any<CancellationToken>())
+        _serverClient.ListChannelsAsync(Arg.Any<string>(), _serverId, group2Id, Arg.Any<CancellationToken>())
             .Returns(new ListChannelsResponseDto
             {
                 Channels =
@@ -109,13 +109,13 @@ public class ServerViewModelTests
         var groupId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        _serverClient.ListChannelGroupsAsync(_serverId, Arg.Any<CancellationToken>())
+        _serverClient.ListChannelGroupsAsync(Arg.Any<string>(), _serverId, Arg.Any<CancellationToken>())
             .Returns(new ListChannelGroupsResponseDto
             {
                 ChannelGroups = [new ListChannelGroupsResponseItemDto { ChannelGroupId = groupId, Name = "default" }],
             });
 
-        _serverClient.ListChannelsAsync(_serverId, groupId, Arg.Any<CancellationToken>())
+        _serverClient.ListChannelsAsync(Arg.Any<string>(), _serverId, groupId, Arg.Any<CancellationToken>())
             .Returns(new ListChannelsResponseDto
             {
                 Channels =
@@ -134,7 +134,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task Api_failure_leaves_channel_groups_empty()
     {
-        _serverClient.ListChannelGroupsAsync(_serverId, Arg.Any<CancellationToken>())
+        _serverClient.ListChannelGroupsAsync(Arg.Any<string>(), _serverId, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<ListChannelGroupsResponseDto>(new Exception("Network error")));
 
         var vm = CreateViewModel();

@@ -54,7 +54,7 @@ public class MessageItem
     public required bool ShowAuthor { get; init; }
 }
 
-public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, Guid serverId, string serverName) : ObservableObject
+public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, Guid serverId, string serverName, string instanceUrl) : ObservableObject
 {
     [ObservableProperty]
     private string _serverName = serverName;
@@ -87,7 +87,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
     {
         try
         {
-            await client.Server.CreateChannelGroupAsync(ServerId, new CreateChannelGroupRequestDto
+            await client.Server.CreateChannelGroupAsync(instanceUrl, ServerId, new CreateChannelGroupRequestDto
             {
                 Name = "New Group",
             });
@@ -133,7 +133,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
 
         try
         {
-            await client.Server.RenameChannelGroupAsync(ServerId, group.Id, new RenameChannelGroupRequestDto
+            await client.Server.RenameChannelGroupAsync(instanceUrl, ServerId, group.Id, new RenameChannelGroupRequestDto
             {
                 Name = newName,
             });
@@ -166,7 +166,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
             {
                 try
                 {
-                    await client.Server.CreateChannelAsync(ServerId, group.Id, new CreateChannelRequestDto
+                    await client.Server.CreateChannelAsync(instanceUrl, ServerId, group.Id, new CreateChannelRequestDto
                     {
                         Name = ctx.ChannelName.Trim(),
                         ChannelType = ctx.ChannelType,
@@ -193,7 +193,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
 
         try
         {
-            await client.Server.SendMessageAsync(ServerId, SelectedChannel.Id, new SendMessageRequestDto
+            await client.Server.SendMessageAsync(instanceUrl, ServerId, SelectedChannel.Id, new SendMessageRequestDto
             {
                 Content = content,
             });
@@ -214,7 +214,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
 
         try
         {
-            var response = await client.Server.ListMessagesAsync(ServerId, SelectedChannel.Id);
+            var response = await client.Server.ListMessagesAsync(instanceUrl, ServerId, SelectedChannel.Id);
 
             Messages.Clear();
 
@@ -264,13 +264,13 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
     {
         try
         {
-            var groupsResponse = await client.Server.ListChannelGroupsAsync(ServerId);
+            var groupsResponse = await client.Server.ListChannelGroupsAsync(instanceUrl, ServerId);
 
             ChannelGroups.Clear();
 
             foreach (var group in groupsResponse.ChannelGroups)
             {
-                var channelsResponse = await client.Server.ListChannelsAsync(ServerId, group.ChannelGroupId);
+                var channelsResponse = await client.Server.ListChannelsAsync(instanceUrl, ServerId, group.ChannelGroupId);
 
                 var channels = channelsResponse.Channels
                     .Select(c => new ChannelItem(c.ChannelId, c.Name, c.ChannelType, c.ChannelGroupId))
