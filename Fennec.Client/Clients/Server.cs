@@ -8,6 +8,7 @@ public interface IServerClient
 {
     Task<CreateServerResponseDto> CreateServerAsync(CreateServerRequestDto requestDto, CancellationToken cancellationToken = default);
     Task JoinServerAsync(JoinServerRequestDto requestDto, CancellationToken cancellationToken = default);
+    Task<ListJoinedServersResponseDto> ListJoinedServersAsync(CancellationToken cancellationToken = default);
 }
 
 public class ServerClient(HttpClient httpClient) : IServerClient
@@ -34,10 +35,23 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         var uri = new Uri("api/v1/servers/join", UriKind.Relative);
 
         var response = await httpClient.PostAsJsonAsync(
-            uri, 
-            requestDto, 
+            uri,
+            requestDto,
             SharedFennecJsonContext.Default.JoinServerRequestDto,
             cancellationToken);
         response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<ListJoinedServersResponseDto> ListJoinedServersAsync(CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri("api/v1/servers/joined", UriKind.Relative);
+
+        var response = await httpClient.GetAsync(uri, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var responseDto = await response.Content.ReadFromJsonAsync(
+            SharedFennecJsonContext.Default.ListJoinedServersResponseDto,
+            cancellationToken: cancellationToken);
+        return responseDto ?? throw new Exception("Error decoding response.");
     }
 }

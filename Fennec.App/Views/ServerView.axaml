@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:shadui="using:ShadUI"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             x:DataType="vm:ServerViewModel"
+             x:Class="Fennec.App.Views.ServerView">
+    <Grid ColumnDefinitions="240 *">
+        <!-- Left: Channels -->
+        <Border Grid.Column="0" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Classes="H4" Text="{Binding ServerName}" Margin="16,16,16,8" />
+                <StackPanel Margin="4,0">
+                    <TextBlock Classes="Muted" Text="TEXT CHANNELS" FontSize="11" Margin="12,8,0,4" />
+                    <ListBox>
+                        <ListBoxItem IsSelected="True">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <mi:MaterialIcon Kind="Pound" Width="14" Height="14" Opacity="0.5" />
+                                <TextBlock Text="general" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <mi:MaterialIcon Kind="Pound" Width="14" Height="14" Opacity="0.5" />
+                                <TextBlock Text="random" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <mi:MaterialIcon Kind="Pound" Width="14" Height="14" Opacity="0.5" />
+                                <TextBlock Text="help" />
+                            </StackPanel>
+                        </ListBoxItem>
+                    </ListBox>
+                    <TextBlock Classes="Muted" Text="VOICE CHANNELS" FontSize="11" Margin="12,12,0,4" />
+                    <ListBox>
+                        <ListBoxItem>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <mi:MaterialIcon Kind="VolumeHigh" Width="14" Height="14" Opacity="0.5" />
+                                <TextBlock Text="Lounge" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <mi:MaterialIcon Kind="VolumeHigh" Width="14" Height="14" Opacity="0.5" />
+                                <TextBlock Text="Pair Programming" />
+                            </StackPanel>
+                        </ListBoxItem>
+                    </ListBox>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Right: Chat area -->
+        <DockPanel Grid.Column="1">
+            <!-- Channel header -->
+            <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,0,1"
+                    Padding="16,12">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <mi:MaterialIcon Kind="Pound" Width="16" Height="16" Opacity="0.5" />
+                    <TextBlock Classes="H4" Text="general" />
+                </StackPanel>
+            </Border>
+
+            <!-- Message input -->
+            <Border DockPanel.Dock="Bottom" Padding="16,8">
+                <TextBox Watermark="Message #general" Classes="Clearable" />
+            </Border>
+
+            <!-- Messages -->
+            <ScrollViewer Padding="16,8">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <shadui:Avatar Fallback="A" Height="32" Width="32" VerticalAlignment="Top" />
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Alice" FontWeight="Bold" />
+                                <TextBlock Classes="Muted" FontSize="10" Text="Today at 14:32"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Text="Has anyone tried the new Fennec federation feature?" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <shadui:Avatar Fallback="B" Height="32" Width="32" VerticalAlignment="Top" />
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Bob" FontWeight="Bold" />
+                                <TextBlock Classes="Muted" FontSize="10" Text="Today at 14:35"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Text="Yeah, I joined a server on another instance yesterday. Works great!"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <shadui:Avatar Fallback="C" Height="32" Width="32" VerticalAlignment="Top" />
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Charlie" FontWeight="Bold" />
+                                <TextBlock Classes="Muted" FontSize="10" Text="Today at 14:38"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Text="Nice! How do you discover servers on other instances?"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Grid>
+</UserControl>

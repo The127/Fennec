@@ -3,6 +3,7 @@ using Fennec.App.Messages;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 using Fennec.App.ViewModels;
+using Fennec.Client;
 using NSubstitute;
 
 namespace Fennec.App.Tests.ViewModels;
@@ -13,7 +14,7 @@ public class MainAppViewModelTests
     private readonly IMessenger _messenger = new WeakReferenceMessenger();
 
     private MainAppViewModel CreateViewModel() =>
-        new(Substitute.For<IRouter>(), _messenger, _authService);
+        new(Substitute.For<IRouter>(), _messenger, _authService, Substitute.For<IClientFactory>());
 
     [Fact]
     public async Task Logging_out_calls_the_auth_service()

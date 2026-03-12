@@ -1,0 +1,87 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:shadui="using:ShadUI"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             x:DataType="vm:FriendsViewModel"
+             x:Class="Fennec.App.Views.FriendsView">
+    <Grid ColumnDefinitions="240 *">
+        <!-- Left: Friends list -->
+        <Border Grid.Column="0" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Classes="H4" Text="Friends" Margin="16,16,16,8" />
+                <TextBox DockPanel.Dock="Top" Watermark="Search friends..." Classes="Clearable" Margin="16,0,16,8">
+                    <TextBox.InnerRightContent>
+                        <PathIcon Data="{x:Static shadui:Icons.Search}" Opacity="0.75" Width="14" />
+                    </TextBox.InnerRightContent>
+                </TextBox>
+
+                <StackPanel Margin="8,4">
+                    <!-- Online section -->
+                    <TextBlock Classes="Muted" Text="ONLINE — 3" FontSize="11" Margin="8,8,0,4" />
+                    <ListBox>
+                        <ListBoxItem>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <shadui:Avatar Fallback="A" Height="32" Width="32" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Alice" />
+                                    <TextBlock Classes="Muted" FontSize="10" Text="Playing a game" />
+                                </StackPanel>
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <shadui:Avatar Fallback="B" Height="32" Width="32" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Bob" />
+                                    <TextBlock Classes="Muted" FontSize="10" Text="Online" />
+                                </StackPanel>
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <shadui:Avatar Fallback="C" Height="32" Width="32" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Charlie" />
+                                    <TextBlock Classes="Muted" FontSize="10" Text="Idle" />
+                                </StackPanel>
+                            </StackPanel>
+                        </ListBoxItem>
+                    </ListBox>
+
+                    <!-- Offline section -->
+                    <TextBlock Classes="Muted" Text="OFFLINE — 2" FontSize="11" Margin="8,12,0,4" />
+                    <ListBox>
+                        <ListBoxItem>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <shadui:Avatar Fallback="D" Height="32" Width="32" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Diana" Opacity="0.5" />
+                                </StackPanel>
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <shadui:Avatar Fallback="E" Height="32" Width="32" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Eve" Opacity="0.5" />
+                                </StackPanel>
+                            </StackPanel>
+                        </ListBoxItem>
+                    </ListBox>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Right: Selected friend / empty state -->
+        <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+            <mi:MaterialIcon Kind="AccountGroup" Width="48" Height="48" Opacity="0.3"
+                             HorizontalAlignment="Center" />
+            <TextBlock Classes="Muted" Text="Select a friend to start chatting"
+                       HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</UserControl>

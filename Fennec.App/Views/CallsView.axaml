@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:shadui="using:ShadUI"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             x:DataType="vm:CallsViewModel"
+             x:Class="Fennec.App.Views.CallsView">
+    <Grid ColumnDefinitions="300 *">
+        <!-- Left: Call history -->
+        <Border Grid.Column="0" BorderBrush="{DynamicResource ShadBorder}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Classes="H4" Text="Calls" Margin="16,16,16,8" />
+                <StackPanel Margin="4,0">
+                    <ListBox>
+                        <ListBoxItem>
+                            <Grid ColumnDefinitions="Auto * Auto">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <shadui:Avatar Fallback="A" Height="32" Width="32" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Alice" />
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <mi:MaterialIcon Kind="PhoneOutgoing" Width="12" Height="12"
+                                                             Opacity="0.5" />
+                                            <TextBlock Classes="Muted" FontSize="10" Text="Outgoing — 12 min" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Classes="Muted" FontSize="10" Text="Today"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <Grid ColumnDefinitions="Auto * Auto">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <shadui:Avatar Fallback="B" Height="32" Width="32" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Bob" />
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <mi:MaterialIcon Kind="PhoneIncoming" Width="12" Height="12"
+                                                             Opacity="0.5" />
+                                            <TextBlock Classes="Muted" FontSize="10" Text="Incoming — 5 min" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Classes="Muted" FontSize="10" Text="Yesterday"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <Grid ColumnDefinitions="Auto * Auto">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <shadui:Avatar Fallback="C" Height="32" Width="32" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Charlie" />
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <mi:MaterialIcon Kind="PhoneMissed" Width="12" Height="12"
+                                                             Opacity="0.5" />
+                                            <TextBlock Classes="Muted" FontSize="10" Text="Missed" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Classes="Muted" FontSize="10" Text="Mar 9"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </ListBoxItem>
+                    </ListBox>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Right: Empty state -->
+        <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+            <mi:MaterialIcon Kind="Phone" Width="48" Height="48" Opacity="0.3"
+                             HorizontalAlignment="Center" />
+            <TextBlock Classes="Muted" Text="Select a call or start a new one"
+                       HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</UserControl>

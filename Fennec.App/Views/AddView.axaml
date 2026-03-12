@@ -1,0 +1,88 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:shadui="using:ShadUI"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             x:DataType="vm:AddViewModel"
+             x:Class="Fennec.App.Views.AddView">
+    <ScrollViewer HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="16" MaxWidth="500" Margin="32">
+            <TextBlock Classes="H3" Text="Create something new" HorizontalAlignment="Center" />
+            <TextBlock Classes="Muted" Text="Choose what you'd like to do" HorizontalAlignment="Center"
+                       Margin="0,0,0,8" />
+
+            <!-- Create Server -->
+            <shadui:Card>
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16"
+                        Command="{Binding NavigateToCreateServerCommand}">
+                    <Grid ColumnDefinitions="Auto *">
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <Border Background="{DynamicResource ShadAccent}" CornerRadius="8" Width="48" Height="48"
+                                    VerticalAlignment="Center">
+                                <mi:MaterialIcon Kind="Server" Width="24" Height="24"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource ShadAccentForeground}" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="Create a Server" FontWeight="Bold" />
+                                <TextBlock Classes="Muted" FontSize="12"
+                                           Text="Start a new community for your friends" />
+                            </StackPanel>
+                        </StackPanel>
+                        <mi:MaterialIcon Grid.Column="1" Kind="ChevronRight" Width="20" Height="20"
+                                         HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.5" />
+                    </Grid>
+                </Button>
+            </shadui:Card>
+
+            <!-- Join Server -->
+            <shadui:Card>
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16">
+                    <Grid ColumnDefinitions="Auto *">
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <Border Background="{DynamicResource ShadAccent}" CornerRadius="8" Width="48" Height="48"
+                                    VerticalAlignment="Center">
+                                <mi:MaterialIcon Kind="LoginVariant" Width="24" Height="24"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource ShadAccentForeground}" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="Join a Server" FontWeight="Bold" />
+                                <TextBlock Classes="Muted" FontSize="12"
+                                           Text="Enter a server ID to join — local or federated" />
+                            </StackPanel>
+                        </StackPanel>
+                        <mi:MaterialIcon Grid.Column="1" Kind="ChevronRight" Width="20" Height="20"
+                                         HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.5" />
+                    </Grid>
+                </Button>
+            </shadui:Card>
+
+            <!-- Add Friend -->
+            <shadui:Card>
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16">
+                    <Grid ColumnDefinitions="Auto *">
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <Border Background="{DynamicResource ShadAccent}" CornerRadius="8" Width="48" Height="48"
+                                    VerticalAlignment="Center">
+                                <mi:MaterialIcon Kind="AccountPlus" Width="24" Height="24"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource ShadAccentForeground}" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="Add a Friend" FontWeight="Bold" />
+                                <TextBlock Classes="Muted" FontSize="12"
+                                           Text="Send a friend request by username" />
+                            </StackPanel>
+                        </StackPanel>
+                        <mi:MaterialIcon Grid.Column="1" Kind="ChevronRight" Width="20" Height="20"
+                                         HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.5" />
+                    </Grid>
+                </Button>
+            </shadui:Card>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -3,6 +3,7 @@ using Fennec.App.Messages;
 using Fennec.App.ViewModels;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
+using Fennec.Client;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using ShadUI;
@@ -21,6 +22,7 @@ public class AppShellViewModelTests
         services.AddSingleton(Substitute.For<IRouter>());
         services.AddSingleton<IMessenger>(_messenger);
         services.AddSingleton(Substitute.For<IAuthService>());
+        services.AddSingleton(Substitute.For<IClientFactory>());
         services.AddSingleton(new ToastManager());
         services.AddLogging();
         var sp = services.BuildServiceProvider();

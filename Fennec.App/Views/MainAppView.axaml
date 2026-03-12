@@ -19,17 +19,28 @@
                     <Button Height="40" Width="40" Command="{Binding NavigateToDashboardCommand}">
                         <ctrls:FennecLogo/>
                     </Button>
-                    <Button Height="40" Width="40">
+                    <Button Height="40" Width="40" Command="{Binding NavigateToFriendsCommand}">
                         <mi:MaterialIcon Kind="AccountGroup" Width="20" Height="20" />
                     </Button>
-                    <Button Height="40" Width="40">
-                        <mi:MaterialIcon Kind="Server" Width="20" Height="20" />
-                    </Button>
-                    <Button Height="40" Width="40">
+                    <Separator Margin="4,4" />
+                    <ItemsControl ItemsSource="{Binding Servers}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SidebarServer">
+                                <Button Height="40" Width="40" Margin="0,0,0,8"
+                                        Command="{Binding $parent[UserControl].((vm:MainAppViewModel)DataContext).NavigateToServerCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="{Binding Name}">
+                                    <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="32" Width="32" />
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Separator Margin="4,0,4,4" />
+                    <Button Height="40" Width="40" Command="{Binding NavigateToAddCommand}">
                         <mi:MaterialIcon Kind="Plus" Width="20" Height="20" />
                     </Button>
                 </StackPanel>
-                <Button DockPanel.Dock="Bottom" Height="40" Width="40">
+                <Button DockPanel.Dock="Bottom" Height="40" Width="40" Command="{Binding NavigateToCallsCommand}">
                     <mi:MaterialIcon Kind="Phone" Width="20" Height="20" />
                 </Button>
             </DockPanel>
