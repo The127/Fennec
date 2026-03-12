@@ -10,10 +10,14 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
-                <ResourceInclude x:Key="{x:Static local:ThemeKeys.Dracula}" Source="avares://Fennec.App/Themes/Dracula.axaml" />
-                <ResourceInclude x:Key="{x:Static local:ThemeKeys.Nord}" Source="avares://Fennec.App/Themes/Nord.axaml" />
-                <ResourceInclude x:Key="{x:Static local:ThemeKeys.Gruvbox}" Source="avares://Fennec.App/Themes/Gruvbox.axaml" />
-                <ResourceInclude x:Key="{x:Static local:ThemeKeys.CatppuccinMocha}" Source="avares://Fennec.App/Themes/CatppuccinMocha.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.DraculaDark}" Source="avares://Fennec.App/Themes/Dracula.Dark.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.DraculaLight}" Source="avares://Fennec.App/Themes/Dracula.Light.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.NordDark}" Source="avares://Fennec.App/Themes/Nord.Dark.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.NordLight}" Source="avares://Fennec.App/Themes/Nord.Light.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.GruvboxDark}" Source="avares://Fennec.App/Themes/Gruvbox.Dark.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.GruvboxLight}" Source="avares://Fennec.App/Themes/Gruvbox.Light.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.CatppuccinMochaDark}" Source="avares://Fennec.App/Themes/CatppuccinMocha.Dark.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.CatppuccinMochaLight}" Source="avares://Fennec.App/Themes/CatppuccinMocha.Light.axaml" />
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </Application.Resources>

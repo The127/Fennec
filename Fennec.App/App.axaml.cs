@@ -131,7 +131,7 @@ public partial class App : Application
         if (settingsStore is null) return;
 
         var settings = Task.Run(() => settingsStore.LoadAsync()).GetAwaiter().GetResult();
-        RequestedThemeVariant = AppThemes.FromName(settings.Theme);
+        RequestedThemeVariant = AppThemes.Resolve(settings.Theme, settings.ThemeMode);
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

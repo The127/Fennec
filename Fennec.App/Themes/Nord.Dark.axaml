@@ -1,21 +1,25 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Nord: https://www.nordtheme.com -->
+    <!-- Nord Dark — https://www.nordtheme.com/docs/colors-and-palettes
+         Polar Night: nord0 #2E3440, nord1 #3B4252, nord2 #434C5E, nord3 #4C566A
+         Snow Storm:  nord4 #D8DEE9, nord5 #E5E9F0, nord6 #ECEFF4
+         Frost:       nord7 #8FBCBB, nord8 #88C0D0, nord9 #81A1C1, nord10 #5E81AC
+         Aurora:      nord11 #BF616A, nord12 #D08770, nord13 #EBCB8B, nord14 #A3BE8C, nord15 #B48EAD -->
 
     <!-- basic colors -->
     <Color x:Key="ForegroundColor">#ECEFF4</Color>
     <Color x:Key="ForegroundLeadColor">#D8DEE9</Color>
-    <Color x:Key="MutedColor">#7B88A1</Color>
+    <Color x:Key="MutedColor">#4C566A</Color>
     <Color x:Key="BorderColor">#3B4252</Color>
-    <Color x:Key="BorderColor60">#353B49</Color>
+    <Color x:Key="BorderColor60">#434C5E</Color>
     <Color x:Key="BorderColor30">#4C3B4252</Color>
     <Color x:Key="OutlineColor">#434C5E</Color>
     <Color x:Key="GhostColor">#3B4252</Color>
     <Color x:Key="GhostHoverColor">#7F3B4252</Color>
     <Color x:Key="SelectionColor">#0CECEFF4</Color>
 
-    <!-- theme colors -->
+    <!-- theme colors — primary=nord8 Frost, destructive=nord11 Aurora Red -->
     <Color x:Key="PrimaryColor">#88C0D0</Color>
     <Color x:Key="PrimaryColor75">#BF88C0D0</Color>
     <Color x:Key="PrimaryColor50">#8088C0D0</Color>
@@ -31,7 +35,7 @@
     <Color x:Key="DestructiveColor10">#19BF616A</Color>
     <Color x:Key="DestructiveForegroundColor">#ECEFF4</Color>
 
-    <!-- specific control colors -->
+    <!-- control colors -->
     <Color x:Key="CardBackgroundColor">#3B4252</Color>
     <Color x:Key="DialogBackgroundColor">#2E3440</Color>
     <Color x:Key="DialogOverlayColor">#000000</Color>
@@ -43,7 +47,7 @@
     <Color x:Key="TabItemSelectedColor">#2E3440</Color>
     <Color x:Key="TabItemsBackgroundColor">#434C5E</Color>
 
-    <!-- notification colors -->
+    <!-- notification colors — Aurora palette -->
     <Color x:Key="InfoColor">#5E81AC</Color>
     <Color x:Key="SuccessColor">#A3BE8C</Color>
     <Color x:Key="WarningColor">#EBCB8B</Color>

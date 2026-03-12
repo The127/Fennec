@@ -13,10 +13,10 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private SettingsCategory? _selectedCategory;
 
-    public SettingsViewModel(IKeymapService keymapService, ISettingsStore settingsStore, string username, string serverUrl)
+    public SettingsViewModel(IKeymapService keymapService, ISettingsStore settingsStore, AppSettings currentSettings, string username, string serverUrl)
     {
         Categories.Add(new SettingsCategory("Account", MaterialIconKind.Account, new AccountSettingsViewModel(username, serverUrl)));
-        Categories.Add(new SettingsCategory("Appearance", MaterialIconKind.Palette, new AppearanceSettingsViewModel(settingsStore)));
+        Categories.Add(new SettingsCategory("Appearance", MaterialIconKind.Palette, new AppearanceSettingsViewModel(settingsStore, currentSettings)));
         Categories.Add(new SettingsCategory("Keybindings", MaterialIconKind.Keyboard, new KeybindingsSettingsViewModel(keymapService)));
 
         SelectedCategory = Categories[0];

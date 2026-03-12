@@ -9,8 +9,20 @@
     <StackPanel Spacing="16" Margin="0,8">
         <StackPanel Spacing="8">
             <TextBlock Text="Theme" FontWeight="SemiBold" />
-            <ComboBox ItemsSource="{Binding AvailableThemes}"
-                      SelectedItem="{Binding SelectedTheme}"
+            <ComboBox ItemsSource="{Binding AvailablePalettes}"
+                      SelectedItem="{Binding SelectedPalette}"
+                      MinWidth="200">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+        <StackPanel Spacing="8">
+            <TextBlock Text="Mode" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding AvailableModes}"
+                      SelectedItem="{Binding SelectedMode}"
                       MinWidth="200">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>

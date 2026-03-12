@@ -139,7 +139,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
                 ToggleThemeCommand.Execute(null);
                 return true;
             case "app.openSettings":
-                OpenSettings();
+                OpenSettingsCommand.Execute(null);
                 return true;
             case "nav.quickNav":
                 OpenQuickNavCommand.Execute(null);
@@ -280,11 +280,12 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private async Task ToggleThemeAsync()
     {
         var app = Application.Current!;
-        var themes = AppThemes.AllThemes;
-        var currentIndex = themes.ToList().FindIndex(t => t.Variant == app.RequestedThemeVariant);
-        var next = themes[(currentIndex + 1) % themes.Count];
-        app.RequestedThemeVariant = next.Variant;
-        await _settingsStore.SaveAsync(new AppSettings { Theme = next.Name });
+        var settings = await _settingsStore.LoadAsync();
+        var palette = AppThemes.PaletteFromName(settings.Theme);
+        var currentMode = AppThemes.ModeFromName(settings.ThemeMode);
+        var newMode = currentMode == AppThemes.Dark ? AppThemes.Light : AppThemes.Dark;
+        app.RequestedThemeVariant = AppThemes.Resolve(palette, newMode);
+        await _settingsStore.SaveAsync(new AppSettings { Theme = palette.Name, ThemeMode = newMode.Name });
     }
 
     [RelayCommand]
@@ -318,11 +319,13 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     }
 
     [RelayCommand]
-    private void OpenSettings()
+    private async Task OpenSettingsAsync()
     {
+        var settings = await _settingsStore.LoadAsync();
         var vm = new SettingsViewModel(
             _keymapService,
             _settingsStore,
+            settings,
             Username,
             _session?.Url ?? "");
         _dialogManager.CreateDialog(vm)

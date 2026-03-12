@@ -9,24 +9,33 @@ public partial class AppearanceSettingsViewModel : ObservableObject
 {
     private readonly ISettingsStore _settingsStore;
 
-    public IReadOnlyList<ThemeInfo> AvailableThemes => AppThemes.AllThemes;
+    public IReadOnlyList<ThemePalette> AvailablePalettes => AppThemes.AllPalettes;
+    public IReadOnlyList<ThemeMode> AvailableModes => AppThemes.AllModes;
 
     [ObservableProperty]
-    private ThemeInfo _selectedTheme;
+    private ThemePalette _selectedPalette;
 
-    public AppearanceSettingsViewModel(ISettingsStore settingsStore)
+    [ObservableProperty]
+    private ThemeMode _selectedMode;
+
+    public AppearanceSettingsViewModel(ISettingsStore settingsStore, AppSettings settings)
     {
         _settingsStore = settingsStore;
-        var app = Application.Current!;
-        var current = app.RequestedThemeVariant;
-        _selectedTheme = AppThemes.AllThemes.FirstOrDefault(t => t.Variant == current)
-                         ?? AppThemes.AllThemes[0];
+        _selectedPalette = AppThemes.PaletteFromName(settings.Theme);
+        _selectedMode = AppThemes.ModeFromName(settings.ThemeMode);
     }
 
-    partial void OnSelectedThemeChanged(ThemeInfo value)
+    partial void OnSelectedPaletteChanged(ThemePalette value) => ApplyTheme();
+    partial void OnSelectedModeChanged(ThemeMode value) => ApplyTheme();
+
+    private void ApplyTheme()
     {
         var app = Application.Current!;
-        app.RequestedThemeVariant = value.Variant;
-        _ = _settingsStore.SaveAsync(new AppSettings { Theme = value.Name });
+        app.RequestedThemeVariant = AppThemes.Resolve(SelectedPalette, SelectedMode);
+        _ = _settingsStore.SaveAsync(new AppSettings
+        {
+            Theme = SelectedPalette.Name,
+            ThemeMode = SelectedMode.Name,
+        });
     }
 }

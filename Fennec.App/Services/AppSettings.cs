@@ -5,5 +5,8 @@ namespace Fennec.App.Services;
 public class AppSettings
 {
     [JsonPropertyName("theme")]
-    public string Theme { get; set; } = "Dark";
+    public string Theme { get; set; } = "Default";
+
+    [JsonPropertyName("themeMode")]
+    public string ThemeMode { get; set; } = "Dark";
 }

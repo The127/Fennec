@@ -1,0 +1,57 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Catppuccin Latte — https://catppuccin.com
+         Base #EFF1F5, Mantle #E6E9EF, Crust #DCE0E8
+         Surface0 #CCD0DA, Surface1 #BCC0CC, Surface2 #ACB0BE
+         Overlay0 #9CA0B0, Overlay1 #8C8FA1, Overlay2 #7C7F93
+         Subtext0 #6C6F85, Subtext1 #5C5F77, Text #4C4F69
+         Mauve #8839EF, Red #D20F39, Peach #FE640B, Yellow #DF8E1D
+         Green #40A02B, Blue #1E66F5, Lavender #7287FD -->
+
+    <!-- basic colors -->
+    <Color x:Key="ForegroundColor">#4C4F69</Color>
+    <Color x:Key="ForegroundLeadColor">#5C5F77</Color>
+    <Color x:Key="MutedColor">#9CA0B0</Color>
+    <Color x:Key="BorderColor">#BCC0CC</Color>
+    <Color x:Key="BorderColor60">#CCD0DA</Color>
+    <Color x:Key="BorderColor30">#4CBCC0CC</Color>
+    <Color x:Key="OutlineColor">#DCE0E8</Color>
+    <Color x:Key="GhostColor">#E6E9EF</Color>
+    <Color x:Key="GhostHoverColor">#7FE6E9EF</Color>
+    <Color x:Key="SelectionColor">#0C4C4F69</Color>
+
+    <!-- theme colors — primary=Mauve, destructive=Red -->
+    <Color x:Key="PrimaryColor">#8839EF</Color>
+    <Color x:Key="PrimaryColor75">#BF8839EF</Color>
+    <Color x:Key="PrimaryColor50">#808839EF</Color>
+    <Color x:Key="PrimaryColor10">#198839EF</Color>
+    <Color x:Key="PrimaryForegroundColor">#EFF1F5</Color>
+    <Color x:Key="SecondaryColor">#CCD0DA</Color>
+    <Color x:Key="SecondaryColor75">#BFCCD0DA</Color>
+    <Color x:Key="SecondaryColor50">#80CCD0DA</Color>
+    <Color x:Key="SecondaryForegroundColor">#4C4F69</Color>
+    <Color x:Key="DestructiveColor">#D20F39</Color>
+    <Color x:Key="DestructiveColor75">#BFD20F39</Color>
+    <Color x:Key="DestructiveColor50">#80D20F39</Color>
+    <Color x:Key="DestructiveColor10">#19D20F39</Color>
+    <Color x:Key="DestructiveForegroundColor">#EFF1F5</Color>
+
+    <!-- control colors — lavender-tinted Latte surfaces -->
+    <Color x:Key="CardBackgroundColor">#DCE0E8</Color>
+    <Color x:Key="DialogBackgroundColor">#EFF1F5</Color>
+    <Color x:Key="DialogOverlayColor">#000000</Color>
+    <Color x:Key="TitleBarBackgroundColor">#E6E9EF</Color>
+    <Color x:Key="WindowBackgroundColor">#EFF1F5</Color>
+    <Color x:Key="SidebarBackgroundColor">#E6E9EF</Color>
+    <Color x:Key="SwitchBackgroundColor">#BCC0CC</Color>
+    <Color x:Key="SwitchForegroundColor">#EFF1F5</Color>
+    <Color x:Key="TabItemSelectedColor">#DCE0E8</Color>
+    <Color x:Key="TabItemsBackgroundColor">#CCD0DA</Color>
+
+    <!-- notification colors -->
+    <Color x:Key="InfoColor">#1E66F5</Color>
+    <Color x:Key="SuccessColor">#40A02B</Color>
+    <Color x:Key="WarningColor">#FE640B</Color>
+    <Color x:Key="ErrorColor">#D20F39</Color>
+</ResourceDictionary>

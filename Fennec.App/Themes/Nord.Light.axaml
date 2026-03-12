@@ -1,0 +1,55 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Nord Light — Snow Storm as backgrounds, Polar Night as foregrounds
+         Polar Night: nord0 #2E3440, nord1 #3B4252, nord2 #434C5E, nord3 #4C566A
+         Snow Storm:  nord4 #D8DEE9, nord5 #E5E9F0, nord6 #ECEFF4
+         Frost:       nord7 #8FBCBB, nord8 #88C0D0, nord9 #81A1C1, nord10 #5E81AC
+         Aurora:      nord11 #BF616A, nord12 #D08770, nord13 #EBCB8B, nord14 #A3BE8C, nord15 #B48EAD -->
+
+    <!-- basic colors -->
+    <Color x:Key="ForegroundColor">#2E3440</Color>
+    <Color x:Key="ForegroundLeadColor">#4C566A</Color>
+    <Color x:Key="MutedColor">#4C566A</Color>
+    <Color x:Key="BorderColor">#D8DEE9</Color>
+    <Color x:Key="BorderColor60">#E5E9F0</Color>
+    <Color x:Key="BorderColor30">#4CD8DEE9</Color>
+    <Color x:Key="OutlineColor">#E5E9F0</Color>
+    <Color x:Key="GhostColor">#E5E9F0</Color>
+    <Color x:Key="GhostHoverColor">#7FE5E9F0</Color>
+    <Color x:Key="SelectionColor">#0C2E3440</Color>
+
+    <!-- theme colors — primary=nord10 deep ocean, destructive=nord11 -->
+    <Color x:Key="PrimaryColor">#5E81AC</Color>
+    <Color x:Key="PrimaryColor75">#BF5E81AC</Color>
+    <Color x:Key="PrimaryColor50">#805E81AC</Color>
+    <Color x:Key="PrimaryColor10">#195E81AC</Color>
+    <Color x:Key="PrimaryForegroundColor">#ECEFF4</Color>
+    <Color x:Key="SecondaryColor">#D8DEE9</Color>
+    <Color x:Key="SecondaryColor75">#BFD8DEE9</Color>
+    <Color x:Key="SecondaryColor50">#80D8DEE9</Color>
+    <Color x:Key="SecondaryForegroundColor">#2E3440</Color>
+    <Color x:Key="DestructiveColor">#BF616A</Color>
+    <Color x:Key="DestructiveColor75">#BFBF616A</Color>
+    <Color x:Key="DestructiveColor50">#80BF616A</Color>
+    <Color x:Key="DestructiveColor10">#19BF616A</Color>
+    <Color x:Key="DestructiveForegroundColor">#ECEFF4</Color>
+
+    <!-- control colors — cool blue-tinted Snow Storm -->
+    <Color x:Key="CardBackgroundColor">#E5E9F0</Color>
+    <Color x:Key="DialogBackgroundColor">#ECEFF4</Color>
+    <Color x:Key="DialogOverlayColor">#000000</Color>
+    <Color x:Key="TitleBarBackgroundColor">#D8DEE9</Color>
+    <Color x:Key="WindowBackgroundColor">#ECEFF4</Color>
+    <Color x:Key="SidebarBackgroundColor">#D8DEE9</Color>
+    <Color x:Key="SwitchBackgroundColor">#D8DEE9</Color>
+    <Color x:Key="SwitchForegroundColor">#ECEFF4</Color>
+    <Color x:Key="TabItemSelectedColor">#E5E9F0</Color>
+    <Color x:Key="TabItemsBackgroundColor">#D8DEE9</Color>
+
+    <!-- notification colors — Aurora palette (same in both modes) -->
+    <Color x:Key="InfoColor">#5E81AC</Color>
+    <Color x:Key="SuccessColor">#A3BE8C</Color>
+    <Color x:Key="WarningColor">#D08770</Color>
+    <Color x:Key="ErrorColor">#BF616A</Color>
+</ResourceDictionary>

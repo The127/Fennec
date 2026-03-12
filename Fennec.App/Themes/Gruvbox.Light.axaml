@@ -1,0 +1,55 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Gruvbox Light — https://github.com/morhetz/gruvbox
+         bg0 #fbf1c7, bg1 #ebdbb2, bg2 #d5c4a1, bg3 #bdae93, bg4 #a89984
+         fg1 #3c3836, fg2 #504945, fg3 #665c54, fg4 #7c6f64, gray #928374
+         Faded: red #9d0006, green #79740e, yellow #b57614, blue #076678
+                purple #8f3f71, aqua #427b58, orange #af3a03 -->
+
+    <!-- basic colors -->
+    <Color x:Key="ForegroundColor">#3C3836</Color>
+    <Color x:Key="ForegroundLeadColor">#7C6F64</Color>
+    <Color x:Key="MutedColor">#928374</Color>
+    <Color x:Key="BorderColor">#D5C4A1</Color>
+    <Color x:Key="BorderColor60">#EBDBB2</Color>
+    <Color x:Key="BorderColor30">#4CD5C4A1</Color>
+    <Color x:Key="OutlineColor">#EBDBB2</Color>
+    <Color x:Key="GhostColor">#EBDBB2</Color>
+    <Color x:Key="GhostHoverColor">#7FEBDBB2</Color>
+    <Color x:Key="SelectionColor">#0C3C3836</Color>
+
+    <!-- theme colors — primary=faded yellow, destructive=faded red -->
+    <Color x:Key="PrimaryColor">#B57614</Color>
+    <Color x:Key="PrimaryColor75">#BFB57614</Color>
+    <Color x:Key="PrimaryColor50">#80B57614</Color>
+    <Color x:Key="PrimaryColor10">#19B57614</Color>
+    <Color x:Key="PrimaryForegroundColor">#FBF1C7</Color>
+    <Color x:Key="SecondaryColor">#EBDBB2</Color>
+    <Color x:Key="SecondaryColor75">#BFEBDBB2</Color>
+    <Color x:Key="SecondaryColor50">#80EBDBB2</Color>
+    <Color x:Key="SecondaryForegroundColor">#3C3836</Color>
+    <Color x:Key="DestructiveColor">#9D0006</Color>
+    <Color x:Key="DestructiveColor75">#BF9D0006</Color>
+    <Color x:Key="DestructiveColor50">#809D0006</Color>
+    <Color x:Key="DestructiveColor10">#199D0006</Color>
+    <Color x:Key="DestructiveForegroundColor">#FBF1C7</Color>
+
+    <!-- control colors — warm cream Gruvbox tones -->
+    <Color x:Key="CardBackgroundColor">#F2E5BC</Color>
+    <Color x:Key="DialogBackgroundColor">#FBF1C7</Color>
+    <Color x:Key="DialogOverlayColor">#000000</Color>
+    <Color x:Key="TitleBarBackgroundColor">#EBDBB2</Color>
+    <Color x:Key="WindowBackgroundColor">#FBF1C7</Color>
+    <Color x:Key="SidebarBackgroundColor">#EBDBB2</Color>
+    <Color x:Key="SwitchBackgroundColor">#D5C4A1</Color>
+    <Color x:Key="SwitchForegroundColor">#FBF1C7</Color>
+    <Color x:Key="TabItemSelectedColor">#F2E5BC</Color>
+    <Color x:Key="TabItemsBackgroundColor">#EBDBB2</Color>
+
+    <!-- notification colors — faded variants for light bg -->
+    <Color x:Key="InfoColor">#076678</Color>
+    <Color x:Key="SuccessColor">#79740E</Color>
+    <Color x:Key="WarningColor">#AF3A03</Color>
+    <Color x:Key="ErrorColor">#9D0006</Color>
+</ResourceDictionary>

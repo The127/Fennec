@@ -1,7 +1,10 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Dracula: https://draculatheme.com/contribute -->
+    <!-- Dracula Dark — https://spec.draculatheme.com
+         Background #282A36, CurrentLine #44475A, Foreground #F8F8F2, Comment #6272A4
+         Purple #BD93F9, Pink #FF79C6, Red #FF5555, Orange #FFB86C
+         Yellow #F1FA8C, Green #50FA7B, Cyan #8BE9FD -->
 
     <!-- basic colors -->
     <Color x:Key="ForegroundColor">#F8F8F2</Color>
@@ -15,7 +18,7 @@
     <Color x:Key="GhostHoverColor">#7F343746</Color>
     <Color x:Key="SelectionColor">#0CF8F8F2</Color>
 
-    <!-- theme colors -->
+    <!-- theme colors — primary=Purple, destructive=Red -->
     <Color x:Key="PrimaryColor">#BD93F9</Color>
     <Color x:Key="PrimaryColor75">#BFBD93F9</Color>
     <Color x:Key="PrimaryColor50">#80BD93F9</Color>
@@ -31,7 +34,7 @@
     <Color x:Key="DestructiveColor10">#19FF5555</Color>
     <Color x:Key="DestructiveForegroundColor">#F8F8F2</Color>
 
-    <!-- specific control colors -->
+    <!-- control colors -->
     <Color x:Key="CardBackgroundColor">#282A36</Color>
     <Color x:Key="DialogBackgroundColor">#21222C</Color>
     <Color x:Key="DialogOverlayColor">#000000</Color>
