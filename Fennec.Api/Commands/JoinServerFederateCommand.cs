@@ -1,6 +1,6 @@
 using Fennec.Api.Controllers.FederationApi;
 using Fennec.Api.Models;
-using Fennec.Shared.Models;
+using Fennec.Api.Services;
 using HttpExceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,51 +9,71 @@ namespace Fennec.Api.Commands;
 
 public record JoinServerFederateCommand : IRequest<JoinServerFederateResponse>
 {
-    public required Guid ServerId { get; init; }
+    public required string InviteCode { get; init; }
     public required RemoteUserInfoDto UserInfo { get; init; }
 }
 
 public record JoinServerFederateResponse
 {
-    public required string Name { get; init; }  
+    public required string Name { get; init; }
+    public required Guid ServerId { get; init; }
 }
 
 public class JoinServerFederateCommandHandler(
-    FennecDbContext dbContext
+    FennecDbContext dbContext,
+    IClockService clockService
 ) : IRequestHandler<JoinServerFederateCommand, JoinServerFederateResponse>
 {
     public async Task<JoinServerFederateResponse> Handle(JoinServerFederateCommand request, CancellationToken cancellationToken)
     {
-        var serverInfo = await dbContext
-            .Set<Server>()
-            .Where(s => s.Id == request.ServerId)
-            .Select(s => new { s.Visibility, s.Name })
-            .SingleOrDefaultAsync(cancellationToken);
+        var invite = await dbContext.Set<ServerInvite>()
+            .SingleOrDefaultAsync(i => i.Code == request.InviteCode, cancellationToken);
 
-        if (serverInfo == null)
+        if (invite is null)
         {
-            throw new HttpNotFoundException("Server not found");
+            throw new HttpNotFoundException("Invite not found");
         }
-        
-        if (serverInfo.Visibility != ServerVisibility.Public)
+
+        var now = clockService.GetCurrentInstant();
+
+        if (invite.ExpiresAt is not null && invite.ExpiresAt <= now)
         {
-            throw new HttpBadRequestException("Server not public");
+            throw new HttpBadRequestException("Invite has expired");
         }
-        
-        // TODO: create user if remote and missing
-        
-        var member = new ServerMember
+
+        if (invite.MaxUses is not null && invite.Uses >= invite.MaxUses)
         {
-            ServerId = request.ServerId,
+            throw new HttpBadRequestException("Invite has reached its maximum number of uses");
+        }
+
+        var alreadyMember = await dbContext.Set<ServerMember>()
+            .AnyAsync(m => m.ServerId == invite.ServerId && m.UserId == request.UserInfo.UserId, cancellationToken);
+
+        if (alreadyMember)
+        {
+            throw new HttpBadRequestException("Already a member of this server");
+        }
+
+        var serverName = await dbContext.Set<Server>()
+            .Where(s => s.Id == invite.ServerId)
+            .Select(s => s.Name)
+            .SingleAsync(cancellationToken);
+
+        invite.Uses++;
+        dbContext.Update(invite);
+
+        dbContext.Add(new ServerMember
+        {
+            ServerId = invite.ServerId,
             UserId = request.UserInfo.UserId,
-        };
-        
-        dbContext.Add(member);
+        });
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new JoinServerFederateResponse
         {
-            Name = serverInfo.Name,
+            Name = serverName,
+            ServerId = invite.ServerId,
         };
     }
 }

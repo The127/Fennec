@@ -1,4 +1,4 @@
-﻿using Fennec.Api.Commands;
+using Fennec.Api.Commands;
 using Fennec.Api.Queries;
 using Fennec.Api.Security;
 using Fennec.Shared.Dtos.Server;
@@ -42,18 +42,18 @@ public class ServerController : UserControllerBase
     {
         await mediator.Send(new JoinServerCommand
         {
-            ServerId = requestDto.ServerId,
+            InviteCode = requestDto.InviteCode,
             InstanceUrl = requestDto.InstanceUrl,
             AuthPrincipal = AuthPrincipal,
         }, cancellationToken);
-        
+
         return NoContent();
     }
 
     [HttpGet("joined")]
     public async Task<IActionResult> ListJoinedServers(
         [FromServices] IMediator mediator,
-        CancellationToken cancellationToken    
+        CancellationToken cancellationToken
     )
     {
         var src = await mediator.Send(new ListUserJoinedServersQuery
@@ -67,7 +67,7 @@ public class ServerController : UserControllerBase
             Name = x.Name,
             InstanceUrl = x.InstanceUrl,
         });
-        
+
         return Ok(new ListJoinedServersResponseDto
         {
             Servers = await query.ToListAsync(cancellationToken),

@@ -40,7 +40,8 @@
 
             <!-- Join Server -->
             <shadui:Card>
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16">
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16"
+                        Command="{Binding NavigateToJoinServerCommand}">
                     <Grid ColumnDefinitions="Auto *">
                         <StackPanel Orientation="Horizontal" Spacing="16">
                             <Border Background="{DynamicResource ShadAccent}" CornerRadius="8" Width="48" Height="48"
@@ -52,7 +53,7 @@
                             <StackPanel VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Join a Server" FontWeight="Bold" />
                                 <TextBlock Classes="Muted" FontSize="12"
-                                           Text="Enter a server ID to join — local or federated" />
+                                           Text="Paste an invite link to join a server" />
                             </StackPanel>
                         </StackPanel>
                         <mi:MaterialIcon Grid.Column="1" Kind="ChevronRight" Width="20" Height="20"

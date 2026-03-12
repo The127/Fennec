@@ -18,6 +18,9 @@ using System.Text.Json.Serialization;
 [JsonSerializable(typeof(JoinServerRequestDto))]
 [JsonSerializable(typeof(MeResponseDto))]
 [JsonSerializable(typeof(ListJoinedServersResponseDto))]
+[JsonSerializable(typeof(CreateServerInviteRequestDto))]
+[JsonSerializable(typeof(CreateServerInviteResponseDto))]
+[JsonSerializable(typeof(ListServerInvitesResponseDto))]
 public partial class SharedFennecJsonContext : JsonSerializerContext
 {
 }

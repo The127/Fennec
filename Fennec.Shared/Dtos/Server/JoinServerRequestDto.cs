@@ -4,9 +4,9 @@ namespace Fennec.Shared.Dtos.Server;
 
 public class JoinServerRequestDto
 {
-    [JsonPropertyName("serverId")]
-    public required Guid ServerId { get; set; }   
-    
+    [JsonPropertyName("inviteCode")]
+    public required string InviteCode { get; set; }
+
     [JsonPropertyName("instanceUrl")]
     public required string InstanceUrl { get; set; }
 }

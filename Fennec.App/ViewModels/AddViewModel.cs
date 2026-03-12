@@ -14,4 +14,10 @@ public partial class AddViewModel(IRouter router, IFennecClient client, IMesseng
     {
         await router.NavigateAsync(new CreateServerRoute(client, router, messenger));
     }
+
+    [RelayCommand]
+    private async Task NavigateToJoinServerAsync()
+    {
+        await router.NavigateAsync(new JoinServerRoute(client, router, messenger));
+    }
 }

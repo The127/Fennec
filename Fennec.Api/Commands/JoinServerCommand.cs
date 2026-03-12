@@ -1,4 +1,4 @@
-﻿using Fennec.Api.Controllers.FederationApi;
+using Fennec.Api.Controllers.FederationApi;
 using Fennec.Api.FederationClient;
 using Fennec.Api.Models;
 using Fennec.Api.Security;
@@ -9,7 +9,7 @@ namespace Fennec.Api.Commands;
 
 public record JoinServerCommand : IRequest
 {
-    public required Guid ServerId { get; init; }
+    public required string InviteCode { get; init; }
     public required string InstanceUrl { get; init; }
     public required IAuthPrincipal AuthPrincipal { get; init; }
 }
@@ -21,19 +21,19 @@ public class JoinServerCommandHandler(
 {
     public async Task Handle(JoinServerCommand request, CancellationToken cancellationToken)
     {
-        await federationClient.For(request.InstanceUrl)
-            .Server.JoinServerAsync(new FederationServerController.ServerJoinFederateRequestDto
+        var redeemResponse = await federationClient.For(request.InstanceUrl)
+            .Server.RedeemInviteAsync(new FederationServerController.ServerRedeemInviteFederateRequestDto
             {
-                ServerId = request.ServerId,
+                InviteCode = request.InviteCode,
                 UserInfo = new RemoteUserInfoDto
                 {
                     UserId = request.AuthPrincipal.Id,
                     Name = request.AuthPrincipal.Name,
                 },
             }, cancellationToken);
-        
+
         var knownServer = await dbContext.Set<KnownServer>()
-            .Where(x => x.RemoteId == request.ServerId)
+            .Where(x => x.RemoteId == redeemResponse.ServerId)
             .Where(x => x.InstanceUrl == request.InstanceUrl)
             .SingleOrDefaultAsync(cancellationToken);
 
@@ -41,9 +41,9 @@ public class JoinServerCommandHandler(
         {
             knownServer = new KnownServer
             {
-                RemoteId = request.ServerId,
+                RemoteId = redeemResponse.ServerId,
                 InstanceUrl = request.InstanceUrl,
-                Name = request.InstanceUrl,
+                Name = redeemResponse.Name,
             };
             dbContext.Add(knownServer);
         }
@@ -53,7 +53,7 @@ public class JoinServerCommandHandler(
             UserId = request.AuthPrincipal.Id,
             KnownServerId = knownServer.Id,
         });
-        
+
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

@@ -30,6 +30,13 @@
                                         Command="{Binding $parent[UserControl].((vm:MainAppViewModel)DataContext).NavigateToServerCommand}"
                                         CommandParameter="{Binding}"
                                         ToolTip.Tip="{Binding Name}">
+                                    <Button.ContextFlyout>
+                                        <MenuFlyout>
+                                            <MenuItem Header="Create Invite Link"
+                                                      Command="{Binding $parent[UserControl].((vm:MainAppViewModel)DataContext).CreateInviteLinkCommand}"
+                                                      CommandParameter="{Binding}" />
+                                        </MenuFlyout>
+                                    </Button.ContextFlyout>
                                     <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="32" Width="32" />
                                 </Button>
                             </DataTemplate>

@@ -26,22 +26,41 @@ public class FederationServerController : FederationControllerBase
         public required string Name { get; init; }
     }
 
-    [HttpPost("join")]
-    public async Task<IActionResult> JoinServer(
-        [FromBody] ServerJoinFederateRequestDto requestDto,
+    public record ServerRedeemInviteFederateRequestDto
+    {
+        [JsonPropertyName("inviteCode")]
+        public required string InviteCode { get; init; }
+
+        [JsonPropertyName("userInfo")]
+        public required RemoteUserInfoDto UserInfo { get; init; }
+    }
+
+    public record ServerRedeemInviteFederateResponseDto
+    {
+        [JsonPropertyName("serverId")]
+        public required Guid ServerId { get; init; }
+
+        [JsonPropertyName("name")]
+        public required string Name { get; init; }
+    }
+
+    [HttpPost("invite/redeem")]
+    public async Task<IActionResult> RedeemInvite(
+        [FromBody] ServerRedeemInviteFederateRequestDto requestDto,
         [FromServices] IMediator mediator,
         CancellationToken cancellationToken
     )
     {
-        var joinServerFederateResponse = await mediator.Send(new JoinServerFederateCommand
+        var response = await mediator.Send(new JoinServerFederateCommand
         {
-            ServerId = requestDto.ServerId,
+            InviteCode = requestDto.InviteCode,
             UserInfo = requestDto.UserInfo,
         }, cancellationToken);
 
-        return Ok(new ServerJoinFederateResponseDto
+        return Ok(new ServerRedeemInviteFederateResponseDto
         {
-            Name = joinServerFederateResponse.Name,
+            ServerId = response.ServerId,
+            Name = response.Name,
         });
     }
 }

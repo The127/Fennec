@@ -4,17 +4,42 @@ using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 using Fennec.App.ViewModels;
 using Fennec.Client;
+using Fennec.Client.Clients;
+using Fennec.Shared.Dtos.Server;
 using NSubstitute;
+using ShadUI;
 
 namespace Fennec.App.Tests.ViewModels;
 
 public class MainAppViewModelTests
 {
+    private readonly IRouter _router = Substitute.For<IRouter>();
     private readonly IAuthService _authService = Substitute.For<IAuthService>();
-    private readonly IMessenger _messenger = new WeakReferenceMessenger();
+    private readonly WeakReferenceMessenger _messenger = new();
+    private readonly IClientFactory _clientFactory = Substitute.For<IClientFactory>();
+    private readonly IFennecClient _client = Substitute.For<IFennecClient>();
+    private readonly IServerClient _serverClient = Substitute.For<IServerClient>();
 
-    private MainAppViewModel CreateViewModel() =>
-        new(Substitute.For<IRouter>(), _messenger, _authService, Substitute.For<IClientFactory>());
+    public MainAppViewModelTests()
+    {
+        _clientFactory.Create(Arg.Any<string>(), Arg.Any<string>()).Returns(_client);
+        _client.Server.Returns(_serverClient);
+        _serverClient.ListJoinedServersAsync(Arg.Any<CancellationToken>())
+            .Returns(new ListJoinedServersResponseDto { Servers = [] });
+    }
+
+    private MainAppViewModel CreateViewModel()
+    {
+        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager());
+        vm.ApplySession(new AuthSession
+        {
+            Username = "alice",
+            Url = "fennec.chat",
+            SessionToken = "token",
+            UserId = Guid.NewGuid(),
+        });
+        return vm;
+    }
 
     [Fact]
     public async Task Logging_out_calls_the_auth_service()
@@ -24,5 +49,41 @@ public class MainAppViewModelTests
         await vm.LogoutCommand.ExecuteAsync(null);
 
         await _authService.Received(1).LogoutAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Server_list_refreshes_after_server_joined()
+    {
+        var vm = CreateViewModel();
+        _serverClient.ClearReceivedCalls();
+
+        _messenger.Send(new ServerJoinedMessage());
+
+        _serverClient.Received().ListJoinedServersAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Create_invite_link_calls_api_with_server_id()
+    {
+        var serverId = Guid.NewGuid();
+        var vm = CreateViewModel();
+        var server = new SidebarServer(serverId, "Test", "fennec.chat");
+
+        _serverClient.CreateInviteAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<CreateServerInviteRequestDto>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new CreateServerInviteResponseDto
+            {
+                InviteId = Guid.NewGuid(),
+                Code = "aBcD1234",
+            });
+
+        await vm.CreateInviteLinkCommand.ExecuteAsync(server);
+
+        await _serverClient.Received().CreateInviteAsync(
+            serverId,
+            Arg.Any<CreateServerInviteRequestDto>(),
+            Arg.Any<CancellationToken>());
     }
 }

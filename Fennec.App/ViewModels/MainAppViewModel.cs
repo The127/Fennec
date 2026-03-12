@@ -9,6 +9,8 @@ using Fennec.App.Routes;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 using Fennec.Client;
+using Fennec.Shared.Dtos.Server;
+using ShadUI;
 
 namespace Fennec.App.ViewModels;
 
@@ -20,22 +22,25 @@ public partial class SidebarServer(Guid id, string name, string instanceUrl) : O
     public string AvatarFallback { get; } = name[..1].ToUpperInvariant();
 }
 
-public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreatedMessage>
+public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>
 {
     private readonly IRouter _routerField;
     private readonly IMessenger _messenger;
     private readonly IAuthService _authService;
     private readonly IClientFactory _clientFactory;
+    private readonly ToastManager _toastManager;
 
-    public MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService, IClientFactory clientFactory)
+    public MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService, IClientFactory clientFactory, ToastManager toastManager)
     {
         _routerField = router;
         _router = router;
         _messenger = messenger;
         _authService = authService;
         _clientFactory = clientFactory;
+        _toastManager = toastManager;
 
         messenger.Register<ServerCreatedMessage>(this);
+        messenger.Register<ServerJoinedMessage>(this);
     }
 
     [ObservableProperty]
@@ -63,6 +68,11 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     }
 
     public void Receive(ServerCreatedMessage message)
+    {
+        _ = LoadServersAsync();
+    }
+
+    public void Receive(ServerJoinedMessage message)
     {
         _ = LoadServersAsync();
     }
@@ -152,6 +162,29 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
         app.RequestedThemeVariant = app.ActualThemeVariant == ThemeVariant.Dark
             ? ThemeVariant.Light
             : ThemeVariant.Dark;
+    }
+
+    [RelayCommand]
+    private async Task CreateInviteLinkAsync(SidebarServer server)
+    {
+        if (_client is null || _session is null) return;
+
+        try
+        {
+            var response = await _client.Server.CreateInviteAsync(server.Id, new CreateServerInviteRequestDto());
+            var inviteUrl = $"https://{_session.Url}/invite/{response.Code}";
+
+            _toastManager.CreateToast("Invite link created")
+                .WithContent(inviteUrl)
+                .WithDelay(5)
+                .ShowInfo();
+        }
+        catch
+        {
+            _toastManager.CreateToast("Failed to create invite link")
+                .WithDelay(3)
+                .ShowError();
+        }
     }
 
     [RelayCommand]

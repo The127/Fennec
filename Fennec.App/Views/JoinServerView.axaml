@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:shadui="using:ShadUI"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             x:DataType="vm:JoinServerViewModel"
+             x:Class="Fennec.App.Views.JoinServerView">
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                MaxWidth="400" Spacing="16" Margin="32">
+        <mi:MaterialIcon Kind="LoginVariant" Width="48" Height="48" Opacity="0.5"
+                         HorizontalAlignment="Center" />
+        <TextBlock Classes="H3" Text="Join a Server" HorizontalAlignment="Center" />
+        <TextBlock Classes="Muted" Text="Paste an invite link to join a server."
+                   HorizontalAlignment="Center" Margin="0,0,0,8" />
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Invite link" FontWeight="Bold" FontSize="12" />
+            <TextBox Text="{Binding InviteLink}" Watermark="https://fennec.chat/invite/aBcD1234" />
+        </StackPanel>
+
+        <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" FontSize="12"
+                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+        <Button Content="Join Server"
+                Command="{Binding JoinServerCommand}"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Classes="Primary"
+                IsEnabled="{Binding !IsJoining}" />
+    </StackPanel>
+</UserControl>
