@@ -53,7 +53,7 @@
                                                     Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).ShowAddChannelDialogCommand}"
                                                     CommandParameter="{Binding}"
                                                     ToolTip.Tip="Add channel">
-                                                <mi:MaterialIcon Kind="Plus" Width="12" Height="12" />
+                                                <mi:MaterialIcon Kind="Plus" Width="12" Height="12" Opacity="0.5" />
                                             </Button>
                                         </Grid>
                                         <ItemsControl ItemsSource="{Binding Channels}">
@@ -160,7 +160,7 @@
                                     Padding="0"
                                     ToolTip.Tip="Send"
                                     Command="{Binding SendMessageCommand}">
-                                <mi:MaterialIcon Kind="Send" Width="18" Height="18" />
+                                <mi:MaterialIcon Kind="Send" Width="18" Height="18" Opacity="0.5" />
                             </Button>
                         </Grid>
                     </Border>
