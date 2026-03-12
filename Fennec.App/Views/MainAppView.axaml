@@ -93,7 +93,35 @@
                                 </StackPanel>
                             </Grid>
                         </shadui:SimpleDropdown.TriggerContent>
-                        <MenuItem Header="Quick Theme Switch" Command="{Binding ToggleThemeCommand}" />
+                        <!-- Mode toggle: Light / Auto / Dark -->
+                        <Border Background="{DynamicResource SecondaryColor}"
+                                CornerRadius="8"
+                                Padding="3"
+                                Margin="4">
+                            <UniformGrid Columns="3">
+                                <Button Classes="modeButton"
+                                        Command="{Binding SetThemeModeCommand}"
+                                        CommandParameter="Light"
+                                        Tag="{Binding IsLightMode}"
+                                        HorizontalAlignment="Stretch">
+                                    <mi:MaterialIcon Kind="WeatherSunny" Width="16" Height="16" />
+                                </Button>
+                                <Button Classes="modeButton"
+                                        Command="{Binding SetThemeModeCommand}"
+                                        CommandParameter="Auto"
+                                        Tag="{Binding IsAutoMode}"
+                                        HorizontalAlignment="Stretch">
+                                    <mi:MaterialIcon Kind="BrightnessAuto" Width="16" Height="16" />
+                                </Button>
+                                <Button Classes="modeButton"
+                                        Command="{Binding SetThemeModeCommand}"
+                                        CommandParameter="Dark"
+                                        Tag="{Binding IsDarkMode}"
+                                        HorizontalAlignment="Stretch">
+                                    <mi:MaterialIcon Kind="WeatherNight" Width="16" Height="16" />
+                                </Button>
+                            </UniformGrid>
+                        </Border>
                         <MenuItem Header="Profile" />
                         <MenuItem Header="Switch Account" />
                         <Separator />

@@ -166,6 +166,9 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
     public async Task InitializeAsync()
     {
+        var settings = await _settingsStore.LoadAsync();
+        CurrentThemeMode = AppThemes.ModeFromName(settings.ThemeMode);
+
         await NavigateToDashboardAsync();
         await LoadServersAsync();
     }
@@ -276,16 +279,51 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         await _routerField.NavigateAsync(new CallsRoute());
     }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLightMode))]
+    [NotifyPropertyChangedFor(nameof(IsAutoMode))]
+    [NotifyPropertyChangedFor(nameof(IsDarkMode))]
+    private Themes.ThemeMode _currentThemeMode = AppThemes.Auto;
+
+    public bool IsLightMode => CurrentThemeMode == AppThemes.Light;
+    public bool IsAutoMode => CurrentThemeMode == AppThemes.Auto;
+    public bool IsDarkMode => CurrentThemeMode == AppThemes.Dark;
+
     [RelayCommand]
-    private async Task ToggleThemeAsync()
+    private async Task SetThemeModeAsync(string modeName)
     {
+        var mode = AppThemes.ModeFromName(modeName);
         var app = Application.Current!;
         var settings = await _settingsStore.LoadAsync();
         var palette = AppThemes.PaletteFromName(settings.Theme);
-        var currentMode = AppThemes.ModeFromName(settings.ThemeMode);
-        var newMode = currentMode == AppThemes.Dark ? AppThemes.Light : AppThemes.Dark;
-        app.RequestedThemeVariant = AppThemes.Resolve(palette, newMode);
-        await _settingsStore.SaveAsync(new AppSettings { Theme = palette.Name, ThemeMode = newMode.Name });
+
+        ThemeVariant? osTheme = null;
+        if (app.ApplicationLifetime
+            is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow is not null)
+        {
+            var ptv = desktop.MainWindow.PlatformSettings?.GetColorValues().ThemeVariant;
+            if (ptv is not null)
+                osTheme = ptv == Avalonia.Platform.PlatformThemeVariant.Light
+                    ? ThemeVariant.Light : ThemeVariant.Dark;
+        }
+
+        app.RequestedThemeVariant = AppThemes.Resolve(palette, mode, osTheme);
+        CurrentThemeMode = mode;
+        await _settingsStore.SaveAsync(new AppSettings { Theme = palette.Name, ThemeMode = mode.Name });
+    }
+
+    [RelayCommand]
+    private async Task ToggleThemeAsync()
+    {
+        // Cycle: Light → Auto → Dark → Light
+        var next = CurrentThemeMode == AppThemes.Light ? AppThemes.Auto
+                 : CurrentThemeMode == AppThemes.Auto ? AppThemes.Dark
+                 : AppThemes.Light;
+        await SetThemeModeAsync(next.Name);
+        _toastManager.CreateToast($"Mode: {next.Name}")
+            .WithDelay(2)
+            .ShowInfo();
     }
 
     [RelayCommand]

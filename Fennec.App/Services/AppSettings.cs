@@ -8,5 +8,5 @@ public class AppSettings
     public string Theme { get; set; } = "Default";
 
     [JsonPropertyName("themeMode")]
-    public string ThemeMode { get; set; } = "Dark";
+    public string ThemeMode { get; set; } = "Auto";
 }

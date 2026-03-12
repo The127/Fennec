@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Exceptions;
 using Fennec.App.Logger;
@@ -102,7 +103,7 @@ public partial class App : Application
         var mainViewModel = ActivatorUtilities.CreateInstance<AppShellViewModel>(_services);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
+            // Avoid duplicate validations from both Avalonia and the CommunityToolkit.
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
             var mainWindow = new MainWindow
@@ -111,6 +112,8 @@ public partial class App : Application
             };
             mainWindow.AttachShortcutDispatcher(_services.GetRequiredService<IKeymapService>());
             desktop.MainWindow = mainWindow;
+
+            SubscribeToOsThemeChanges(mainWindow);
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
@@ -131,7 +134,42 @@ public partial class App : Application
         if (settingsStore is null) return;
 
         var settings = Task.Run(() => settingsStore.LoadAsync()).GetAwaiter().GetResult();
-        RequestedThemeVariant = AppThemes.Resolve(settings.Theme, settings.ThemeMode);
+        var mode = AppThemes.ModeFromName(settings.ThemeMode);
+        // For Auto mode at startup, we can't read PlatformSettings yet (no window),
+        // so fall back to Dark. The subscription will correct it once the window is ready.
+        RequestedThemeVariant = AppThemes.Resolve(settings.Theme,
+            AppThemes.ResolveEffectiveMode(mode));
+    }
+
+    private void SubscribeToOsThemeChanges(MainWindow window)
+    {
+        var platformSettings = window.PlatformSettings;
+        if (platformSettings is null) return;
+
+        // Apply correct theme now that we have PlatformSettings (fixes Auto at startup)
+        ReapplyIfAutoMode(ToThemeVariant(platformSettings.GetColorValues().ThemeVariant));
+
+        platformSettings.ColorValuesChanged += (_, values) =>
+        {
+            ReapplyIfAutoMode(ToThemeVariant(values.ThemeVariant));
+        };
+    }
+
+    private static ThemeVariant ToThemeVariant(Avalonia.Platform.PlatformThemeVariant ptv) =>
+        ptv == Avalonia.Platform.PlatformThemeVariant.Light ? ThemeVariant.Light : ThemeVariant.Dark;
+
+    private void ReapplyIfAutoMode(ThemeVariant osTheme)
+    {
+        var settingsStore = _services.GetService<ISettingsStore>();
+        if (settingsStore is null) return;
+
+        var settings = Task.Run(() => settingsStore.LoadAsync()).GetAwaiter().GetResult();
+        var mode = AppThemes.ModeFromName(settings.ThemeMode);
+        if (mode != AppThemes.Auto) return;
+
+        RequestedThemeVariant = AppThemes.Resolve(
+            settings.Theme,
+            AppThemes.ResolveEffectiveMode(mode, osTheme));
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

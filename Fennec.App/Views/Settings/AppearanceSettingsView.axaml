@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Fennec.App.ViewModels.Settings"
+             xmlns:mi="using:Material.Icons.Avalonia"
              mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
              x:Class="Fennec.App.Views.Settings.AppearanceSettingsView"
              x:DataType="vm:AppearanceSettingsViewModel">
@@ -21,15 +22,39 @@
         </StackPanel>
         <StackPanel Spacing="8">
             <TextBlock Text="Mode" FontWeight="SemiBold" />
-            <ComboBox ItemsSource="{Binding AvailableModes}"
-                      SelectedItem="{Binding SelectedMode}"
-                      MinWidth="200">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Name}" />
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
+
+            <!-- Segmented toggle: Light / Auto / Dark -->
+            <Border Background="{DynamicResource SecondaryColor}"
+                    CornerRadius="8"
+                    Padding="3"
+                    HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <Button Classes="modeButton"
+                            Command="{Binding SelectLightCommand}"
+                            Tag="{Binding IsLightSelected}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="WeatherSunny" Width="16" Height="16" />
+                            <TextBlock Text="Light" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="modeButton"
+                            Command="{Binding SelectAutoCommand}"
+                            Tag="{Binding IsAutoSelected}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="BrightnessAuto" Width="16" Height="16" />
+                            <TextBlock Text="Auto" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="modeButton"
+                            Command="{Binding SelectDarkCommand}"
+                            Tag="{Binding IsDarkSelected}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="WeatherNight" Width="16" Height="16" />
+                            <TextBlock Text="Dark" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </StackPanel>
 </UserControl>

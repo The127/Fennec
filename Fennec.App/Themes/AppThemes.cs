@@ -3,7 +3,7 @@ using Avalonia.Styling;
 namespace Fennec.App.Themes;
 
 public record ThemePalette(string Name);
-public record ThemeMode(string Name, ThemeVariant BaseVariant);
+public record ThemeMode(string Name);
 
 public static class AppThemes
 {
@@ -13,15 +13,16 @@ public static class AppThemes
     public static readonly ThemePalette Gruvbox = new("Gruvbox");
     public static readonly ThemePalette CatppuccinMocha = new("Catppuccin Mocha");
 
-    public static readonly ThemeMode Dark = new("Dark", ThemeVariant.Dark);
-    public static readonly ThemeMode Light = new("Light", ThemeVariant.Light);
+    public static readonly ThemeMode Auto = new("Auto");
+    public static readonly ThemeMode Dark = new("Dark");
+    public static readonly ThemeMode Light = new("Light");
 
     public static IReadOnlyList<ThemePalette> AllPalettes { get; } =
         [Default, Dracula, Nord, Gruvbox, CatppuccinMocha];
 
-    public static IReadOnlyList<ThemeMode> AllModes { get; } = [Dark, Light];
+    public static IReadOnlyList<ThemeMode> AllModes { get; } = [Auto, Dark, Light];
 
-    // Custom ThemeVariants keyed by "{Palette}-{Mode}"
+    // Custom ThemeVariants keyed by "{Palette}-{Dark|Light}"
     private static readonly Dictionary<(string Palette, string Mode), ThemeVariant> Variants = BuildVariants();
 
     private static Dictionary<(string, string), ThemeVariant> BuildVariants()
@@ -35,31 +36,52 @@ public static class AppThemes
         foreach (var palette in AllPalettes)
         {
             if (palette == Default) continue;
-            foreach (var mode in AllModes)
+            foreach (var effectiveMode in new[] { "Dark", "Light" })
             {
-                var key = $"{palette.Name}-{mode.Name}";
-                dict[(palette.Name, mode.Name)] = new ThemeVariant(key, mode.BaseVariant);
+                var key = $"{palette.Name}-{effectiveMode}";
+                var baseVariant = effectiveMode == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+                dict[(palette.Name, effectiveMode)] = new ThemeVariant(key, baseVariant);
             }
         }
 
         return dict;
     }
 
-    public static ThemeVariant Resolve(string? paletteName, string? modeName)
+    /// <summary>
+    /// Resolve palette + effective mode ("Dark" or "Light") to a ThemeVariant.
+    /// For Auto mode, the caller must determine the effective mode from the OS first.
+    /// </summary>
+    public static ThemeVariant Resolve(string? paletteName, string? effectiveModeName)
     {
         var p = paletteName ?? "Default";
-        var m = modeName ?? "Dark";
+        var m = effectiveModeName ?? "Dark";
         return Variants.GetValueOrDefault((p, m), ThemeVariant.Dark);
     }
 
-    public static ThemeVariant Resolve(ThemePalette palette, ThemeMode mode) =>
-        Resolve(palette.Name, mode.Name);
+    public static ThemeVariant Resolve(ThemePalette palette, ThemeMode mode, ThemeVariant? osTheme = null)
+    {
+        var effectiveMode = ResolveEffectiveMode(mode, osTheme);
+        return Resolve(palette.Name, effectiveMode);
+    }
+
+    /// <summary>
+    /// Given a mode setting and the OS theme, return "Dark" or "Light".
+    /// </summary>
+    public static string ResolveEffectiveMode(ThemeMode mode, ThemeVariant? osTheme = null)
+    {
+        if (mode == Auto)
+        {
+            // Fall back to Dark if OS theme can't be determined
+            return osTheme == ThemeVariant.Light ? "Light" : "Dark";
+        }
+        return mode.Name;
+    }
 
     public static ThemePalette PaletteFromName(string? name) =>
         AllPalettes.FirstOrDefault(p => p.Name == name) ?? Default;
 
     public static ThemeMode ModeFromName(string? name) =>
-        AllModes.FirstOrDefault(m => m.Name == name) ?? Dark;
+        AllModes.FirstOrDefault(m => m.Name == name) ?? Auto;
 
     /// <summary>All custom ThemeVariant values for registration in AXAML ThemeDictionaries.</summary>
     public static IEnumerable<ThemeVariant> CustomVariants =>

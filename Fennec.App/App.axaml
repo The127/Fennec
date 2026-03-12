@@ -47,5 +47,28 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="CornerRadius" Value="12" />
         </Style>
+
+        <!-- Segmented mode toggle button (Light / Auto / Dark) -->
+        <Style Selector="Button.modeButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedColor}" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.modeButton[Tag=True]">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundColor}" />
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundColor}" />
+        </Style>
+        <Style Selector="Button.modeButton[Tag=False]:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundColor}" />
+        </Style>
+        <Style Selector="Button.modeButton[Tag=True]:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundColor}" />
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundColor}" />
+        </Style>
     </Application.Styles>
 </Application>
