@@ -42,7 +42,29 @@ public partial class App : Application
         // Ensure database is created
         using var scope = _services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.Database.EnsureCreated();
+        // db.Database.EnsureCreated();
+        
+        // We use a simple way to ensure the latest schema is applied.
+        // For a production app, we should use Migrations, but here we can use EnsureDeleted/EnsureCreated 
+        // if we want to reset or a more sophisticated approach.
+        // However, the error "no such table" usually means the DB existed but was old.
+        // Since we don't have migrations yet, we'll use a hack to add missing tables or just recreate if development.
+        try 
+        {
+            db.Database.EnsureCreated();
+            // Try a simple query to see if the new table exists
+            _ = db.ChannelGroups.Count();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
+        {
+            // Table missing? In this stage of development, we might just recreate the DB.
+            // OR we can try to create the missing tables.
+            // For now, let's just log and maybe suggest a manual delete of the db file if it's a dev machine.
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<App>>();
+            logger.LogWarning(ex, "Database schema mismatch detected. Recreating database.");
+            db.Database.EnsureDeleted();
+            db.Database.EnsureCreated();
+        }
     }
 
     private void ConfigureDefaultServices(ServiceCollection services)

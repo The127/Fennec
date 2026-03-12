@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Exceptions;
 using Fennec.App.Messages;
+using Fennec.App.Routes;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
@@ -77,5 +78,17 @@ public class MainAppViewModelTests
         await vm.CreateInviteLinkCommand.ExecuteAsync(server);
 
         await _router.Received().NavigateAsync(Arg.Any<IRoute>());
+    }
+
+    [Fact]
+    public async Task Navigate_to_server_uses_server_store()
+    {
+        var serverId = Guid.NewGuid();
+        var vm = CreateViewModel();
+        var server = new SidebarServer(serverId, "Test", "fennec.chat");
+
+        await vm.NavigateToServerCommand.ExecuteAsync(server);
+
+        await _router.Received().NavigateAsync(Arg.Is<ServerRoute>(r => r.ServerStore == _serverStore));
     }
 }

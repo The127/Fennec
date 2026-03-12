@@ -68,4 +68,72 @@ public class ServerStore(AppDbContext dbContext) : IServerStore
             await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
+
+    public async Task<List<ListChannelGroupsResponseItemDto>> GetChannelGroupsAsync(Guid serverId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.ChannelGroups
+            .Where(x => x.ServerId == serverId)
+            .OrderBy(x => x.SortOrder)
+            .Select(x => new ListChannelGroupsResponseItemDto
+            {
+                ChannelGroupId = x.Id,
+                Name = x.Name
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task SetChannelGroupsAsync(Guid serverId, List<ListChannelGroupsResponseItemDto> groups, CancellationToken cancellationToken = default)
+    {
+        var existing = await dbContext.ChannelGroups
+            .Where(x => x.ServerId == serverId)
+            .ToListAsync(cancellationToken);
+        dbContext.ChannelGroups.RemoveRange(existing);
+
+        var locals = groups.Select((g, i) => new LocalChannelGroup
+        {
+            Id = g.ChannelGroupId,
+            Name = g.Name,
+            ServerId = serverId,
+            SortOrder = i
+        });
+
+        await dbContext.ChannelGroups.AddRangeAsync(locals, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<List<ListChannelsResponseItemDto>> GetChannelsAsync(Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Channels
+            .Where(x => x.ServerId == serverId && x.ChannelGroupId == channelGroupId)
+            .OrderBy(x => x.SortOrder)
+            .Select(x => new ListChannelsResponseItemDto
+            {
+                ChannelId = x.Id,
+                Name = x.Name,
+                ChannelGroupId = x.ChannelGroupId,
+                ChannelType = x.ChannelType
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task SetChannelsAsync(Guid serverId, Guid channelGroupId, List<ListChannelsResponseItemDto> channels, CancellationToken cancellationToken = default)
+    {
+        var existing = await dbContext.Channels
+            .Where(x => x.ServerId == serverId && x.ChannelGroupId == channelGroupId)
+            .ToListAsync(cancellationToken);
+        dbContext.Channels.RemoveRange(existing);
+
+        var locals = channels.Select((c, i) => new LocalChannel
+        {
+            Id = c.ChannelId,
+            Name = c.Name,
+            ChannelGroupId = channelGroupId,
+            ServerId = serverId,
+            ChannelType = c.ChannelType,
+            SortOrder = i
+        });
+
+        await dbContext.Channels.AddRangeAsync(locals, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

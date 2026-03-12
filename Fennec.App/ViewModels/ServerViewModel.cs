@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Fennec.App.Models;
+using Fennec.App.Services;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
@@ -59,7 +60,7 @@ public class MessageItem
     public required string TimeSeparatorText { get; init; }
 }
 
-public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, Guid serverId, string serverName, string instanceUrl) : ObservableObject
+public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, Guid serverId, string serverName, string instanceUrl) : ObservableObject
 {
     [ObservableProperty]
     private string _serverName = serverName;
@@ -312,15 +313,41 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
 
     public async Task LoadAsync()
     {
+        // Offline-first: Load from store
+        var storedGroups = await serverStore.GetChannelGroupsAsync(ServerId);
+        if (storedGroups.Any())
+        {
+            ChannelGroups.Clear();
+            foreach (var group in storedGroups)
+            {
+                var storedChannels = await serverStore.GetChannelsAsync(ServerId, group.ChannelGroupId);
+                var channels = storedChannels
+                    .Select(c => new ChannelItem(c.ChannelId, c.Name, c.ChannelType, c.ChannelGroupId))
+                    .ToList();
+                ChannelGroups.Add(new ChannelGroupItem(group.ChannelGroupId, group.Name, channels));
+            }
+
+            if (SelectedChannel is null)
+            {
+                var firstChannel = ChannelGroups.FirstOrDefault()?.Channels.FirstOrDefault();
+                if (firstChannel is not null)
+                {
+                    await SelectChannel(firstChannel);
+                }
+            }
+        }
+
         try
         {
             var groupsResponse = await client.Server.ListChannelGroupsAsync(instanceUrl, ServerId);
+            await serverStore.SetChannelGroupsAsync(ServerId, groupsResponse.ChannelGroups);
 
             ChannelGroups.Clear();
 
             foreach (var group in groupsResponse.ChannelGroups)
             {
                 var channelsResponse = await client.Server.ListChannelsAsync(instanceUrl, ServerId, group.ChannelGroupId);
+                await serverStore.SetChannelsAsync(ServerId, group.ChannelGroupId, channelsResponse.Channels);
 
                 var channels = channelsResponse.Channels
                     .Select(c => new ChannelItem(c.ChannelId, c.Name, c.ChannelType, c.ChannelGroupId))
@@ -329,15 +356,18 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
                 ChannelGroups.Add(new ChannelGroupItem(group.ChannelGroupId, group.Name, channels));
             }
 
-            var firstChannel = ChannelGroups.FirstOrDefault()?.Channels.FirstOrDefault();
-            if (firstChannel is not null)
+            if (SelectedChannel is null)
             {
-                await SelectChannel(firstChannel);
+                var firstChannel = ChannelGroups.FirstOrDefault()?.Channels.FirstOrDefault();
+                if (firstChannel is not null)
+                {
+                    await SelectChannel(firstChannel);
+                }
             }
         }
         catch
         {
-            // Server unreachable — channels stay empty.
+            // Server unreachable — channels stay with what's in store.
         }
     }
 }
