@@ -89,7 +89,7 @@
                                 </StackPanel>
                             </Grid>
                         </shadui:SimpleDropdown.TriggerContent>
-                        <MenuItem Header="Quick Theme Switch" />
+                        <MenuItem Header="Quick Theme Switch" Command="{Binding ToggleThemeCommand}" />
                         <MenuItem Header="Profile" />
                         <MenuItem Header="Switch Account" />
                         <Separator />
