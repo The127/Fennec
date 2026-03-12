@@ -11,6 +11,7 @@ using Fennec.App.Services.Auth;
 using Fennec.App.Shortcuts;
 using Fennec.Client;
 using Fennec.App.Services.Storage;
+using Fennec.App.Themes;
 using Fennec.App.ViewModels;
 using Fennec.App.Views;
 using Microsoft.EntityFrameworkCore;
@@ -130,9 +131,7 @@ public partial class App : Application
         if (settingsStore is null) return;
 
         var settings = Task.Run(() => settingsStore.LoadAsync()).GetAwaiter().GetResult();
-        RequestedThemeVariant = settings.Theme == "Light"
-            ? Avalonia.Styling.ThemeVariant.Light
-            : Avalonia.Styling.ThemeVariant.Dark;
+        RequestedThemeVariant = AppThemes.FromName(settings.Theme);
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

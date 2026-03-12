@@ -7,6 +7,17 @@
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.Dracula}" Source="avares://Fennec.App/Themes/Dracula.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.Nord}" Source="avares://Fennec.App/Themes/Nord.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.Gruvbox}" Source="avares://Fennec.App/Themes/Gruvbox.axaml" />
+                <ResourceInclude x:Key="{x:Static local:ThemeKeys.CatppuccinMocha}" Source="avares://Fennec.App/Themes/CatppuccinMocha.axaml" />
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>

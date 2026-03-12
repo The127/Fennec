@@ -11,6 +11,7 @@ using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
 using Fennec.App.Shortcuts;
+using Fennec.App.Themes;
 using Fennec.App.ViewModels.Settings;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
@@ -279,11 +280,11 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private async Task ToggleThemeAsync()
     {
         var app = Application.Current!;
-        var newTheme = app.ActualThemeVariant == ThemeVariant.Dark
-            ? ThemeVariant.Light
-            : ThemeVariant.Dark;
-        app.RequestedThemeVariant = newTheme;
-        await _settingsStore.SaveAsync(new AppSettings { Theme = newTheme == ThemeVariant.Dark ? "Dark" : "Light" });
+        var themes = AppThemes.AllThemes;
+        var currentIndex = themes.ToList().FindIndex(t => t.Variant == app.RequestedThemeVariant);
+        var next = themes[(currentIndex + 1) % themes.Count];
+        app.RequestedThemeVariant = next.Variant;
+        await _settingsStore.SaveAsync(new AppSettings { Theme = next.Name });
     }
 
     [RelayCommand]

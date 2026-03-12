@@ -1,0 +1,51 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Gruvbox Dark: https://github.com/morhetz/gruvbox -->
+
+    <!-- basic colors -->
+    <Color x:Key="ForegroundColor">#EBDBB2</Color>
+    <Color x:Key="ForegroundLeadColor">#A89984</Color>
+    <Color x:Key="MutedColor">#928374</Color>
+    <Color x:Key="BorderColor">#3C3836</Color>
+    <Color x:Key="BorderColor60">#352F2D</Color>
+    <Color x:Key="BorderColor30">#4C3C3836</Color>
+    <Color x:Key="OutlineColor">#504945</Color>
+    <Color x:Key="GhostColor">#3C3836</Color>
+    <Color x:Key="GhostHoverColor">#7F3C3836</Color>
+    <Color x:Key="SelectionColor">#0CEBDBB2</Color>
+
+    <!-- theme colors -->
+    <Color x:Key="PrimaryColor">#FABD2F</Color>
+    <Color x:Key="PrimaryColor75">#BFFABD2F</Color>
+    <Color x:Key="PrimaryColor50">#80FABD2F</Color>
+    <Color x:Key="PrimaryColor10">#19FABD2F</Color>
+    <Color x:Key="PrimaryForegroundColor">#282828</Color>
+    <Color x:Key="SecondaryColor">#504945</Color>
+    <Color x:Key="SecondaryColor75">#BF504945</Color>
+    <Color x:Key="SecondaryColor50">#80504945</Color>
+    <Color x:Key="SecondaryForegroundColor">#EBDBB2</Color>
+    <Color x:Key="DestructiveColor">#CC241D</Color>
+    <Color x:Key="DestructiveColor75">#BFCC241D</Color>
+    <Color x:Key="DestructiveColor50">#80CC241D</Color>
+    <Color x:Key="DestructiveColor10">#19CC241D</Color>
+    <Color x:Key="DestructiveForegroundColor">#EBDBB2</Color>
+
+    <!-- specific control colors -->
+    <Color x:Key="CardBackgroundColor">#3C3836</Color>
+    <Color x:Key="DialogBackgroundColor">#282828</Color>
+    <Color x:Key="DialogOverlayColor">#000000</Color>
+    <Color x:Key="TitleBarBackgroundColor">#282828</Color>
+    <Color x:Key="WindowBackgroundColor">#282828</Color>
+    <Color x:Key="SidebarBackgroundColor">#282828</Color>
+    <Color x:Key="SwitchBackgroundColor">#504945</Color>
+    <Color x:Key="SwitchForegroundColor">#EBDBB2</Color>
+    <Color x:Key="TabItemSelectedColor">#282828</Color>
+    <Color x:Key="TabItemsBackgroundColor">#504945</Color>
+
+    <!-- notification colors -->
+    <Color x:Key="InfoColor">#83A598</Color>
+    <Color x:Key="SuccessColor">#B8BB26</Color>
+    <Color x:Key="WarningColor">#FABD2F</Color>
+    <Color x:Key="ErrorColor">#FB4934</Color>
+</ResourceDictionary>

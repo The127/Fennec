@@ -9,10 +9,15 @@
     <StackPanel Spacing="16" Margin="0,8">
         <StackPanel Spacing="8">
             <TextBlock Text="Theme" FontWeight="SemiBold" />
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <ToggleSwitch IsChecked="{Binding IsDarkTheme}" />
-                <TextBlock Text="Dark Mode" VerticalAlignment="Center" />
-            </StackPanel>
+            <ComboBox ItemsSource="{Binding AvailableThemes}"
+                      SelectedItem="{Binding SelectedTheme}"
+                      MinWidth="200">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
         </StackPanel>
     </StackPanel>
 </UserControl>
