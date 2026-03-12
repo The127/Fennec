@@ -6,12 +6,14 @@
              x:Class="Fennec.App.Views.ShortcodeAutocompleteView"
              Width="280">
     <Border Classes="PopupPanel">
-        <ItemsControl ItemsSource="{Binding Suggestions}">
+        <ItemsControl x:Name="SuggestionsList" ItemsSource="{Binding Suggestions}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="models:EmojiEntry">
                     <Border x:Name="Row" Padding="8,5" CornerRadius="4"
                             Background="Transparent"
-                            PointerPressed="Row_PointerPressed">
+                            Cursor="Hand"
+                            PointerPressed="Row_PointerPressed"
+                            PointerEntered="Row_PointerEntered">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <TextBlock Text="{Binding Unicode}" FontSize="18" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding Shortcode, StringFormat=':{0}:'}"
