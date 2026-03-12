@@ -3,10 +3,10 @@ using Avalonia.Logging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
 using Fennec.App.Validators;
-using Microsoft.Extensions.Logging;
 using ShadUI;
 
 namespace Fennec.App.ViewModels;
@@ -29,17 +29,17 @@ public partial class LoginViewModel : ObservableValidator
 
     private readonly IAuthService _authService;
     private readonly ToastManager _toastManager;
-    private readonly ILogger<LoginViewModel> _logger;
+    private readonly IExceptionHandler _exceptionHandler;
 
     public LoginViewModel(
         IAuthService authService,
         IMessenger messenger,
         ToastManager toastManager,
-        ILogger<LoginViewModel> logger)
+        IExceptionHandler exceptionHandler)
     {
         _authService = authService;
         _toastManager = toastManager;
-        _logger = logger;
+        _exceptionHandler = exceptionHandler;
         Messenger = messenger;
     }
 
@@ -81,7 +81,7 @@ public partial class LoginViewModel : ObservableValidator
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to login for user {User} on {Url}", Username, instanceUrl);
+            _exceptionHandler.Handle(e, "Failed to login for user {User} on {Url}", Username, instanceUrl);
             _toastManager.CreateToast("Failed to login")
                 .WithContent("An error occurred while logging in.")
                 .ShowError();

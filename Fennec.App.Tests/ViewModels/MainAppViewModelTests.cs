@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
@@ -6,7 +7,6 @@ using Fennec.App.ViewModels;
 using Fennec.Client;
 using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Server;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using ShadUI;
 
@@ -31,7 +31,7 @@ public class MainAppViewModelTests
 
     private MainAppViewModel CreateViewModel()
     {
-        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullLogger<MainAppViewModel>.Instance);
+        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullExceptionHandler.Instance);
         vm.ApplySession(new AuthSession
         {
             Username = "alice",

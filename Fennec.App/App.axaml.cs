@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Exceptions;
 using Fennec.App.Logger;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
@@ -49,6 +50,7 @@ public partial class App : Application
         });
 
         services.AddSingleton<ToastManager>();
+        services.AddSingleton<IExceptionHandler, ExceptionHandler>();
         services.AddSingleton<IRouter, Router>();
         services.AddSingleton<IClientFactory, ClientFactory>();
         services.AddSingleton<IAuthService, AuthService>();

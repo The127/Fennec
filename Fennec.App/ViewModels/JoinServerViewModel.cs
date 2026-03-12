@@ -3,12 +3,11 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Routing;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
-using Microsoft.Extensions.Logging;
-
 namespace Fennec.App.ViewModels;
 
 public partial class JoinServerViewModel(
@@ -16,7 +15,7 @@ public partial class JoinServerViewModel(
     IRouter router,
     IMessenger messenger,
     string homeInstanceUrl,
-    ILogger<JoinServerViewModel> logger
+    IExceptionHandler exceptionHandler
 ) : ObservableObject
 {
     [ObservableProperty]
@@ -70,7 +69,7 @@ public partial class JoinServerViewModel(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to join server from invite {InviteLink} on {HomeInstanceUrl}", InviteLink, homeInstanceUrl);
+            exceptionHandler.Handle(ex, "Failed to join server from invite {InviteLink} on {HomeInstanceUrl}", InviteLink, homeInstanceUrl);
             ErrorMessage = $"Failed to join server: {ex.Message}";
         }
         finally

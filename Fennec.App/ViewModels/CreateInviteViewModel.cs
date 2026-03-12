@@ -5,14 +5,13 @@ using System.Threading.Tasks;
 using Avalonia.Input.Platform;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fennec.App.Exceptions;
 using Fennec.App.Routing;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
 using NodaTime;
 using NodaTime.Text;
 using ShadUI;
-using Microsoft.Extensions.Logging;
-
 namespace Fennec.App.ViewModels;
 
 public partial class CreateInviteViewModel(
@@ -21,7 +20,7 @@ public partial class CreateInviteViewModel(
     ToastManager toastManager,
     Guid serverId,
     string instanceUrl,
-    ILogger<CreateInviteViewModel> logger
+    IExceptionHandler exceptionHandler
 ) : ObservableObject
 {
     public List<string> ExpiryOptions { get; } =
@@ -103,7 +102,7 @@ public partial class CreateInviteViewModel(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create invite for server {ServerId} on {Url}", serverId, instanceUrl);
+            exceptionHandler.Handle(ex, "Failed to create invite for server {ServerId} on {Url}", serverId, instanceUrl);
             ErrorMessage = $"Failed to create invite: {ex.Message}";
         }
         finally

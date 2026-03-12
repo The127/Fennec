@@ -1,8 +1,8 @@
+using Fennec.App.Exceptions;
 using Fennec.App.Services.Auth;
 using Fennec.Client;
 using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Auth;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -14,7 +14,7 @@ public class AuthServiceTests
     private readonly IClientFactory _clientFactory = Substitute.For<IClientFactory>();
     private readonly IFennecClient _client = Substitute.For<IFennecClient>();
 
-    private AuthService CreateService() => new(_authStore, _clientFactory, NullLogger<AuthService>.Instance);
+    private AuthService CreateService() => new(_authStore, _clientFactory, NullExceptionHandler.Instance);
 
     private AuthSession CreateSession() => new()
     {

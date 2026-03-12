@@ -1,10 +1,10 @@
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Exceptions;
 using Fennec.App.Routing;
 using Fennec.App.ViewModels;
 using Fennec.Client;
 using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Server;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using ShadUI;
 
@@ -33,7 +33,7 @@ public class CreateInviteViewModelTests
     }
 
     private CreateInviteViewModel CreateViewModel() =>
-        new(_client, _router, new ToastManager(), _serverId, "fennec.chat", NullLogger<CreateInviteViewModel>.Instance);
+        new(_client, _router, new ToastManager(), _serverId, "fennec.chat", NullExceptionHandler.Instance);
 
     [Fact]
     public async Task Creates_invite_and_shows_link()

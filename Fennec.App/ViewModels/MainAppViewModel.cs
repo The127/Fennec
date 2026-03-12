@@ -4,13 +4,13 @@ using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Routes;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
-using Microsoft.Extensions.Logging;
 using ShadUI;
 
 namespace Fennec.App.ViewModels;
@@ -30,9 +30,9 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private readonly IAuthService _authService;
     private readonly IClientFactory _clientFactory;
     private readonly ToastManager _toastManager;
-    private readonly ILogger<MainAppViewModel> _logger;
+    private readonly IExceptionHandler _exceptionHandler;
 
-    public MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService, IClientFactory clientFactory, ToastManager toastManager, ILogger<MainAppViewModel> logger)
+    public MainAppViewModel(IRouter router, IMessenger messenger, IAuthService authService, IClientFactory clientFactory, ToastManager toastManager, IExceptionHandler exceptionHandler)
     {
         _routerField = router;
         _router = router;
@@ -40,7 +40,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
         _authService = authService;
         _clientFactory = clientFactory;
         _toastManager = toastManager;
-        _logger = logger;
+        _exceptionHandler = exceptionHandler;
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
@@ -112,7 +112,7 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load servers for user {User} on {Url}", UserAtServer, _session.Url);
+            _exceptionHandler.Handle(ex, "Failed to load servers for user {User} on {Url}", UserAtServer, _session.Url);
             // Server unreachable — sidebar stays empty.
         }
     }

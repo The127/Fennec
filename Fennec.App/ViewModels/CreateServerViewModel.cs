@@ -1,13 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Routing;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
-using Microsoft.Extensions.Logging;
-
 namespace Fennec.App.ViewModels;
 
 public partial class CreateServerViewModel(
@@ -15,7 +14,7 @@ public partial class CreateServerViewModel(
     IRouter router,
     IMessenger messenger,
     string instanceUrl,
-    ILogger<CreateServerViewModel> logger
+    IExceptionHandler exceptionHandler
 ) : ObservableObject
 {
     [ObservableProperty]
@@ -59,7 +58,7 @@ public partial class CreateServerViewModel(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create server {ServerName} on {Url}", ServerName, instanceUrl);
+            exceptionHandler.Handle(ex, "Failed to create server {ServerName} on {Url}", ServerName, instanceUrl);
             ErrorMessage = $"Failed to create server: {ex.Message}";
         }
         finally

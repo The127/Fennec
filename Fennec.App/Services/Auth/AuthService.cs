@@ -1,10 +1,10 @@
+using Fennec.App.Exceptions;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Auth;
-using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.Services.Auth;
 
-public class AuthService(IAuthStore authStore, IClientFactory clientFactory, ILogger<AuthService> logger) : IAuthService
+public class AuthService(IAuthStore authStore, IClientFactory clientFactory, IExceptionHandler exceptionHandler) : IAuthService
 {
     private static string StripScheme(string url)
         => url.Replace("https://", "").Replace("http://", "");
@@ -58,7 +58,7 @@ public class AuthService(IAuthStore authStore, IClientFactory clientFactory, ILo
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to logout from {Url}", session.Url);
+            exceptionHandler.Handle(ex, "Failed to logout from {Url}", session.Url);
             // Server unreachable - the token will expire on its own.
         }
 

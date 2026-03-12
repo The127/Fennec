@@ -1,3 +1,4 @@
+using Fennec.App.Exceptions;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.ViewModels;
@@ -23,6 +24,7 @@ public class AppShellViewModelTests
         services.AddSingleton<IMessenger>(_messenger);
         services.AddSingleton(Substitute.For<IAuthService>());
         services.AddSingleton(Substitute.For<IClientFactory>());
+        services.AddSingleton<IExceptionHandler>(NullExceptionHandler.Instance);
         services.AddSingleton(new ToastManager());
         services.AddLogging();
         var sp = services.BuildServiceProvider();

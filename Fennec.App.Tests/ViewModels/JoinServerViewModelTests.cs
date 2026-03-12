@@ -1,11 +1,11 @@
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Routing;
 using Fennec.App.ViewModels;
 using Fennec.Client;
 using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Server;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Fennec.App.Tests.ViewModels;
@@ -22,7 +22,7 @@ public class JoinServerViewModelTests
         _client.Server.Returns(_serverClient);
     }
 
-    private JoinServerViewModel CreateViewModel() => new(_client, _router, _messenger, "https://my.fennec.chat", NullLogger<JoinServerViewModel>.Instance);
+    private JoinServerViewModel CreateViewModel() => new(_client, _router, _messenger, "https://my.fennec.chat", NullExceptionHandler.Instance);
 
     [Fact]
     public async Task Valid_invite_link_joins_server_and_navigates_back()
