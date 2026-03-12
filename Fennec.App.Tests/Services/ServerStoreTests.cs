@@ -95,6 +95,32 @@ public class ServerStoreTests : IDisposable
         Assert.Empty(result);
     }
 
+    [Fact]
+    public async Task SetJoinedServersAsync_ConcurrentCalls_DoesNotCreateDuplicates()
+    {
+        var serverId = Guid.NewGuid();
+        var servers = new List<ListJoinedServersResponseItemDto>
+        {
+            new() { Id = serverId, Name = "Server 1", InstanceUrl = "https://1.fennec.chat" }
+        };
+
+        // Simulate concurrent calls. 
+        // Note: Using the same DbContext instance for both calls might not fully simulate 
+        // real-world concurrency if the app uses different Scopes, 
+        // but here ServerStore is a Singleton and DbContext is registered with AddDbContext 
+        // (which is scoped by default, but App.axaml.cs registrations might be different).
+        // In App.axaml.cs, IServerStore is Singleton.
+        
+        var task1 = _serverStore.SetJoinedServersAsync(servers);
+        var task2 = _serverStore.SetJoinedServersAsync(servers);
+
+        await Task.WhenAll(task1, task2);
+
+        var result = await _serverStore.GetJoinedServersAsync();
+        Assert.Single(result);
+        Assert.Equal(serverId, result[0].Id);
+    }
+
     public void Dispose()
     {
         _dbContext.Dispose();

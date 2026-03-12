@@ -131,10 +131,28 @@ public partial class MainAppViewModel : ObservableObject, IRecipient<ServerCreat
     private void UpdateServersList(List<ListJoinedServersResponseItemDto>? servers)
     {
         if (servers == null) return;
-        Servers.Clear();
-        foreach (var server in servers)
+        
+        var newServers = servers.DistinctBy(s => s.Id).ToList();
+        
+        // Basic reconciliation to reduce flicker and handle concurrent updates more gracefully.
+        // Remove ones not in newServers.
+        var newServerIds = newServers.Select(s => s.Id).ToHashSet();
+        for (int i = Servers.Count - 1; i >= 0; i--)
         {
-            Servers.Add(new SidebarServer(server.Id, server.Name, server.InstanceUrl));
+            if (!newServerIds.Contains(Servers[i].Id))
+            {
+                Servers.RemoveAt(i);
+            }
+        }
+
+        // Add ones not in Servers.
+        var currentServerIds = Servers.Select(s => s.Id).ToHashSet();
+        foreach (var server in newServers)
+        {
+            if (!currentServerIds.Contains(server.Id))
+            {
+                Servers.Add(new SidebarServer(server.Id, server.Name, server.InstanceUrl));
+            }
         }
     }
 
