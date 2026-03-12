@@ -18,6 +18,6 @@ public class ServerConfiguration : IEntityTypeConfiguration<Server>
 {
     public void Configure(EntityTypeBuilder<Server> builder)
     {
-        builder.HasIndex(x => x.Name);
+        builder.HasIndex(x => x.Name).IsUnique();
     }
 }
