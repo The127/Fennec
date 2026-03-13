@@ -36,6 +36,8 @@ public class AppShellViewModelTests
         services.AddSingleton(new ToastManager());
         services.AddSingleton(new DialogManager());
         services.AddSingleton(Substitute.For<IMessageHubService>());
+        services.AddSingleton(Substitute.For<IVoiceCallService>());
+        services.AddSingleton(Substitute.For<IVoiceHubService>());
         services.AddLogging();
         var sp = services.BuildServiceProvider();
 

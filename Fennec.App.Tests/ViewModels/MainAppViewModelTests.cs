@@ -26,6 +26,8 @@ public class MainAppViewModelTests
     private readonly IKeymapService _keymapService = new KeymapService();
     private readonly ISettingsStore _settingsStore = Substitute.For<ISettingsStore>();
     private readonly IMessageHubService _messageHubService = Substitute.For<IMessageHubService>();
+    private readonly IVoiceCallService _voiceCallService = Substitute.For<IVoiceCallService>();
+    private readonly IVoiceHubService _voiceHubService = Substitute.For<IVoiceHubService>();
     private readonly IAuthStore _authStore = Substitute.For<IAuthStore>();
 
     public MainAppViewModelTests()
@@ -42,7 +44,7 @@ public class MainAppViewModelTests
 
     private MainAppViewModel CreateViewModel()
     {
-        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullExceptionHandler.Instance, new DialogManager(), _serverStore, _keymapService, _settingsStore, _messageHubService, _authStore);
+        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullExceptionHandler.Instance, new DialogManager(), _serverStore, _keymapService, _settingsStore, _messageHubService, _voiceCallService, _voiceHubService, _authStore);
         vm.ApplySession(new AuthSession
         {
             Username = "alice",
