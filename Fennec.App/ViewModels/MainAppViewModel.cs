@@ -248,7 +248,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     {
         await LoadServersAsync(waitForRefresh: true);
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _messenger, serverId, serverName, _session!.Url));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _messenger, serverId, serverName, _session!.Url, Username));
     }
 
     public void Receive(ServerJoinedMessage message)
@@ -325,7 +325,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private async Task NavigateToServerAsync(SidebarServer server)
     {
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _messenger, server.Id, server.Name, server.InstanceUrl));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _messenger, server.Id, server.Name, server.InstanceUrl, Username));
     }
 
     [RelayCommand]

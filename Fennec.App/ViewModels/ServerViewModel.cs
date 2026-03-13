@@ -54,7 +54,9 @@ public class AttachmentItem(string fileName, Uri path)
 
 public partial class MessageItem : ObservableObject
 {
-    public required Guid MessageId { get; init; }
+    [ObservableProperty]
+    private Guid _messageId;
+
     public required string Content { get; init; }
     public required Guid AuthorId { get; init; }
     public required string AuthorName { get; init; }
@@ -65,6 +67,12 @@ public partial class MessageItem : ObservableObject
     public required bool ShowAuthor { get; init; }
     public required bool ShowTimeSeparator { get; init; }
     public required string TimeSeparatorText { get; init; }
+
+    [ObservableProperty]
+    private bool _isPending;
+
+    [ObservableProperty]
+    private bool _isSendFailed;
 
     [ObservableProperty]
     private bool _isSelected;
@@ -140,8 +148,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     private readonly IMessageHubService _messageHubService;
     private readonly IMessenger _messenger;
     private readonly string instanceUrl;
+    private readonly string _currentUsername;
 
-    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IMessenger messenger, Guid serverId, string serverName, string instanceUrl)
+    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IMessenger messenger, Guid serverId, string serverName, string instanceUrl, string currentUsername)
     {
         this.client = client;
         this.dialogManager = dialogManager;
@@ -151,6 +160,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         ServerId = serverId;
         _serverName = serverName;
         this.instanceUrl = instanceUrl;
+        _currentUsername = currentUsername;
 
         messenger.Register<ChannelMessageReceivedMessage>(this);
     }
@@ -401,18 +411,84 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         var content = ReplaceShortcodes(MessageText.Trim());
         MessageText = "";
 
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var nowString = InstantPattern.ExtendedIso.Format(now);
+
+        var optimistic = BuildMessageItem(
+            messageId: Guid.NewGuid(),
+            content: content,
+            authorId: Guid.Empty,
+            authorName: _currentUsername,
+            createdAt: nowString);
+        optimistic.IsPending = true;
+
+        Messages.Add(optimistic);
+        _allMessages.Add(optimistic);
+
         try
         {
-            await client.Server.SendMessageAsync(instanceUrl, ServerId, SelectedChannel.Id, new SendMessageRequestDto
+            var response = await client.Server.SendMessageAsync(instanceUrl, ServerId, SelectedChannel.Id, new SendMessageRequestDto
             {
                 Content = content,
             });
+
+            // SignalR may have already delivered the real message
+            var alreadyDelivered = Messages.FirstOrDefault(m => m.MessageId == response.MessageId);
+            if (alreadyDelivered is not null)
+            {
+                Messages.Remove(optimistic);
+                _allMessages.Remove(optimistic);
+            }
+            else
+            {
+                optimistic.MessageId = response.MessageId;
+                optimistic.IsPending = false;
+            }
         }
         catch
         {
-            // Message send failed — restore text so user can retry.
+            optimistic.IsPending = false;
+            optimistic.IsSendFailed = true;
             MessageText = content;
         }
+    }
+
+    private MessageItem BuildMessageItem(Guid messageId, string content, Guid authorId, string authorName, string createdAt)
+    {
+        var lastMessage = Messages.LastOrDefault();
+        var parsed = InstantPattern.ExtendedIso.Parse(createdAt);
+        var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
+        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var msgDate = timestamp?.InZone(zone).Date;
+
+        var lastAuthorId = lastMessage?.AuthorId;
+        Instant? lastTimestamp = null;
+        if (lastMessage is not null)
+        {
+            var lastParsed = InstantPattern.ExtendedIso.Parse(lastMessage.CreatedAt);
+            if (lastParsed.Success) lastTimestamp = lastParsed.Value;
+        }
+        var lastDate = lastTimestamp?.InZone(zone).Date;
+
+        var isNewDay = lastDate is not null && msgDate is not null && msgDate != lastDate;
+        var hasTimeGap = lastTimestamp is not null && timestamp is not null
+            && (timestamp.Value - lastTimestamp.Value).TotalMinutes >= 5;
+        var showAuthor = authorId != lastAuthorId || hasTimeGap || isNewDay;
+
+        return new MessageItem
+        {
+            MessageId = messageId,
+            Content = content,
+            AuthorId = authorId,
+            AuthorName = authorName,
+            AvatarFallback = authorName.Length > 0 ? authorName[..1].ToUpper() : "?",
+            CreatedAt = createdAt,
+            LocalTime = FormatLocalTime(createdAt),
+            ExactTime = FormatExactTime(createdAt),
+            ShowAuthor = showAuthor,
+            ShowTimeSeparator = isNewDay,
+            TimeSeparatorText = isNewDay ? FormatTimeSeparator(createdAt) : "",
+        };
     }
 
     public void Receive(ChannelMessageReceivedMessage message)
@@ -424,40 +500,11 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
         Dispatcher.UIThread.Post(() =>
         {
-            var lastMessage = Messages.LastOrDefault();
-            var parsed = InstantPattern.ExtendedIso.Parse(dto.CreatedAt);
-            var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
-            var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
-            var msgDate = timestamp?.InZone(zone).Date;
+            // Dedup: skip if this message was already added (e.g. optimistic send)
+            if (Messages.Any(m => m.MessageId == dto.MessageId))
+                return;
 
-            var lastAuthorId = lastMessage?.AuthorId;
-            Instant? lastTimestamp = null;
-            if (lastMessage is not null)
-            {
-                var lastParsed = InstantPattern.ExtendedIso.Parse(lastMessage.CreatedAt);
-                if (lastParsed.Success) lastTimestamp = lastParsed.Value;
-            }
-            var lastDate = lastTimestamp?.InZone(zone).Date;
-
-            var isNewDay = lastDate is not null && msgDate is not null && msgDate != lastDate;
-            var hasTimeGap = lastTimestamp is not null && timestamp is not null
-                && (timestamp.Value - lastTimestamp.Value).TotalMinutes >= 5;
-            var showAuthor = dto.AuthorId != lastAuthorId || hasTimeGap || isNewDay;
-
-            var item = new MessageItem
-            {
-                MessageId = dto.MessageId,
-                Content = dto.Content,
-                AuthorId = dto.AuthorId,
-                AuthorName = dto.AuthorName,
-                AvatarFallback = dto.AuthorName.Length > 0 ? dto.AuthorName[..1].ToUpper() : "?",
-                CreatedAt = dto.CreatedAt,
-                LocalTime = FormatLocalTime(dto.CreatedAt),
-                ExactTime = FormatExactTime(dto.CreatedAt),
-                ShowAuthor = showAuthor,
-                ShowTimeSeparator = isNewDay,
-                TimeSeparatorText = isNewDay ? FormatTimeSeparator(dto.CreatedAt) : "",
-            };
+            var item = BuildMessageItem(dto.MessageId, dto.Content, dto.AuthorId, dto.AuthorName, dto.CreatedAt);
 
             Messages.Add(item);
             _allMessages.Add(item);

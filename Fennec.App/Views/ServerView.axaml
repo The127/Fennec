@@ -276,12 +276,31 @@
                                             ToolTip.Tip="{Binding ExactTime}"
                                             Background="{DynamicResource SecondaryColor50}"
                                             Classes.selected="{Binding IsSelected}"
+                                            Classes.pending="{Binding IsPending}"
+                                            Classes.failed="{Binding IsSendFailed}"
                                             PointerPressed="OnMessagePressed">
+                                        <Border.Styles>
+                                            <Style Selector="Border.pending">
+                                                <Setter Property="Opacity" Value="0.6" />
+                                            </Style>
+                                            <Style Selector="Border.failed">
+                                                <Setter Property="Background" Value="{DynamicResource ErrorColor20}" />
+                                            </Style>
+                                        </Border.Styles>
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Grid.Column="0"
-                                                       Text="{Binding Content}" TextWrapping="Wrap"
-                                                       FontFamily="Inter, fonts:NotoColorEmoji#Noto Color Emoji"
-                                                       FontSize="{Binding IsEmojiOnly, Converter={StaticResource EmojiOnlyFontSizeConverter}}" />
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                                           FontFamily="Inter, fonts:NotoColorEmoji#Noto Color Emoji"
+                                                           FontSize="{Binding IsEmojiOnly, Converter={StaticResource EmojiOnlyFontSizeConverter}}"
+                                                           VerticalAlignment="Center" />
+                                                <mi:MaterialIcon Kind="ClockOutline" Width="14" Height="14"
+                                                                 Opacity="0.5" VerticalAlignment="Center"
+                                                                 IsVisible="{Binding IsPending}" />
+                                                <mi:MaterialIcon Kind="AlertCircleOutline" Width="14" Height="14"
+                                                                 Foreground="{DynamicResource ErrorColor}"
+                                                                 VerticalAlignment="Center"
+                                                                 IsVisible="{Binding IsSendFailed}" />
+                                            </StackPanel>
                                             <Button Grid.Column="1"
                                                     VerticalAlignment="Top"
                                                     Padding="4" Margin="4,0,0,0"
