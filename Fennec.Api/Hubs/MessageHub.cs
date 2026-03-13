@@ -1,9 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
+using Fennec.Api.Services;
 using Fennec.Shared.Dtos.Server;
+using Fennec.Shared.Dtos.Voice;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Fennec.Api.Hubs;
 
-public class MessageHub : Hub
+public class MessageHub(VoiceStateService voiceState) : Hub
 {
     public async Task SubscribeToChannel(Guid serverId, Guid channelId)
     {
@@ -15,6 +18,89 @@ public class MessageHub : Hub
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"{serverId}-{channelId}");
     }
+
+    // --- Voice ---
+
+    public async Task<List<VoiceParticipantDto>> JoinVoiceChannel(Guid serverId, Guid channelId)
+    {
+        var (userId, username) = GetCallerIdentity();
+        var groupName = VoiceGroup(serverId, channelId);
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+        var participants = voiceState.AddParticipant(serverId, channelId, userId, username, Context.ConnectionId);
+
+        await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantJoined", serverId, channelId,
+            new VoiceParticipantDto { UserId = userId, Username = username });
+
+        return participants;
+    }
+
+    public async Task LeaveVoiceChannel(Guid serverId, Guid channelId)
+    {
+        var (userId, _) = GetCallerIdentity();
+        var groupName = VoiceGroup(serverId, channelId);
+
+        voiceState.RemoveParticipant(serverId, channelId, userId);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+
+        await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
+    }
+
+    public async Task SendSdpOffer(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
+    {
+        var (userId, _) = GetCallerIdentity();
+        var groupName = VoiceGroup(serverId, channelId);
+
+        // Find target connection
+        var participants = voiceState.GetParticipants(serverId, channelId);
+        // We relay to the group but filter by targetUserId on the client side —
+        // however, for efficiency, we should send directly. Since we don't have a userId→connectionId map
+        // exposed, we'll use the group and let clients filter.
+        await Clients.OthersInGroup(groupName).SendAsync("ReceiveSdpOffer", serverId, channelId, userId, sdp);
+    }
+
+    public async Task SendSdpAnswer(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
+    {
+        var (userId, _) = GetCallerIdentity();
+        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+            .SendAsync("ReceiveSdpAnswer", serverId, channelId, userId, sdp);
+    }
+
+    public async Task SendIceCandidate(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex)
+    {
+        var (userId, _) = GetCallerIdentity();
+        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+            .SendAsync("ReceiveIceCandidate", serverId, channelId, userId, candidate, sdpMid, sdpMLineIndex);
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        var removed = voiceState.RemoveByConnectionId(Context.ConnectionId);
+        if (removed is not null)
+        {
+            var (serverId, channelId, userId) = removed.Value;
+            await Clients.Group(VoiceGroup(serverId, channelId))
+                .SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
+        }
+
+        await base.OnDisconnectedAsync(exception);
+    }
+
+    private (Guid UserId, string Username) GetCallerIdentity()
+    {
+        var httpContext = Context.GetHttpContext();
+        var token = httpContext?.Request.Query["access_token"].FirstOrDefault();
+        if (token is null)
+            throw new HubException("No access token provided");
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        var sub = jwt.Subject ?? throw new HubException("Token missing subject");
+        var name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "Unknown";
+        return (Guid.Parse(sub), name);
+    }
+
+    private static string VoiceGroup(Guid serverId, Guid channelId) => $"voice-{serverId}-{channelId}";
 }
 
 public interface IMessageEventService

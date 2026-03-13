@@ -19,6 +19,7 @@ builder.Services.AddScoped<IMessageEventService, MessageEventService>();
 builder.Services.AddScoped<INotificationEventService, NotificationEventService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddSingleton<IMentionParser, MentionParser>();
+builder.Services.AddSingleton<VoiceStateService>();
 
 builder.Services.AddMediatR(config => config.RegisterServicesFromAssemblyContaining<Program>());
 
