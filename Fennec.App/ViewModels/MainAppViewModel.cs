@@ -411,6 +411,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     {
         var settings = await _settingsStore.LoadAsync();
         var vm = new SettingsViewModel(
+            _messenger,
             _keymapService,
             _settingsStore,
             settings,
