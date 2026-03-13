@@ -40,6 +40,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private readonly IKeymapService _keymapService;
     private readonly ISettingsStore _settingsStore;
     private readonly IMessageHubService _messageHubService;
+    private readonly IVoiceCallService _voiceCallService;
     private readonly IAuthStore _authStore;
 
     public MainAppViewModel(
@@ -54,6 +55,8 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         IKeymapService keymapService,
         ISettingsStore settingsStore,
         IMessageHubService messageHubService,
+        IVoiceCallService voiceCallService,
+        IVoiceHubService voiceHubService,
         IAuthStore authStore)
     {
         _routerField = router;
@@ -68,7 +71,10 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         _keymapService = keymapService;
         _settingsStore = settingsStore;
         _messageHubService = messageHubService;
+        _voiceCallService = voiceCallService;
         _authStore = authStore;
+
+        voiceHubService.Initialize();
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
@@ -251,7 +257,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     {
         await LoadServersAsync(waitForRefresh: true);
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _messenger, serverId, serverName, _session!.Url, Username));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, serverId, serverName, _session!.Url, Username));
     }
 
     public void Receive(ServerJoinedMessage message)
@@ -328,7 +334,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private async Task NavigateToServerAsync(SidebarServer server)
     {
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _messenger, server.Id, server.Name, server.InstanceUrl, Username));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, server.Id, server.Name, server.InstanceUrl, Username));
     }
 
     [RelayCommand]

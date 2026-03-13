@@ -18,6 +18,12 @@ using ShadUI;
 
 namespace Fennec.App.ViewModels;
 
+public class VoiceParticipantItem(Guid userId, string username)
+{
+    public Guid UserId { get; } = userId;
+    public string Username { get; } = username;
+}
+
 public partial class ChannelItem(Guid id, string name, ChannelType channelType, Guid channelGroupId) : ObservableObject
 {
     public Guid Id { get; } = id;
@@ -28,6 +34,8 @@ public partial class ChannelItem(Guid id, string name, ChannelType channelType, 
 
     [ObservableProperty]
     private bool _isSelected;
+
+    public ObservableCollection<VoiceParticipantItem> VoiceParticipants { get; } = [];
 }
 
 public partial class ChannelGroupItem(Guid id, string name, List<ChannelItem> channels) : ObservableObject
@@ -140,22 +148,28 @@ public partial class MessageItem : ObservableObject
     }
 }
 
-public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISearchableRoute, IRecipient<ChannelMessageReceivedMessage>
+public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISearchableRoute,
+    IRecipient<ChannelMessageReceivedMessage>,
+    IRecipient<VoiceParticipantJoinedMessage>,
+    IRecipient<VoiceParticipantLeftMessage>,
+    IRecipient<VoiceStateChangedMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
     private readonly IServerStore serverStore;
     private readonly IMessageHubService _messageHubService;
+    private readonly IVoiceCallService _voiceCallService;
     private readonly IMessenger _messenger;
     private readonly string instanceUrl;
     private readonly string _currentUsername;
 
-    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IMessenger messenger, Guid serverId, string serverName, string instanceUrl, string currentUsername)
+    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, Guid serverId, string serverName, string instanceUrl, string currentUsername)
     {
         this.client = client;
         this.dialogManager = dialogManager;
         this.serverStore = serverStore;
         _messageHubService = messageHubService;
+        _voiceCallService = voiceCallService;
         _messenger = messenger;
         ServerId = serverId;
         _serverName = serverName;
@@ -163,6 +177,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         _currentUsername = currentUsername;
 
         messenger.Register<ChannelMessageReceivedMessage>(this);
+        messenger.Register<VoiceParticipantJoinedMessage>(this);
+        messenger.Register<VoiceParticipantLeftMessage>(this);
+        messenger.Register<VoiceStateChangedMessage>(this);
     }
     [ObservableProperty]
     private string _serverName;
@@ -299,6 +316,19 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         catch
         {
             // SignalR subscription failure shouldn't block channel selection.
+        }
+
+        // Auto-join voice when clicking a voice-enabled channel
+        if (!channel.IsTextOnly && (!IsInVoiceChannel || CurrentVoiceChannelId != channel.Id))
+        {
+            try
+            {
+                await _voiceCallService.JoinAsync(ServerId, channel.Id);
+            }
+            catch
+            {
+                // Voice join failure shouldn't block channel selection.
+            }
         }
 
         MessageInputFocusRequested?.Invoke();
@@ -512,6 +542,142 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             _allMessages.Add(item);
         });
     }
+
+    // --- Voice ---
+
+    [ObservableProperty]
+    private bool _isInVoiceChannel;
+
+    [ObservableProperty]
+    private Guid? _currentVoiceChannelId;
+
+    [ObservableProperty]
+    private string? _currentVoiceChannelName;
+
+    [ObservableProperty]
+    private bool _isMuted;
+
+    [ObservableProperty]
+    private bool _isDeafened;
+
+    [RelayCommand]
+    private async Task JoinVoiceChannel(ChannelItem channel)
+    {
+        if (channel.IsTextOnly) return;
+
+        // If already in this channel, do nothing
+        if (IsInVoiceChannel && CurrentVoiceChannelId == channel.Id) return;
+
+        try
+        {
+            await _voiceCallService.JoinAsync(ServerId, channel.Id);
+        }
+        catch
+        {
+            // Failed to join voice channel.
+        }
+    }
+
+    [RelayCommand]
+    private async Task LeaveVoiceChannel()
+    {
+        try
+        {
+            await _voiceCallService.LeaveAsync();
+        }
+        catch
+        {
+            // Failed to leave voice channel.
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleMute()
+    {
+        IsMuted = !IsMuted;
+        _voiceCallService.SetMuted(IsMuted);
+    }
+
+    [RelayCommand]
+    private void ToggleDeafen()
+    {
+        IsDeafened = !IsDeafened;
+        _voiceCallService.SetDeafened(IsDeafened);
+        if (IsDeafened)
+            IsMuted = true;
+    }
+
+    public void Receive(VoiceParticipantJoinedMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var channel = FindChannel(message.ChannelId);
+            if (channel is null) return;
+
+            // Avoid duplicates
+            if (channel.VoiceParticipants.Any(p => p.UserId == message.UserId))
+                return;
+
+            channel.VoiceParticipants.Add(new VoiceParticipantItem(message.UserId, message.Username));
+        });
+    }
+
+    public void Receive(VoiceParticipantLeftMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var channel = FindChannel(message.ChannelId);
+            if (channel is null) return;
+
+            var participant = channel.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
+            if (participant is not null)
+                channel.VoiceParticipants.Remove(participant);
+        });
+    }
+
+    public void Receive(VoiceStateChangedMessage message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Clear participants from the old channel when disconnecting
+            if (!message.IsConnected && CurrentVoiceChannelId is not null)
+            {
+                var oldChannel = FindChannel(CurrentVoiceChannelId.Value);
+                oldChannel?.VoiceParticipants.Clear();
+            }
+
+            IsInVoiceChannel = message.IsConnected;
+            CurrentVoiceChannelId = message.ChannelId;
+
+            if (message.IsConnected && message.ChannelId is not null)
+            {
+                var channel = FindChannel(message.ChannelId.Value);
+                CurrentVoiceChannelName = channel?.Name;
+            }
+            else
+            {
+                CurrentVoiceChannelName = null;
+                IsMuted = false;
+                IsDeafened = false;
+            }
+        });
+    }
+
+    private ChannelItem? FindChannel(Guid channelId)
+    {
+        foreach (var group in ChannelGroups)
+        {
+            var channel = group.Channels.FirstOrDefault(c => c.Id == channelId);
+            if (channel is not null) return channel;
+        }
+        return null;
+    }
+
+    // --- End Voice ---
 
     private async Task LoadMessagesAsync()
     {
