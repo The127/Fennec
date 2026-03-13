@@ -3,6 +3,176 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Fennec.App.Views.LoadingView">
-    Loading...
+             x:Class="Fennec.App.Views.LoadingView"
+             Background="{DynamicResource BackgroundColor}">
+
+    <UserControl.Styles>
+        <!-- Left ear: fade in -->
+        <Style Selector="Path.leftEar">
+            <Setter Property="Opacity" Value="0" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.6" Delay="0:0:0.2" FillMode="Forward" Easing="CubicEaseOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Right ear: fade in (slightly delayed) -->
+        <Style Selector="Path.rightEar">
+            <Setter Property="Opacity" Value="0" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.6" Delay="0:0:0.35" FillMode="Forward" Easing="CubicEaseOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Face: fade in -->
+        <Style Selector="Path.face">
+            <Setter Property="Opacity" Value="0" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.5" Delay="0:0:0.55" FillMode="Forward" Easing="CubicEaseOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Nose: pop in last -->
+        <Style Selector="Path.nose">
+            <Setter Property="Opacity" Value="0" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.3" Delay="0:0:0.85" FillMode="Forward" Easing="CubicEaseOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- App name fade in -->
+        <Style Selector="TextBlock.appName">
+            <Setter Property="Opacity" Value="0" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.5" Delay="0:0:0.9" FillMode="Forward" Easing="CubicEaseOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Pulsing glow on the whole logo after it loads -->
+        <Style Selector="Canvas.logoCanvas">
+            <Style.Animations>
+                <Animation Duration="0:0:1.8" Delay="0:0:1.3" IterationCount="Infinite"
+                           PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="1" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="0.7" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Loading dots wave animation -->
+        <Style Selector="Ellipse.dot1">
+            <Style.Animations>
+                <Animation Duration="0:0:1.2" Delay="0:0:1.2" IterationCount="Infinite" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+                    <KeyFrame Cue="33%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                    <KeyFrame Cue="66%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Ellipse.dot2">
+            <Style.Animations>
+                <Animation Duration="0:0:1.2" Delay="0:0:1.2" IterationCount="Infinite" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+                    <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+                    <KeyFrame Cue="66%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Ellipse.dot3">
+            <Style.Animations>
+                <Animation Duration="0:0:1.2" Delay="0:0:1.2" IterationCount="Infinite" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+                    <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+                    <KeyFrame Cue="66%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="*,Auto,Auto,*"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center">
+
+        <!-- Fennec logo -->
+        <Viewbox Grid.Row="0" Width="120" Height="120"
+                 VerticalAlignment="Bottom" Margin="0,0,0,16">
+            <Canvas Classes="logoCanvas" Width="100" Height="100">
+                <!-- Left ear -->
+                <Path Classes="leftEar"
+                      Data="M 50,45 L 20,20 L 35,45 Z"
+                      Fill="#F39C12" />
+                <!-- Right ear -->
+                <Path Classes="rightEar"
+                      Data="M 50,45 L 80,20 L 65,45 Z"
+                      Fill="#F39C12" />
+                <!-- Face -->
+                <Path Classes="face"
+                      Data="M 35,45 L 65,45 L 50,80 Z"
+                      Fill="#E67E22" />
+                <!-- Nose -->
+                <Path Classes="nose"
+                      Data="M 45,70 L 55,70 L 50,80 Z"
+                      Fill="#2C3E50" />
+            </Canvas>
+        </Viewbox>
+
+        <!-- App name -->
+        <TextBlock Grid.Row="1"
+                   Classes="appName"
+                   Text="Fennec"
+                   FontSize="28"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource ForegroundColor}"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,24" />
+
+        <!-- Loading dots -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal"
+                    HorizontalAlignment="Center" Spacing="8">
+            <Ellipse Classes="dot1" Width="8" Height="8" Fill="#F39C12" />
+            <Ellipse Classes="dot2" Width="8" Height="8" Fill="#E67E22" />
+            <Ellipse Classes="dot3" Width="8" Height="8" Fill="#F39C12" />
+        </StackPanel>
+    </Grid>
 </UserControl>
