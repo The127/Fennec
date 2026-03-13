@@ -26,7 +26,7 @@ public class ServerViewModelTests
             .Returns(Task.FromResult(new List<ListChannelGroupsResponseItemDto>()));
     }
 
-    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverStore, _messageHubService, _messenger, _serverId, "Test Server", "https://fennec.chat");
+    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverStore, _messageHubService, _messenger, _serverId, "Test Server", "https://fennec.chat", "testuser");
 
     [Fact]
     public async Task Loading_populates_channel_groups_with_channels()
