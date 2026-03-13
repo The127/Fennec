@@ -19,6 +19,13 @@ public class AuthenticationMiddleware(IKeyService keyService, IClockService cloc
         public string Issuer => throw new UnreachableException("Anonymous user info accessed");
     }
 
+    public record FederationPrincipal : IAuthPrincipal
+    {
+        public Guid Id => throw new UnreachableException("Federation principal has no user identity");
+        public string Name => throw new UnreachableException("Federation principal has no user identity");
+        public required string Issuer { get; init; }
+    }
+
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         var endpoint = context.GetEndpoint();
@@ -80,6 +87,8 @@ public class AuthenticationMiddleware(IKeyService keyService, IClockService cloc
         var payload = $"{context.Request.Method}\n{context.Request.GetEncodedPathAndQuery()}\n{timestamp}\n{body}";
         
         await keyService.VerifyPayloadAsync(payload, signatureHeader, instanceUrl, context.RequestAborted);
+
+        context.Items[AuthPrincipalKey] = new FederationPrincipal { Issuer = instanceUrl };
     }
 
     private async Task HandleUserEndpoint(HttpContext context)
