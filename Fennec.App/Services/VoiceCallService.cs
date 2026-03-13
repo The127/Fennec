@@ -24,6 +24,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private readonly IVoiceHubService _voiceHub;
     private readonly IMessenger _messenger;
     private readonly ILogger<VoiceCallService> _logger;
+    private readonly ISettingsStore _settingsStore;
 
     private readonly Dictionary<Guid, RTCPeerConnection> _peers = new();
     private PortAudioEndPoint? _audioEndPoint;
@@ -39,11 +40,12 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         new RTCIceServer { urls = "stun:stun.l.google.com:19302" }
     ];
 
-    public VoiceCallService(IVoiceHubService voiceHub, IMessenger messenger, ILogger<VoiceCallService> logger)
+    public VoiceCallService(IVoiceHubService voiceHub, IMessenger messenger, ILogger<VoiceCallService> logger, ISettingsStore settingsStore)
     {
         _voiceHub = voiceHub;
         _messenger = messenger;
         _logger = logger;
+        _settingsStore = settingsStore;
 
         _voiceHub.SdpOfferReceived += OnSdpOfferReceived;
         _voiceHub.SdpAnswerReceived += OnSdpAnswerReceived;
@@ -130,7 +132,11 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     {
         try
         {
-            _audioEndPoint = new PortAudioEndPoint(_logger);
+            var settings = _settingsStore.LoadAsync().GetAwaiter().GetResult();
+            var inputIndex = PortAudioEndPoint.FindDeviceByName(settings.InputDeviceName, settings.AudioHostApi);
+            var outputIndex = PortAudioEndPoint.FindDeviceByName(settings.OutputDeviceName, settings.AudioHostApi);
+
+            _audioEndPoint = new PortAudioEndPoint(_logger, inputIndex, outputIndex);
             _audioEndPoint.StartAudio();
             _audioEndPoint.StartAudioSink();
         }

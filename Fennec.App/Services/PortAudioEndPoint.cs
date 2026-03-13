@@ -53,9 +53,14 @@ public sealed class PortAudioEndPoint : IAudioSource, IAudioSink, IDisposable
     public event SourceErrorDelegate? OnAudioSourceError;
     public event SourceErrorDelegate? OnAudioSinkError;
 
-    public PortAudioEndPoint(ILogger logger)
+    private readonly int? _inputDeviceIndex;
+    private readonly int? _outputDeviceIndex;
+
+    public PortAudioEndPoint(ILogger logger, int? inputDeviceIndex = null, int? outputDeviceIndex = null)
     {
         _logger = logger;
+        _inputDeviceIndex = inputDeviceIndex;
+        _outputDeviceIndex = outputDeviceIndex;
         _audioFormat = new AudioFormat(AudioCodecsEnum.OPUS, 111, SampleRate, Channels, null);
         _encoder = new OpusEncoder(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_VOIP);
         _decoder = new OpusDecoder(SampleRate, Channels);
@@ -81,7 +86,7 @@ public sealed class PortAudioEndPoint : IAudioSource, IAudioSink, IDisposable
     {
         if (_captureStream is not null) return Task.CompletedTask;
 
-        var inputDevice = PortAudio.DefaultInputDevice;
+        var inputDevice = _inputDeviceIndex ?? PortAudio.DefaultInputDevice;
         if (inputDevice == PortAudio.NoDevice)
         {
             _logger.LogWarning("No default input audio device found");
@@ -118,7 +123,7 @@ public sealed class PortAudioEndPoint : IAudioSource, IAudioSink, IDisposable
     {
         if (_playbackStream is not null) return Task.CompletedTask;
 
-        var outputDevice = PortAudio.DefaultOutputDevice;
+        var outputDevice = _outputDeviceIndex ?? PortAudio.DefaultOutputDevice;
         if (outputDevice == PortAudio.NoDevice)
         {
             _logger.LogWarning("No default output audio device found");
@@ -325,6 +330,41 @@ public sealed class PortAudioEndPoint : IAudioSource, IAudioSink, IDisposable
 
     public List<AudioFormat> GetAudioSinkFormats() => [_audioFormat];
     public void SetAudioSinkFormat(AudioFormat audioFormat) { }
+
+    /// <summary>
+    /// Ensures PortAudio is initialized. Safe to call multiple times.
+    /// </summary>
+    public static void EnsurePortAudioInitialized()
+    {
+        lock (InitLock)
+        {
+            if (!_paInitialized)
+            {
+                PortAudio.LoadNativeLibrary();
+                PortAudio.Initialize();
+                _paInitialized = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Finds a device index by name, optionally scoped to a host API. Returns null if not found.
+    /// </summary>
+    public static int? FindDeviceByName(string? name, int? hostApi = null)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+
+        EnsurePortAudioInitialized();
+
+        for (int i = 0; i < PortAudio.DeviceCount; i++)
+        {
+            var info = PortAudio.GetDeviceInfo(i);
+            if (info.name == name && (hostApi is null || info.hostApi == hostApi))
+                return i;
+        }
+
+        return null;
+    }
 
     public void Dispose()
     {

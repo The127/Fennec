@@ -15,4 +15,13 @@ public class AppSettings
 
     [JsonPropertyName("keyBindings")]
     public Dictionary<string, string>? KeyBindings { get; set; }
+
+    [JsonPropertyName("audioHostApi")]
+    public int? AudioHostApi { get; set; }
+
+    [JsonPropertyName("inputDeviceName")]
+    public string? InputDeviceName { get; set; }
+
+    [JsonPropertyName("outputDeviceName")]
+    public string? OutputDeviceName { get; set; }
 }

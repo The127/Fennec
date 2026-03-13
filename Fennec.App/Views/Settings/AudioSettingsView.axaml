@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Fennec.App.ViewModels.Settings"
+             xmlns:controls="using:Fennec.App.Controls"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
+             x:Class="Fennec.App.Views.Settings.AudioSettingsView"
+             x:DataType="vm:AudioSettingsViewModel">
+    <StackPanel Spacing="16" Margin="0,8">
+        <!-- Audio Backend (Linux only) -->
+        <StackPanel Spacing="8" IsVisible="{Binding ShowHostApiSelector}">
+            <TextBlock Text="Audio Backend" FontWeight="SemiBold" />
+            <Border Background="{DynamicResource SecondaryColor}"
+                    CornerRadius="8"
+                    Padding="3"
+                    HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <Button Classes="modeButton"
+                            Command="{Binding SelectHostApiCommand}"
+                            CommandParameter="{Binding HostApis[0]}"
+                            Tag="{Binding IsAlsaSelected}">
+                        <TextBlock Text="ALSA" VerticalAlignment="Center" />
+                    </Button>
+                    <Button Classes="modeButton"
+                            Command="{Binding SelectHostApiCommand}"
+                            CommandParameter="{Binding HostApis[1]}"
+                            Tag="{Binding IsJackSelected}">
+                        <TextBlock Text="JACK" VerticalAlignment="Center" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <StackPanel Spacing="8">
+            <TextBlock Text="Input Device" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding InputDevices}"
+                      SelectedItem="{Binding SelectedInputDevice}"
+                      MinWidth="300">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <controls:AudioLevelMeter Level="{Binding InputLevel}"
+                                      Height="6"
+                                      MinWidth="300"
+                                      HorizontalAlignment="Left" />
+        </StackPanel>
+
+        <StackPanel Spacing="8">
+            <TextBlock Text="Output Device" FontWeight="SemiBold" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <ComboBox ItemsSource="{Binding OutputDevices}"
+                          SelectedItem="{Binding SelectedOutputDevice}"
+                          MinWidth="300">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Command="{Binding TestOutputCommand}"
+                        Content="{Binding TestButtonLabel}"
+                        MinWidth="60" />
+            </StackPanel>
+            <controls:AudioLevelMeter Level="{Binding OutputLevel}"
+                                      Height="6"
+                                      MinWidth="300"
+                                      HorizontalAlignment="Left" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>
