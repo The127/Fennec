@@ -91,6 +91,10 @@ public partial class App : Application
         services.AddSingleton<IRouter, Router>();
         services.AddSingleton<IClientFactory, ClientFactory>();
         services.AddSingleton<IAuthService, AuthService>();
+        services.AddSingleton<ServerRepository>();
+        services.AddSingleton<IServerRepository>(sp => sp.GetRequiredService<ServerRepository>());
+        services.AddSingleton<IChannelGroupRepository>(sp => sp.GetRequiredService<ServerRepository>());
+        services.AddSingleton<IChannelRepository>(sp => sp.GetRequiredService<ServerRepository>());
         services.AddSingleton<IServerStore, ServerStore>();
         services.AddSingleton<IKeymapService, KeymapService>();
         services.AddSingleton<IMessenger>(_ => WeakReferenceMessenger.Default);

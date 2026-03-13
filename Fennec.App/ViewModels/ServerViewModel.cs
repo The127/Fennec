@@ -527,18 +527,17 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
 
     public async Task LoadAsync()
     {
-        // Offline-first: Load from store
-        var storedGroups = await serverStore.GetChannelGroupsAsync(ServerId);
-        if (storedGroups.Any())
+        var groups = await serverStore.GetChannelGroupsAsync(instanceUrl, client, ServerId);
+        if (groups.Any())
         {
             ChannelGroups.Clear();
-            foreach (var group in storedGroups)
+            foreach (var group in groups)
             {
-                var storedChannels = await serverStore.GetChannelsAsync(ServerId, group.ChannelGroupId);
-                var channels = storedChannels
+                var channels = await serverStore.GetChannelsAsync(instanceUrl, client, ServerId, group.ChannelGroupId);
+                var channelItems = channels
                     .Select(c => new ChannelItem(c.ChannelId, c.Name, c.ChannelType, c.ChannelGroupId))
                     .ToList();
-                ChannelGroups.Add(new ChannelGroupItem(group.ChannelGroupId, group.Name, channels));
+                ChannelGroups.Add(new ChannelGroupItem(group.ChannelGroupId, group.Name, channelItems));
             }
 
             if (SelectedChannel is null)
@@ -549,39 +548,6 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
                     await SelectChannel(firstChannel);
                 }
             }
-        }
-
-        try
-        {
-            var groupsResponse = await client.Server.ListChannelGroupsAsync(instanceUrl, ServerId);
-            await serverStore.SetChannelGroupsAsync(ServerId, groupsResponse.ChannelGroups);
-
-            ChannelGroups.Clear();
-
-            foreach (var group in groupsResponse.ChannelGroups)
-            {
-                var channelsResponse = await client.Server.ListChannelsAsync(instanceUrl, ServerId, group.ChannelGroupId);
-                await serverStore.SetChannelsAsync(ServerId, group.ChannelGroupId, channelsResponse.Channels);
-
-                var channels = channelsResponse.Channels
-                    .Select(c => new ChannelItem(c.ChannelId, c.Name, c.ChannelType, c.ChannelGroupId))
-                    .ToList();
-
-                ChannelGroups.Add(new ChannelGroupItem(group.ChannelGroupId, group.Name, channels));
-            }
-
-            if (SelectedChannel is null)
-            {
-                var firstChannel = ChannelGroups.FirstOrDefault()?.Channels.FirstOrDefault();
-                if (firstChannel is not null)
-                {
-                    await SelectChannel(firstChannel);
-                }
-            }
-        }
-        catch
-        {
-            // Server unreachable — channels stay with what's in store.
         }
     }
 }

@@ -1,139 +1,72 @@
-using Fennec.App.Services.Storage;
-using Fennec.App.Services.Storage.Models;
+using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.Services;
 
-public class ServerStore(AppDbContext dbContext) : IServerStore
+public class ServerStore(
+    IServerRepository serverRepo,
+    IChannelGroupRepository groupRepo,
+    IChannelRepository channelRepo,
+    ILogger<ServerStore> logger) : IServerStore
 {
-    public async Task<List<ListJoinedServersResponseItemDto>> GetJoinedServersAsync(CancellationToken cancellationToken = default)
+    public async Task<List<ListJoinedServersResponseItemDto>> GetJoinedServersAsync(string homeUrl, IFennecClient client, CancellationToken cancellationToken = default)
     {
-        return await dbContext.Servers
-            .OrderBy(x => x.SortOrder)
-            .ThenBy(x => x.JoinedAtUtc)
-            .Select(x => new ListJoinedServersResponseItemDto
-            {
-                Id = x.Id,
-                Name = x.Name,
-                InstanceUrl = x.InstanceUrl
-            })
-            .ToListAsync(cancellationToken);
-    }
-
-    public async Task SetJoinedServersAsync(List<ListJoinedServersResponseItemDto> servers, CancellationToken cancellationToken = default)
-    {
-        // For a full set, we clear and re-add or reconcile. 
-        // In this simple store, we'll reconcile.
-        var existing = await dbContext.Servers.ToListAsync(cancellationToken);
-        dbContext.Servers.RemoveRange(existing);
+        var cached = await serverRepo.GetJoinedServersAsync(cancellationToken);
         
-        var locals = servers.Select((s, i) => new LocalServer
+        _ = Task.Run(async () =>
         {
-            Id = s.Id,
-            Name = s.Name,
-            InstanceUrl = s.InstanceUrl,
-            SortOrder = i
-        });
-        
-        await dbContext.Servers.AddRangeAsync(locals, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task AddJoinedServerAsync(ListJoinedServersResponseItemDto server, CancellationToken cancellationToken = default)
-    {
-        if (await dbContext.Servers.AnyAsync(x => x.Id == server.Id, cancellationToken))
-            return;
-
-        var maxSortOrder = await dbContext.Servers.MaxAsync(x => (int?)x.SortOrder, cancellationToken) ?? -1;
-
-        var local = new LocalServer
-        {
-            Id = server.Id,
-            Name = server.Name,
-            InstanceUrl = server.InstanceUrl,
-            SortOrder = maxSortOrder + 1
-        };
-
-        await dbContext.Servers.AddAsync(local, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task RemoveJoinedServerAsync(Guid serverId, CancellationToken cancellationToken = default)
-    {
-        var server = await dbContext.Servers.FindAsync([serverId], cancellationToken);
-        if (server != null)
-        {
-            dbContext.Servers.Remove(server);
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-    }
-
-    public async Task<List<ListChannelGroupsResponseItemDto>> GetChannelGroupsAsync(Guid serverId, CancellationToken cancellationToken = default)
-    {
-        return await dbContext.ChannelGroups
-            .Where(x => x.ServerId == serverId)
-            .OrderBy(x => x.SortOrder)
-            .Select(x => new ListChannelGroupsResponseItemDto
+            try
             {
-                ChannelGroupId = x.Id,
-                Name = x.Name
-            })
-            .ToListAsync(cancellationToken);
-    }
-
-    public async Task SetChannelGroupsAsync(Guid serverId, List<ListChannelGroupsResponseItemDto> groups, CancellationToken cancellationToken = default)
-    {
-        var existing = await dbContext.ChannelGroups
-            .Where(x => x.ServerId == serverId)
-            .ToListAsync(cancellationToken);
-        dbContext.ChannelGroups.RemoveRange(existing);
-
-        var locals = groups.Select((g, i) => new LocalChannelGroup
-        {
-            Id = g.ChannelGroupId,
-            Name = g.Name,
-            ServerId = serverId,
-            SortOrder = i
-        });
-
-        await dbContext.ChannelGroups.AddRangeAsync(locals, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task<List<ListChannelsResponseItemDto>> GetChannelsAsync(Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
-    {
-        return await dbContext.Channels
-            .Where(x => x.ServerId == serverId && x.ChannelGroupId == channelGroupId)
-            .OrderBy(x => x.SortOrder)
-            .Select(x => new ListChannelsResponseItemDto
+                var response = await client.Server.ListJoinedServersAsync(homeUrl, cancellationToken);
+                await serverRepo.SetJoinedServersAsync(response.Servers, cancellationToken);
+            }
+            catch (Exception ex)
             {
-                ChannelId = x.Id,
-                Name = x.Name,
-                ChannelGroupId = x.ChannelGroupId,
-                ChannelType = x.ChannelType
-            })
-            .ToListAsync(cancellationToken);
+                logger.LogError(ex, "Failed to refresh joined servers from {Url}", homeUrl);
+            }
+        }, cancellationToken);
+
+        return cached;
     }
 
-    public async Task SetChannelsAsync(Guid serverId, Guid channelGroupId, List<ListChannelsResponseItemDto> channels, CancellationToken cancellationToken = default)
+    public async Task<List<ListChannelGroupsResponseItemDto>> GetChannelGroupsAsync(string instanceUrl, IFennecClient client, Guid serverId, CancellationToken cancellationToken = default)
     {
-        var existing = await dbContext.Channels
-            .Where(x => x.ServerId == serverId && x.ChannelGroupId == channelGroupId)
-            .ToListAsync(cancellationToken);
-        dbContext.Channels.RemoveRange(existing);
+        var cached = await groupRepo.GetChannelGroupsAsync(serverId, cancellationToken);
 
-        var locals = channels.Select((c, i) => new LocalChannel
+        _ = Task.Run(async () =>
         {
-            Id = c.ChannelId,
-            Name = c.Name,
-            ChannelGroupId = channelGroupId,
-            ServerId = serverId,
-            ChannelType = c.ChannelType,
-            SortOrder = i
-        });
+            try
+            {
+                var response = await client.Server.ListChannelGroupsAsync(instanceUrl, serverId, cancellationToken);
+                await groupRepo.SetChannelGroupsAsync(serverId, response.ChannelGroups, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to refresh channel groups for server {ServerId} from {Url}", serverId, instanceUrl);
+            }
+        }, cancellationToken);
 
-        await dbContext.Channels.AddRangeAsync(locals, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        return cached;
+    }
+
+    public async Task<List<ListChannelsResponseItemDto>> GetChannelsAsync(string instanceUrl, IFennecClient client, Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
+    {
+        var cached = await channelRepo.GetChannelsAsync(serverId, channelGroupId, cancellationToken);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var response = await client.Server.ListChannelsAsync(instanceUrl, serverId, channelGroupId, cancellationToken);
+                await channelRepo.SetChannelsAsync(serverId, channelGroupId, response.Channels, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to refresh channels for group {GroupId} from {Url}", channelGroupId, instanceUrl);
+            }
+        }, cancellationToken);
+
+        return cached;
     }
 }

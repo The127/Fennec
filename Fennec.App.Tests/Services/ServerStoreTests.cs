@@ -1,129 +1,115 @@
 using Fennec.App.Services;
-using Fennec.App.Services.Storage;
+using Fennec.Client;
+using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Server;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
+using Fennec.Shared.Models;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using Xunit;
 
 namespace Fennec.App.Tests.Services;
 
-public class ServerStoreTests : IDisposable
+public class ServerStoreTests
 {
-    private readonly SqliteConnection _connection;
-    private readonly AppDbContext _dbContext;
-    private readonly ServerStore _serverStore;
+    private readonly IServerRepository _serverRepo = Substitute.For<IServerRepository>();
+    private readonly IChannelGroupRepository _groupRepo = Substitute.For<IChannelGroupRepository>();
+    private readonly IChannelRepository _channelRepo = Substitute.For<IChannelRepository>();
+    private readonly ILogger<ServerStore> _logger = Substitute.For<ILogger<ServerStore>>();
+    private readonly IFennecClient _client = Substitute.For<IFennecClient>();
+    private readonly IServerClient _serverClient = Substitute.For<IServerClient>();
+    private readonly ServerStore _sut;
 
     public ServerStoreTests()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open();
-
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite(_connection)
-            .Options;
-
-        _dbContext = new AppDbContext(options);
-        _dbContext.Database.EnsureCreated();
-
-        _serverStore = new ServerStore(_dbContext);
+        _client.Server.Returns(_serverClient);
+        _sut = new ServerStore(_serverRepo, _groupRepo, _channelRepo, _logger);
     }
 
     [Fact]
-    public async Task GetJoinedServersAsync_ReturnsEmpty_WhenNoServersExist()
+    public async Task GetJoinedServersAsync_ReturnsCached_AndTriggersRefresh()
     {
-        var result = await _serverStore.GetJoinedServersAsync();
-        Assert.Empty(result);
-    }
-
-    [Fact]
-    public async Task SetJoinedServersAsync_AddsServersToDatabase()
-    {
-        var servers = new List<ListJoinedServersResponseItemDto>
+        // Arrange
+        var homeUrl = "https://fennec.chat";
+        var cached = new List<ListJoinedServersResponseItemDto> 
+        { 
+            new() { Id = Guid.NewGuid(), Name = "Cached Server", InstanceUrl = homeUrl } 
+        };
+        var remote = new ListJoinedServersResponseDto
         {
-            new() { Id = Guid.NewGuid(), Name = "Server 1", InstanceUrl = "https://1.fennec.chat" },
-            new() { Id = Guid.NewGuid(), Name = "Server 2", InstanceUrl = "https://2.fennec.chat" }
+            Servers = [new ListJoinedServersResponseItemDto { Id = Guid.NewGuid(), Name = "Remote Server", InstanceUrl = homeUrl }]
         };
 
-        await _serverStore.SetJoinedServersAsync(servers);
+        _serverRepo.GetJoinedServersAsync().Returns(cached);
+        _serverClient.ListJoinedServersAsync(homeUrl).Returns(remote);
 
-        var result = await _serverStore.GetJoinedServersAsync();
-        Assert.Equal(2, result.Count);
-        Assert.Contains(result, s => s.Name == "Server 1");
-        Assert.Contains(result, s => s.Name == "Server 2");
+        // Act
+        var result = await _sut.GetJoinedServersAsync(homeUrl, _client);
+
+        // Assert
+        Assert.Equal(cached, result);
+        
+        // Wait a bit for the Task.Run to complete (not ideal, but simple)
+        await Task.Delay(100);
+        
+        await _serverRepo.Received(1).SetJoinedServersAsync(Arg.Is<List<ListJoinedServersResponseItemDto>>(x => x.Count == 1 && x[0].Name == "Remote Server"));
     }
 
     [Fact]
-    public async Task GetChannelGroupsAsync_ReturnsEmpty_WhenNoGroupsExist()
+    public async Task GetChannelGroupsAsync_ReturnsCached_AndTriggersRefresh()
     {
+        // Arrange
+        var instanceUrl = "https://fennec.chat";
         var serverId = Guid.NewGuid();
-        var result = await _serverStore.GetChannelGroupsAsync(serverId);
-        Assert.Empty(result);
-    }
-
-    [Fact]
-    public async Task SetChannelGroupsAsync_AddsGroupsToDatabase()
-    {
-        var serverId = Guid.NewGuid();
-        // Add server first to satisfy foreign key
-        await _serverStore.AddJoinedServerAsync(new ListJoinedServersResponseItemDto
+        var cached = new List<ListChannelGroupsResponseItemDto> 
+        { 
+            new() { ChannelGroupId = Guid.NewGuid(), Name = "Cached Group" } 
+        };
+        var remote = new ListChannelGroupsResponseDto
         {
-            Id = serverId,
-            Name = "Test Server",
-            InstanceUrl = "https://fennec.chat"
-        });
-
-        var groups = new List<ListChannelGroupsResponseItemDto>
-        {
-            new() { ChannelGroupId = Guid.NewGuid(), Name = "Group 1" },
-            new() { ChannelGroupId = Guid.NewGuid(), Name = "Group 2" }
+            ChannelGroups = [new ListChannelGroupsResponseItemDto { ChannelGroupId = Guid.NewGuid(), Name = "Remote Group" }]
         };
 
-        await _serverStore.SetChannelGroupsAsync(serverId, groups);
+        _groupRepo.GetChannelGroupsAsync(serverId).Returns(cached);
+        _serverClient.ListChannelGroupsAsync(instanceUrl, serverId).Returns(remote);
 
-        var result = await _serverStore.GetChannelGroupsAsync(serverId);
-        Assert.Equal(2, result.Count);
-        Assert.Contains(result, g => g.Name == "Group 1");
-        Assert.Contains(result, g => g.Name == "Group 2");
+        // Act
+        var result = await _sut.GetChannelGroupsAsync(instanceUrl, _client, serverId);
+
+        // Assert
+        Assert.Equal(cached, result);
+        
+        await Task.Delay(100);
+        
+        await _groupRepo.Received(1).SetChannelGroupsAsync(serverId, Arg.Is<List<ListChannelGroupsResponseItemDto>>(x => x.Count == 1 && x[0].Name == "Remote Group"));
     }
 
     [Fact]
-    public async Task GetChannelsAsync_ReturnsEmpty_WhenNoChannelsExist()
+    public async Task GetChannelsAsync_ReturnsCached_AndTriggersRefresh()
     {
+        // Arrange
+        var instanceUrl = "https://fennec.chat";
         var serverId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var result = await _serverStore.GetChannelsAsync(serverId, groupId);
-        Assert.Empty(result);
-    }
-
-    [Fact]
-    public async Task SetJoinedServersAsync_ConcurrentCalls_DoesNotCreateDuplicates()
-    {
-        var serverId = Guid.NewGuid();
-        var servers = new List<ListJoinedServersResponseItemDto>
+        var cached = new List<ListChannelsResponseItemDto> 
+        { 
+            new() { ChannelId = Guid.NewGuid(), Name = "Cached Channel", ChannelGroupId = groupId, ChannelType = ChannelType.TextOnly } 
+        };
+        var remote = new ListChannelsResponseDto
         {
-            new() { Id = serverId, Name = "Server 1", InstanceUrl = "https://1.fennec.chat" }
+            Channels = [new ListChannelsResponseItemDto { ChannelId = Guid.NewGuid(), Name = "Remote Channel", ChannelGroupId = groupId, ChannelType = ChannelType.TextOnly }]
         };
 
-        // Simulate concurrent calls. 
-        // Note: Using the same DbContext instance for both calls might not fully simulate 
-        // real-world concurrency if the app uses different Scopes, 
-        // but here ServerStore is a Singleton and DbContext is registered with AddDbContext 
-        // (which is scoped by default, but App.axaml.cs registrations might be different).
-        // In App.axaml.cs, IServerStore is Singleton.
+        _channelRepo.GetChannelsAsync(serverId, groupId).Returns(cached);
+        _serverClient.ListChannelsAsync(instanceUrl, serverId, groupId).Returns(remote);
+
+        // Act
+        var result = await _sut.GetChannelsAsync(instanceUrl, _client, serverId, groupId);
+
+        // Assert
+        Assert.Equal(cached, result);
         
-        var task1 = _serverStore.SetJoinedServersAsync(servers);
-        var task2 = _serverStore.SetJoinedServersAsync(servers);
-
-        await Task.WhenAll(task1, task2);
-
-        var result = await _serverStore.GetJoinedServersAsync();
-        Assert.Single(result);
-        Assert.Equal(serverId, result[0].Id);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        _connection.Dispose();
+        await Task.Delay(100);
+        
+        await _channelRepo.Received(1).SetChannelsAsync(serverId, groupId, Arg.Is<List<ListChannelsResponseItemDto>>(x => x.Count == 1 && x[0].Name == "Remote Channel"));
     }
 }

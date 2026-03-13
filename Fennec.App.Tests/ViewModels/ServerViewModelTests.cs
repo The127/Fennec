@@ -19,7 +19,7 @@ public class ServerViewModelTests
     public ServerViewModelTests()
     {
         _client.Server.Returns(_serverClient);
-        _serverStore.GetChannelGroupsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ListChannelGroupsResponseItemDto>()));
     }
 
@@ -30,28 +30,22 @@ public class ServerViewModelTests
     {
         var groupId = Guid.NewGuid();
 
-        _serverClient.ListChannelGroupsAsync(Arg.Any<string>(), _serverId, Arg.Any<CancellationToken>())
-            .Returns(new ListChannelGroupsResponseDto
+        _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
+            .Returns(new List<ListChannelGroupsResponseItemDto>
             {
-                ChannelGroups =
-                [
-                    new ListChannelGroupsResponseItemDto { ChannelGroupId = groupId, Name = "default group" },
-                ],
+                new() { ChannelGroupId = groupId, Name = "default group" },
             });
 
-        _serverClient.ListChannelsAsync(Arg.Any<string>(), _serverId, groupId, Arg.Any<CancellationToken>())
-            .Returns(new ListChannelsResponseDto
+        _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, groupId, Arg.Any<CancellationToken>())
+            .Returns(new List<ListChannelsResponseItemDto>
             {
-                Channels =
-                [
-                    new ListChannelsResponseItemDto
-                    {
-                        ChannelId = Guid.NewGuid(),
-                        Name = "general",
-                        ChannelType = ChannelType.TextAndVoice,
-                        ChannelGroupId = groupId,
-                    },
-                ],
+                new()
+                {
+                    ChannelId = Guid.NewGuid(),
+                    Name = "general",
+                    ChannelType = ChannelType.TextAndVoice,
+                    ChannelGroupId = groupId,
+                },
             });
 
         var vm = CreateViewModel();
@@ -70,33 +64,24 @@ public class ServerViewModelTests
         var group1Id = Guid.NewGuid();
         var group2Id = Guid.NewGuid();
 
-        _serverClient.ListChannelGroupsAsync(Arg.Any<string>(), _serverId, Arg.Any<CancellationToken>())
-            .Returns(new ListChannelGroupsResponseDto
+        _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
+            .Returns(new List<ListChannelGroupsResponseItemDto>
             {
-                ChannelGroups =
-                [
-                    new ListChannelGroupsResponseItemDto { ChannelGroupId = group1Id, Name = "text" },
-                    new ListChannelGroupsResponseItemDto { ChannelGroupId = group2Id, Name = "voice" },
-                ],
+                new() { ChannelGroupId = group1Id, Name = "text" },
+                new() { ChannelGroupId = group2Id, Name = "voice" },
             });
 
-        _serverClient.ListChannelsAsync(Arg.Any<string>(), _serverId, group1Id, Arg.Any<CancellationToken>())
-            .Returns(new ListChannelsResponseDto
+        _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, group1Id, Arg.Any<CancellationToken>())
+            .Returns(new List<ListChannelsResponseItemDto>
             {
-                Channels =
-                [
-                    new ListChannelsResponseItemDto { ChannelId = Guid.NewGuid(), Name = "general", ChannelType = ChannelType.TextOnly, ChannelGroupId = group1Id },
-                    new ListChannelsResponseItemDto { ChannelId = Guid.NewGuid(), Name = "random", ChannelType = ChannelType.TextOnly, ChannelGroupId = group1Id },
-                ],
+                new() { ChannelId = Guid.NewGuid(), Name = "general", ChannelType = ChannelType.TextOnly, ChannelGroupId = group1Id },
+                new() { ChannelId = Guid.NewGuid(), Name = "random", ChannelType = ChannelType.TextOnly, ChannelGroupId = group1Id },
             });
 
-        _serverClient.ListChannelsAsync(Arg.Any<string>(), _serverId, group2Id, Arg.Any<CancellationToken>())
-            .Returns(new ListChannelsResponseDto
+        _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, group2Id, Arg.Any<CancellationToken>())
+            .Returns(new List<ListChannelsResponseItemDto>
             {
-                Channels =
-                [
-                    new ListChannelsResponseItemDto { ChannelId = Guid.NewGuid(), Name = "lounge", ChannelType = ChannelType.TextAndVoice, ChannelGroupId = group2Id },
-                ],
+                new() { ChannelId = Guid.NewGuid(), Name = "lounge", ChannelType = ChannelType.TextAndVoice, ChannelGroupId = group2Id },
             });
 
         var vm = CreateViewModel();
@@ -113,19 +98,13 @@ public class ServerViewModelTests
         var groupId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        _serverClient.ListChannelGroupsAsync(Arg.Any<string>(), _serverId, Arg.Any<CancellationToken>())
-            .Returns(new ListChannelGroupsResponseDto
-            {
-                ChannelGroups = [new ListChannelGroupsResponseItemDto { ChannelGroupId = groupId, Name = "default" }],
-            });
+        _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
+            .Returns(new List<ListChannelGroupsResponseItemDto> { new() { ChannelGroupId = groupId, Name = "default" } });
 
-        _serverClient.ListChannelsAsync(Arg.Any<string>(), _serverId, groupId, Arg.Any<CancellationToken>())
-            .Returns(new ListChannelsResponseDto
+        _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, groupId, Arg.Any<CancellationToken>())
+            .Returns(new List<ListChannelsResponseItemDto>
             {
-                Channels =
-                [
-                    new ListChannelsResponseItemDto { ChannelId = channelId, Name = "general", ChannelType = ChannelType.TextAndVoice, ChannelGroupId = groupId },
-                ],
+                new() { ChannelId = channelId, Name = "general", ChannelType = ChannelType.TextAndVoice, ChannelGroupId = groupId },
             });
 
         var vm = CreateViewModel();
@@ -138,8 +117,8 @@ public class ServerViewModelTests
     [Fact]
     public async Task Api_failure_leaves_channel_groups_empty()
     {
-        _serverClient.ListChannelGroupsAsync(Arg.Any<string>(), _serverId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<ListChannelGroupsResponseDto>(new Exception("Network error")));
+        _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
+            .Returns(new List<ListChannelGroupsResponseItemDto>());
 
         var vm = CreateViewModel();
         await vm.LoadAsync();
@@ -153,13 +132,13 @@ public class ServerViewModelTests
         var groupId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        _serverStore.GetChannelGroupsAsync(_serverId, Arg.Any<CancellationToken>())
+        _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ListChannelGroupsResponseItemDto>
             {
                 new() { ChannelGroupId = groupId, Name = "stored group" }
             }));
 
-        _serverStore.GetChannelsAsync(_serverId, groupId, Arg.Any<CancellationToken>())
+        _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, groupId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ListChannelsResponseItemDto>
             {
                 new() { ChannelId = channelId, Name = "stored channel", ChannelType = ChannelType.TextOnly, ChannelGroupId = groupId }

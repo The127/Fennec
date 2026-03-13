@@ -255,19 +255,8 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     {
         if (_client is null || _session is null) return;
 
-        var storedServers = await _serverStore.GetJoinedServersAsync();
-        UpdateServersList(storedServers);
-
-        try
-        {
-            var response = await _client.Server.ListJoinedServersAsync(_session.Url);
-            await _serverStore.SetJoinedServersAsync(response.Servers);
-            UpdateServersList(response.Servers);
-        }
-        catch (Exception ex)
-        {
-            _exceptionHandler.Handle(ex, "Failed to load servers for user {User} on {Url}", UserAtServer, _session.Url);
-        }
+        var servers = await _serverStore.GetJoinedServersAsync(_session.Url, _client);
+        UpdateServersList(servers);
     }
 
     private void UpdateServersList(List<ListJoinedServersResponseItemDto>? servers)

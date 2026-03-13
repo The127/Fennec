@@ -33,7 +33,7 @@ public class MainAppViewModelTests
         _client.Server.Returns(_serverClient);
         _serverClient.ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ListJoinedServersResponseDto { Servers = [] });
-        _serverStore.GetJoinedServersAsync(Arg.Any<CancellationToken>())
+        _serverStore.GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ListJoinedServersResponseItemDto>()));
         _settingsStore.LoadAsync(Arg.Any<CancellationToken>())
             .Returns(new AppSettings());
@@ -66,11 +66,11 @@ public class MainAppViewModelTests
     public void Server_list_refreshes_after_server_joined()
     {
         var vm = CreateViewModel();
-        _serverClient.ClearReceivedCalls();
+        _serverStore.ClearReceivedCalls();
 
         _messenger.Send(new ServerJoinedMessage());
 
-        _serverClient.Received().ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _serverStore.Received().GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public class MainAppViewModelTests
         };
         
         // Mock server store to return the server
-        _serverStore.GetJoinedServersAsync(Arg.Any<CancellationToken>())
+        _serverStore.GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ListJoinedServersResponseItemDto>(servers)));
             
         // Mock API to return the same server
@@ -125,8 +125,8 @@ public class MainAppViewModelTests
             new() { Id = serverId, Name = "Server 1", InstanceUrl = "https://1.fennec.chat" }
         };
         
-        _serverClient.ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ListJoinedServersResponseDto { Servers = serversWithDuplicates });
+        _serverStore.GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(serversWithDuplicates));
             
         var vm = CreateViewModel();
 
@@ -146,7 +146,7 @@ public class MainAppViewModelTests
             new() { Id = serverId, Name = "Server 1", InstanceUrl = "https://1.fennec.chat" }
         };
         
-        _serverStore.GetJoinedServersAsync(Arg.Any<CancellationToken>())
+        _serverStore.GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ListJoinedServersResponseItemDto>(servers)));
             
         _serverClient.ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
