@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
 using Fennec.App.Services.Storage;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ShadUI;
 
@@ -58,6 +59,7 @@ public partial class AppShellViewModel
         if (currentSession is not null)
         {
             _dbPathProvider.CurrentDbPath = _dbPathProvider.GetDbPath(currentSession.UserId);
+            EnsureDatabase();
             var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider, Messenger);
             vm.ApplySession(currentSession);
             CurrentViewModel = vm;
@@ -73,6 +75,7 @@ public partial class AppShellViewModel
 
     public void Receive(LoginSucceededMessage message)
     {
+        EnsureDatabase();
         var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider, Messenger);
         vm.ApplySession(message.Session);
         CurrentViewModel = vm;
@@ -84,6 +87,21 @@ public partial class AppShellViewModel
     {
         CurrentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
         State = AppShellState.LoggedOut;
+    }
+
+    private void EnsureDatabase()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        try
+        {
+            db.Database.EnsureCreated();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
+        {
+            db.Database.EnsureDeleted();
+            db.Database.EnsureCreated();
+        }
     }
 
     public void Receive(ZoomChangedMessage message)
