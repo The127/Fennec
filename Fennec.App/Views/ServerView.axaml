@@ -37,6 +37,51 @@
                         </MenuFlyout>
                     </TextBlock.ContextFlyout>
                 </TextBlock>
+
+                <!-- Voice control bar (docked at bottom when connected) -->
+                <Border DockPanel.Dock="Bottom"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="0,1,0,0"
+                        Padding="8,6"
+                        IsVisible="{Binding IsInVoiceChannel}">
+                    <Grid ColumnDefinitions="* Auto Auto Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="Voice Connected" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SuccessColor}" />
+                            <TextBlock Text="{Binding CurrentVoiceChannelName}" FontSize="11" Classes="Muted"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="Ghost" Padding="6" Width="32" Height="32"
+                                Command="{Binding ToggleMuteCommand}"
+                                ToolTip.Tip="Toggle Mute">
+                            <Panel>
+                                <mi:MaterialIcon Kind="Microphone" Width="16" Height="16"
+                                                 IsVisible="{Binding !IsMuted}" />
+                                <mi:MaterialIcon Kind="MicrophoneOff" Width="16" Height="16"
+                                                 Foreground="{DynamicResource ErrorColor}"
+                                                 IsVisible="{Binding IsMuted}" />
+                            </Panel>
+                        </Button>
+                        <Button Grid.Column="2" Classes="Ghost" Padding="6" Width="32" Height="32"
+                                Command="{Binding ToggleDeafenCommand}"
+                                ToolTip.Tip="Toggle Deafen">
+                            <Panel>
+                                <mi:MaterialIcon Kind="VolumeHigh" Width="16" Height="16"
+                                                 IsVisible="{Binding !IsDeafened}" />
+                                <mi:MaterialIcon Kind="VolumeOff" Width="16" Height="16"
+                                                 Foreground="{DynamicResource ErrorColor}"
+                                                 IsVisible="{Binding IsDeafened}" />
+                            </Panel>
+                        </Button>
+                        <Button Grid.Column="3" Classes="Ghost" Padding="6" Width="32" Height="32"
+                                Command="{Binding LeaveVoiceChannelCommand}"
+                                ToolTip.Tip="Disconnect">
+                            <mi:MaterialIcon Kind="PhoneHangup" Width="16" Height="16"
+                                             Foreground="{DynamicResource ErrorColor}" />
+                        </Button>
+                    </Grid>
+                </Border>
+
                 <ScrollViewer>
                     <StackPanel Margin="4,0">
                         <ItemsControl ItemsSource="{Binding ChannelGroups}">
@@ -70,23 +115,48 @@
                                         <ItemsControl ItemsSource="{Binding Channels}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="vm:ChannelItem">
-                                                    <Border CornerRadius="4"
-                                                            Margin="0,1"
-                                                            Background="{Binding IsSelected, Converter={StaticResource SelectedBackgroundConverter}}">
-                                                        <Button HorizontalAlignment="Stretch"
-                                                                HorizontalContentAlignment="Left"
-                                                                Padding="12,6"
-                                                                Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).SelectChannelCommand}"
-                                                                CommandParameter="{Binding}">
-                                                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                <mi:MaterialIcon Kind="Pound" Width="14" Height="14"
-                                                                                 IsVisible="{Binding IsTextOnly}" />
-                                                                <mi:MaterialIcon Kind="VolumeHigh" Width="14" Height="14"
-                                                                                 IsVisible="{Binding !IsTextOnly}" />
-                                                                <TextBlock Text="{Binding Name}" />
-                                                            </StackPanel>
-                                                        </Button>
-                                                    </Border>
+                                                    <StackPanel>
+                                                        <Border CornerRadius="4"
+                                                                Margin="0,1"
+                                                                Background="{Binding IsSelected, Converter={StaticResource SelectedBackgroundConverter}}">
+                                                            <Button HorizontalAlignment="Stretch"
+                                                                    HorizontalContentAlignment="Left"
+                                                                    Padding="12,6"
+                                                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).SelectChannelCommand}"
+                                                                    CommandParameter="{Binding}">
+                                                                <Button.ContextFlyout>
+                                                                    <MenuFlyout>
+                                                                        <MenuItem Header="Join Voice"
+                                                                                  IsVisible="{Binding !IsTextOnly}"
+                                                                                  Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).JoinVoiceChannelCommand}"
+                                                                                  CommandParameter="{Binding}" />
+                                                                    </MenuFlyout>
+                                                                </Button.ContextFlyout>
+                                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                    <mi:MaterialIcon Kind="Pound" Width="14" Height="14"
+                                                                                     IsVisible="{Binding IsTextOnly}" />
+                                                                    <mi:MaterialIcon Kind="VolumeHigh" Width="14" Height="14"
+                                                                                     IsVisible="{Binding !IsTextOnly}" />
+                                                                    <TextBlock Text="{Binding Name}" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </Border>
+                                                        <!-- Voice participants under voice-enabled channels -->
+                                                        <ItemsControl ItemsSource="{Binding VoiceParticipants}"
+                                                                      Margin="28,0,0,0">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:VoiceParticipantItem">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                                                                Margin="0,2">
+                                                                        <mi:MaterialIcon Kind="AccountCircle" Width="14" Height="14"
+                                                                                         Opacity="0.5" />
+                                                                        <TextBlock Text="{Binding Username}" FontSize="12"
+                                                                                   Opacity="0.7" />
+                                                                    </StackPanel>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>

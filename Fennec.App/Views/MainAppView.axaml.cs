@@ -23,6 +23,13 @@ public partial class MainAppView : UserControl
         ProfileDropdown.IsDropDownOpen = false;
     }
 
+    private void SwitchAccountMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        ProfileDropdown.IsDropDownOpen = false;
+        if (DataContext is MainAppViewModel vm)
+            vm.SwitchAccountCommand.Execute(null);
+    }
+
     private void SettingsMenuItem_Click(object? sender, RoutedEventArgs e)
     {
         ProfileDropdown.IsDropDownOpen = false;

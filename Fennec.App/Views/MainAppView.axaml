@@ -125,7 +125,7 @@
                             </UniformGrid>
                         </Border>
                         <MenuItem Header="Profile" Click="ProfileMenuItem_Click" />
-                        <MenuItem Header="Switch Account" Command="{Binding SwitchAccountCommand}" Click="ProfileMenuItem_Click" />
+                        <MenuItem Header="Switch Account" Click="SwitchAccountMenuItem_Click" />
                         <Separator />
                         <MenuItem Header="Logout" Command="{Binding LogoutCommand}" Click="ProfileMenuItem_Click" />
                         <MenuItem Header="Settings" Click="SettingsMenuItem_Click" />
