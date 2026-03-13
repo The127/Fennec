@@ -3,12 +3,20 @@ using Fennec.App.Services.Storage.Models;
 
 namespace Fennec.App.Services.Storage;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options, IDbPathProvider? dbPathProvider = null) : DbContext(options)
 {
     public DbSet<LocalServer> Servers => Set<LocalServer>();
     public DbSet<LocalUser> Users => Set<LocalUser>();
     public DbSet<LocalChannelGroup> ChannelGroups => Set<LocalChannelGroup>();
     public DbSet<LocalChannel> Channels => Set<LocalChannel>();
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured && dbPathProvider?.CurrentDbPath != null)
+        {
+            optionsBuilder.UseSqlite($"Data Source={dbPathProvider.CurrentDbPath}");
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

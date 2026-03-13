@@ -41,8 +41,14 @@ public partial class App : Application
 
         _services = services.BuildServiceProvider();
         
-        // Ensure database is created
+        // Ensure database is created if we have a path
         using var scope = _services.CreateScope();
+        var dbPathProvider = scope.ServiceProvider.GetRequiredService<IDbPathProvider>();
+        if (dbPathProvider.CurrentDbPath == null)
+        {
+            return;
+        }
+
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         // db.Database.EnsureCreated();
         

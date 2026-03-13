@@ -3,6 +3,7 @@ using Fennec.App.Services;
 using Fennec.App.Services.Auth;
 using Fennec.App.Desktop.Services;
 using Fennec.App.Desktop.Services.Auth;
+using Fennec.App.Desktop.Services.Storage;
 using Fennec.App.Routing;
 using Fennec.App.Services.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -43,17 +44,8 @@ sealed class Program
         services.AddSingleton<IRouteStore>(sp => new MemoryRouteStore(10, 100));
         services.AddSingleton<IAuthStore, DesktopAuthStore>();
         services.AddSingleton<ISettingsStore, DesktopSettingsStore>();
+        services.AddSingleton<IDbPathProvider, DesktopDbPathProvider>();
         
-        var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            App.AppName, "app.db");
-        
-        var directory = Path.GetDirectoryName(dbPath);
-        if (directory != null && !Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlite($"Data Source={dbPath}"));
+        services.AddDbContext<AppDbContext>();
     }
 }

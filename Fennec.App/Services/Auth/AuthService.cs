@@ -1,10 +1,15 @@
 using Fennec.App.Exceptions;
+using Fennec.App.Services.Storage;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Auth;
 
 namespace Fennec.App.Services.Auth;
 
-public class AuthService(IAuthStore authStore, IClientFactory clientFactory, IExceptionHandler exceptionHandler) : IAuthService
+public class AuthService(
+    IAuthStore authStore,
+    IClientFactory clientFactory,
+    IExceptionHandler exceptionHandler,
+    IDbPathProvider dbPathProvider) : IAuthService
 {
     private static string StripScheme(string url)
         => url.Replace("https://", "").Replace("http://", "");
@@ -29,6 +34,7 @@ public class AuthService(IAuthStore authStore, IClientFactory clientFactory, IEx
             Username = username,
         };
 
+        dbPathProvider.CurrentDbPath = dbPathProvider.GetDbPath(authSession.UserId);
         await authStore.SaveSessionAsync(authSession, cancellationToken);
         return authSession;
     }
@@ -62,6 +68,20 @@ public class AuthService(IAuthStore authStore, IClientFactory clientFactory, IEx
             // Server unreachable - the token will expire on its own.
         }
 
+        var dbPath = dbPathProvider.GetDbPath(session.UserId);
         await authStore.RemoveSessionAsync(session, cancellationToken);
+        dbPathProvider.CurrentDbPath = null;
+
+        if (File.Exists(dbPath))
+        {
+            try
+            {
+                File.Delete(dbPath);
+            }
+            catch (Exception ex)
+            {
+                exceptionHandler.Handle(ex, "Failed to delete database at {DbPath}", dbPath);
+            }
+        }
     }
 }

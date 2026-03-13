@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
+using Fennec.App.Services.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using ShadUI;
 
@@ -27,10 +28,12 @@ public partial class AppShellViewModel
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IAuthStore _authStore;
+    private readonly IDbPathProvider _dbPathProvider;
 
     public AppShellViewModel(
         IServiceProvider serviceProvider,
         IAuthStore authStore,
+        IDbPathProvider dbPathProvider,
         ToastManager toastManager,
         DialogManager dialogManager,
         IMessenger messenger
@@ -38,6 +41,7 @@ public partial class AppShellViewModel
     {
         _serviceProvider = serviceProvider;
         _authStore = authStore;
+        _dbPathProvider = dbPathProvider;
         _toastManager = toastManager;
         _dialogManager = dialogManager;
         _currentViewModel = ActivatorUtilities.CreateInstance<LoadingViewModel>(_serviceProvider);
@@ -53,6 +57,7 @@ public partial class AppShellViewModel
         var currentSession = await _authStore.GetCurrentAuthSessionAsync();
         if (currentSession is not null)
         {
+            _dbPathProvider.CurrentDbPath = _dbPathProvider.GetDbPath(currentSession.UserId);
             var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider, Messenger);
             vm.ApplySession(currentSession);
             CurrentViewModel = vm;
