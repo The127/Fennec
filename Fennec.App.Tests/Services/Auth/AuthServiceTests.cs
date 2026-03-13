@@ -1,7 +1,6 @@
 using Fennec.App.Exceptions;
 using Fennec.App.Services.Auth;
 using Fennec.Client;
-using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Auth;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;

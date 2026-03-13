@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Fennec.Shared.Dtos.Auth;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Dtos.User;

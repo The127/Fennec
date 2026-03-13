@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Fennec.App.ViewModels;
 
 namespace Fennec.App;
 

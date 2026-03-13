@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fennec.App.Services.Auth;
-using System.Runtime.InteropServices.JavaScript;
 using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.Browser.Services.Auth;

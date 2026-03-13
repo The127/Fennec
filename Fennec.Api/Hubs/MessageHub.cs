@@ -1,5 +1,4 @@
 using Fennec.Api.Models;
-using Fennec.Shared.Dtos.Server;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Fennec.Api.Hubs;

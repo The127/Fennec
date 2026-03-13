@@ -5,7 +5,6 @@ using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using Xunit;
 
 namespace Fennec.App.Tests.Services;
 

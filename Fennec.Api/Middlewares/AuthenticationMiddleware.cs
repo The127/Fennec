@@ -5,7 +5,6 @@ using Fennec.Api.Utils;
 using HttpExceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.Http.Features;
 
 namespace Fennec.Api.Middlewares;
 

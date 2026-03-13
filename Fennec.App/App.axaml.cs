@@ -15,7 +15,6 @@ using Fennec.App.Services.Storage;
 using Fennec.App.Themes;
 using Fennec.App.ViewModels;
 using Fennec.App.Views;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ShadUI;

@@ -1,7 +1,6 @@
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Exceptions;
 using Fennec.App.Messages;
-using Fennec.App.Routes;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;

@@ -1,5 +1,4 @@
-﻿using System.Net.Http;
-using EntityFramework.Exceptions.Common;
+﻿using EntityFramework.Exceptions.Common;
 
 namespace Fennec.Api.Middlewares;
 

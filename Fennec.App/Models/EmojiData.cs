@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace Fennec.App.Models;
 
 public record EmojiEntry(string Unicode, string Shortcode, string Category);

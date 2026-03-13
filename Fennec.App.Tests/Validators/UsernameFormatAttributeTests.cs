@@ -1,5 +1,4 @@
 using Fennec.App.Validators;
-using Xunit;
 
 namespace Fennec.App.Tests.Validators;
 

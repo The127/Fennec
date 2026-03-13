@@ -1,5 +1,3 @@
-using Fennec.Api.FederationClient.Clients;
-
 namespace Fennec.Api.FederationClient;
 
 public interface IFederationClient

@@ -1,4 +1,3 @@
-using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Exceptions;
 using Fennec.App.Routing;
 using Fennec.App.ViewModels;

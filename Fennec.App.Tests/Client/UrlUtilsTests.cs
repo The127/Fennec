@@ -1,5 +1,4 @@
 using Fennec.Client;
-using Xunit;
 
 namespace Fennec.App.Tests.Client;
 

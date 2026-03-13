@@ -3,7 +3,6 @@ using Fennec.App.Services.Storage;
 using Fennec.Shared.Dtos.Server;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace Fennec.App.Tests.Services;
 
