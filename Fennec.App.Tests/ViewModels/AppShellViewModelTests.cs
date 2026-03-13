@@ -8,6 +8,7 @@ using Fennec.App.Services.Auth;
 using Fennec.App.Services.Storage;
 using Fennec.App.Shortcuts;
 using Fennec.Client;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using ShadUI;
@@ -38,6 +39,7 @@ public class AppShellViewModelTests
         services.AddSingleton(Substitute.For<IMessageHubService>());
         services.AddSingleton(Substitute.For<IVoiceCallService>());
         services.AddSingleton(Substitute.For<IVoiceHubService>());
+        services.AddDbContextFactory<AppDbContext>(opts => opts.UseSqlite("DataSource=:memory:"));
         services.AddLogging();
         var sp = services.BuildServiceProvider();
 

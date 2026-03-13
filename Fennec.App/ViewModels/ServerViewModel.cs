@@ -10,6 +10,7 @@ using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Shortcuts;
 using Fennec.Client;
+using HubStatus = Fennec.Client.HubConnectionStatus;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
 using NodaTime;
@@ -152,7 +153,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<ChannelMessageReceivedMessage>,
     IRecipient<VoiceParticipantJoinedMessage>,
     IRecipient<VoiceParticipantLeftMessage>,
-    IRecipient<VoiceStateChangedMessage>
+    IRecipient<VoiceStateChangedMessage>,
+    IRecipient<HubConnectionStateChangedMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
@@ -180,6 +182,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<VoiceParticipantJoinedMessage>(this);
         messenger.Register<VoiceParticipantLeftMessage>(this);
         messenger.Register<VoiceStateChangedMessage>(this);
+        messenger.Register<HubConnectionStateChangedMessage>(this);
     }
     [ObservableProperty]
     private string _serverName;
@@ -312,9 +315,11 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         try
         {
             await _messageHubService.SubscribeToChannelAsync(ServerId, channel.Id);
+            SubscribedChannelName = channel.Name;
         }
         catch
         {
+            SubscribedChannelName = null;
             // SignalR subscription failure shouldn't block channel selection.
         }
 
@@ -540,6 +545,32 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
             Messages.Add(item);
             _allMessages.Add(item);
+        });
+    }
+
+    // --- Hub connection status ---
+
+    [ObservableProperty]
+    private string _hubStatusText = "Disconnected";
+
+    [ObservableProperty]
+    private string _hubStatusColor = "#808080";
+
+    [ObservableProperty]
+    private string? _subscribedChannelName;
+
+    public void Receive(HubConnectionStateChangedMessage message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            (HubStatusText, HubStatusColor) = message.Status switch
+            {
+                HubStatus.Connected => ("Connected", "#4CAF50"),
+                HubStatus.Connecting => ("Connecting...", "#FFC107"),
+                HubStatus.Reconnecting => ("Reconnecting...", "#FFC107"),
+                HubStatus.Disconnected => ("Disconnected", "#F44336"),
+                _ => ("Unknown", "#808080"),
+            };
         });
     }
 

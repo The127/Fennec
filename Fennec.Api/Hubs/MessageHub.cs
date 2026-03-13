@@ -6,17 +6,21 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Fennec.Api.Hubs;
 
-public class MessageHub(VoiceStateService voiceState) : Hub
+public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger) : Hub
 {
     public async Task SubscribeToChannel(Guid serverId, Guid channelId)
     {
+        var groupName = $"{serverId}-{channelId}";
+        logger.LogInformation("SignalR: Connection {ConnectionId} subscribing to group {Group}", Context.ConnectionId, groupName);
         // TODO: check if user is on the server and has access to the channel
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"{serverId}-{channelId}");
+        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
     }
 
     public async Task UnsubscribeFromChannel(Guid serverId, Guid channelId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"{serverId}-{channelId}");
+        var groupName = $"{serverId}-{channelId}";
+        logger.LogInformation("SignalR: Connection {ConnectionId} unsubscribing from group {Group}", Context.ConnectionId, groupName);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
     }
 
     // --- Voice ---
@@ -110,13 +114,16 @@ public interface IMessageEventService
 }
 
 public class MessageEventService(
-    IHubContext<MessageHub> messageHubContext
+    IHubContext<MessageHub> messageHubContext,
+    ILogger<MessageEventService> logger
 ) : IMessageEventService
 {
     public Task NotifyMessageReceived(Guid serverId, Guid channelId, MessageReceivedDto message, CancellationToken cancellationToken)
     {
-        return messageHubContext.Clients.Group($"{serverId}-{channelId}")
+        var groupName = $"{serverId}-{channelId}";
+        logger.LogInformation("SignalR: Broadcasting MessageReceived to group {Group} (messageId={MessageId}, author={Author})",
+            groupName, message.MessageId, message.AuthorName);
+        return messageHubContext.Clients.Group(groupName)
             .SendAsync("MessageReceived", serverId, channelId, message, cancellationToken: cancellationToken);
-
     }
 }

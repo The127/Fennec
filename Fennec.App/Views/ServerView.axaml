@@ -38,6 +38,27 @@
                     </TextBlock.ContextFlyout>
                 </TextBlock>
 
+                <!-- SignalR connection status (docked at very bottom) -->
+                <Border DockPanel.Dock="Bottom"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="0,1,0,0"
+                        Padding="8,4">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                Background="{Binding HubStatusColor}" />
+                        <TextBlock Text="{Binding HubStatusText}" FontSize="10" Opacity="0.7"
+                                   VerticalAlignment="Center" />
+                        <TextBlock FontSize="10" Opacity="0.5" VerticalAlignment="Center"
+                                   IsVisible="{Binding SubscribedChannelName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="· #{0}">
+                                    <Binding Path="SubscribedChannelName" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
                 <!-- Voice control bar (docked at bottom when connected) -->
                 <Border DockPanel.Dock="Bottom"
                         BorderBrush="{DynamicResource BorderColor}"

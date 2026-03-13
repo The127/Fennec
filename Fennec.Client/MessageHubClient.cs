@@ -1,8 +1,17 @@
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Dtos.Voice;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
 
 namespace Fennec.Client;
+
+public enum HubConnectionStatus
+{
+    Disconnected,
+    Connecting,
+    Connected,
+    Reconnecting,
+}
 
 public interface IMessageHubClient : IAsyncDisposable
 {
@@ -12,6 +21,7 @@ public interface IMessageHubClient : IAsyncDisposable
     Task DisconnectAsync();
     event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
     event Action? Reconnected;
+    event Action<HubConnectionStatus>? ConnectionStateChanged;
 
     // Voice
     Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId);
@@ -27,12 +37,13 @@ public interface IMessageHubClient : IAsyncDisposable
     event Action<Guid, Guid, Guid, string, string?, int?>? IceCandidateReceived;
 }
 
-public class MessageHubClient : IMessageHubClient
+public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubClient
 {
     private HubConnection? _connection;
 
     public event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
     public event Action? Reconnected;
+    public event Action<HubConnectionStatus>? ConnectionStateChanged;
 
     // Voice events
     public event Action<Guid, Guid, VoiceParticipantDto>? VoiceParticipantJoined;
@@ -46,6 +57,9 @@ public class MessageHubClient : IMessageHubClient
         if (_connection is not null)
             await DisconnectAsync();
 
+        logger.LogInformation("SignalR: Connecting to {Url}/hubs/messages", baseUrl);
+        ConnectionStateChanged?.Invoke(HubConnectionStatus.Connecting);
+
         _connection = new HubConnectionBuilder()
             .WithUrl($"{baseUrl}/hubs/messages", options =>
             {
@@ -56,6 +70,8 @@ public class MessageHubClient : IMessageHubClient
 
         _connection.On<Guid, Guid, MessageReceivedDto>("MessageReceived", (serverId, channelId, message) =>
         {
+            logger.LogInformation("SignalR: Received message on server={ServerId} channel={ChannelId} messageId={MessageId} from={Author}",
+                serverId, channelId, message.MessageId, message.AuthorName);
             MessageReceived?.Invoke(serverId, channelId, message);
         });
 
@@ -86,23 +102,55 @@ public class MessageHubClient : IMessageHubClient
 
         _connection.Reconnected += _ =>
         {
+            logger.LogInformation("SignalR: Reconnected");
+            ConnectionStateChanged?.Invoke(HubConnectionStatus.Connected);
             Reconnected?.Invoke();
             return Task.CompletedTask;
         };
 
+        _connection.Closed += ex =>
+        {
+            logger.LogWarning(ex, "SignalR: Connection closed");
+            ConnectionStateChanged?.Invoke(HubConnectionStatus.Disconnected);
+            return Task.CompletedTask;
+        };
+
+        _connection.Reconnecting += ex =>
+        {
+            logger.LogWarning(ex, "SignalR: Reconnecting...");
+            ConnectionStateChanged?.Invoke(HubConnectionStatus.Reconnecting);
+            return Task.CompletedTask;
+        };
+
         await _connection.StartAsync();
+        logger.LogInformation("SignalR: Connected (state={State})", _connection.State);
+        ConnectionStateChanged?.Invoke(HubConnectionStatus.Connected);
     }
 
     public async Task SubscribeToChannelAsync(Guid serverId, Guid channelId)
     {
         if (_connection?.State == HubConnectionState.Connected)
+        {
+            logger.LogInformation("SignalR: Subscribing to server={ServerId} channel={ChannelId}", serverId, channelId);
             await _connection.InvokeAsync("SubscribeToChannel", serverId, channelId);
+        }
+        else
+        {
+            logger.LogWarning("SignalR: Cannot subscribe - connection state is {State}", _connection?.State);
+        }
     }
 
     public async Task UnsubscribeFromChannelAsync(Guid serverId, Guid channelId)
     {
         if (_connection?.State == HubConnectionState.Connected)
+        {
+            logger.LogInformation("SignalR: Unsubscribing from server={ServerId} channel={ChannelId}", serverId, channelId);
             await _connection.InvokeAsync("UnsubscribeFromChannel", serverId, channelId);
+        }
+        else
+        {
+            logger.LogWarning("SignalR: Cannot unsubscribe - connection state is {State}", _connection?.State);
+        }
     }
 
     // Voice methods
@@ -144,6 +192,7 @@ public class MessageHubClient : IMessageHubClient
         {
             await _connection.DisposeAsync();
             _connection = null;
+            ConnectionStateChanged?.Invoke(HubConnectionStatus.Disconnected);
         }
     }
 
