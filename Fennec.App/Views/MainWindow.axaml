@@ -9,7 +9,9 @@
         x:Class="Fennec.App.Views.MainWindow"
         x:DataType="vm:AppShellViewModel"
         Icon="/Assets/logo.ico"
-        Title="Fennec">
+        Title="Fennec"
+        MinWidth="900"
+        MinHeight="500">
         <LayoutTransformControl>
                 <LayoutTransformControl.LayoutTransform>
                         <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
