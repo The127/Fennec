@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Services;
 using Fennec.App.ViewModels;
 using Fennec.Client;
@@ -14,6 +15,8 @@ public class ServerViewModelTests
     private readonly IFennecClient _client = Substitute.For<IFennecClient>();
     private readonly IServerClient _serverClient = Substitute.For<IServerClient>();
     private readonly IServerStore _serverStore = Substitute.For<IServerStore>();
+    private readonly IMessageHubService _messageHubService = Substitute.For<IMessageHubService>();
+    private readonly IMessenger _messenger = new WeakReferenceMessenger();
     private readonly Guid _serverId = Guid.NewGuid();
 
     public ServerViewModelTests()
@@ -23,7 +26,7 @@ public class ServerViewModelTests
             .Returns(Task.FromResult(new List<ListChannelGroupsResponseItemDto>()));
     }
 
-    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverStore, _serverId, "Test Server", "https://fennec.chat");
+    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverStore, _messageHubService, _messenger, _serverId, "Test Server", "https://fennec.chat");
 
     [Fact]
     public async Task Loading_populates_channel_groups_with_channels()

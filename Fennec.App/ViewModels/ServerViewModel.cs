@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Messages;
 using Fennec.App.Models;
 using Fennec.App.Routing;
 using Fennec.App.Services;
@@ -129,10 +132,30 @@ public partial class MessageItem : ObservableObject
     }
 }
 
-public partial class ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, Guid serverId, string serverName, string instanceUrl) : ObservableObject, IShortcutHandler, ISearchableRoute
+public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISearchableRoute, IRecipient<ChannelMessageReceivedMessage>
 {
+    private readonly IFennecClient client;
+    private readonly DialogManager dialogManager;
+    private readonly IServerStore serverStore;
+    private readonly IMessageHubService _messageHubService;
+    private readonly IMessenger _messenger;
+    private readonly string instanceUrl;
+
+    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IMessenger messenger, Guid serverId, string serverName, string instanceUrl)
+    {
+        this.client = client;
+        this.dialogManager = dialogManager;
+        this.serverStore = serverStore;
+        _messageHubService = messageHubService;
+        _messenger = messenger;
+        ServerId = serverId;
+        _serverName = serverName;
+        this.instanceUrl = instanceUrl;
+
+        messenger.Register<ChannelMessageReceivedMessage>(this);
+    }
     [ObservableProperty]
-    private string _serverName = serverName;
+    private string _serverName;
 
     [ObservableProperty]
     private ChannelItem? _selectedChannel;
@@ -154,7 +177,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
         OnPropertyChanged(nameof(IsOverLimit));
     }
 
-    public Guid ServerId { get; } = serverId;
+    public Guid ServerId { get; }
 
     public ShortcutContext ShortcutContext => ShortcutContext.Server;
 
@@ -256,6 +279,16 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
         SelectedChannel = channel;
         channel.IsSelected = true;
         await LoadMessagesAsync();
+
+        try
+        {
+            await _messageHubService.SubscribeToChannelAsync(ServerId, channel.Id);
+        }
+        catch
+        {
+            // SignalR subscription failure shouldn't block channel selection.
+        }
+
         MessageInputFocusRequested?.Invoke();
     }
 
@@ -374,14 +407,61 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
             {
                 Content = content,
             });
-
-            await LoadMessagesAsync();
         }
         catch
         {
             // Message send failed — restore text so user can retry.
             MessageText = content;
         }
+    }
+
+    public void Receive(ChannelMessageReceivedMessage message)
+    {
+        if (message.ServerId != ServerId || SelectedChannel is null || message.ChannelId != SelectedChannel.Id)
+            return;
+
+        var dto = message.Message;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var lastMessage = Messages.LastOrDefault();
+            var parsed = InstantPattern.ExtendedIso.Parse(dto.CreatedAt);
+            var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
+            var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+            var msgDate = timestamp?.InZone(zone).Date;
+
+            var lastAuthorId = lastMessage?.AuthorId;
+            Instant? lastTimestamp = null;
+            if (lastMessage is not null)
+            {
+                var lastParsed = InstantPattern.ExtendedIso.Parse(lastMessage.CreatedAt);
+                if (lastParsed.Success) lastTimestamp = lastParsed.Value;
+            }
+            var lastDate = lastTimestamp?.InZone(zone).Date;
+
+            var isNewDay = lastDate is not null && msgDate is not null && msgDate != lastDate;
+            var hasTimeGap = lastTimestamp is not null && timestamp is not null
+                && (timestamp.Value - lastTimestamp.Value).TotalMinutes >= 5;
+            var showAuthor = dto.AuthorId != lastAuthorId || hasTimeGap || isNewDay;
+
+            var item = new MessageItem
+            {
+                MessageId = dto.MessageId,
+                Content = dto.Content,
+                AuthorId = dto.AuthorId,
+                AuthorName = dto.AuthorName,
+                AvatarFallback = dto.AuthorName.Length > 0 ? dto.AuthorName[..1].ToUpper() : "?",
+                CreatedAt = dto.CreatedAt,
+                LocalTime = FormatLocalTime(dto.CreatedAt),
+                ExactTime = FormatExactTime(dto.CreatedAt),
+                ShowAuthor = showAuthor,
+                ShowTimeSeparator = isNewDay,
+                TimeSeparatorText = isNewDay ? FormatTimeSeparator(dto.CreatedAt) : "",
+            };
+
+            Messages.Add(item);
+            _allMessages.Add(item);
+        });
     }
 
     private async Task LoadMessagesAsync()

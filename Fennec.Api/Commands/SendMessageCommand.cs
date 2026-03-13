@@ -2,6 +2,7 @@ using System.Text.Json;
 using Fennec.Api.Events;
 using Fennec.Api.Models;
 using Fennec.Api.Security;
+using Fennec.Shared.Dtos.Server;
 using HttpExceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -79,7 +80,14 @@ public class SendMessageCommandHandler(
         {
             ServerId = channel.ServerId,
             ChannelId = request.ChannelId,
-            Message = message,
+            Message = new MessageReceivedDto
+            {
+                MessageId = message.Id,
+                Content = request.Content,
+                AuthorId = knownUser.Id,
+                AuthorName = knownUser.Name,
+                CreatedAt = message.CreatedAt.ToString(),
+            },
         }, cancellationToken);
 
         return new SendMessageResponse

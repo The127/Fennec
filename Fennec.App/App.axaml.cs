@@ -97,6 +97,8 @@ public partial class App : Application
         services.AddSingleton<IServerStore, ServerStore>();
         services.AddSingleton<IKeymapService, KeymapService>();
         services.AddSingleton<IMessenger>(_ => WeakReferenceMessenger.Default);
+        services.AddSingleton<IMessageHubClient, MessageHubClient>();
+        services.AddSingleton<IMessageHubService, MessageHubService>();
     }
 
     public override void OnFrameworkInitializationCompleted()

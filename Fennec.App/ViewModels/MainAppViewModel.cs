@@ -39,6 +39,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private readonly IServerStore _serverStore;
     private readonly IKeymapService _keymapService;
     private readonly ISettingsStore _settingsStore;
+    private readonly IMessageHubService _messageHubService;
 
     public MainAppViewModel(
         IRouter router,
@@ -50,7 +51,8 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         DialogManager dialogManager,
         IServerStore serverStore,
         IKeymapService keymapService,
-        ISettingsStore settingsStore)
+        ISettingsStore settingsStore,
+        IMessageHubService messageHubService)
     {
         _routerField = router;
         _router = router;
@@ -63,6 +65,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         _serverStore = serverStore;
         _keymapService = keymapService;
         _settingsStore = settingsStore;
+        _messageHubService = messageHubService;
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
@@ -186,6 +189,18 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         if (settings.KeyBindings is { Count: > 0 })
             _keymapService.LoadOverrides(settings.KeyBindings);
 
+        if (_session is not null)
+        {
+            try
+            {
+                await _messageHubService.ConnectAsync(_session.Url, _session.SessionToken);
+            }
+            catch
+            {
+                // SignalR connection failure shouldn't block startup — messages still load via HTTP.
+            }
+        }
+
         await NavigateToDashboardAsync();
         await LoadServersAsync();
     }
@@ -233,7 +248,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     {
         await LoadServersAsync();
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, serverId, serverName, _session!.Url));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _messenger, serverId, serverName, _session!.Url));
     }
 
     public void Receive(ServerJoinedMessage message)
@@ -303,7 +318,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private async Task NavigateToServerAsync(SidebarServer server)
     {
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, server.Id, server.Name, server.InstanceUrl));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _messenger, server.Id, server.Name, server.InstanceUrl));
     }
 
     [RelayCommand]
@@ -417,6 +432,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     [RelayCommand]
     private async Task Logout(CancellationToken cancellationToken)
     {
+        await _messageHubService.DisconnectAsync();
         await _authService.LogoutAsync(cancellationToken);
         _messenger.Send(new UserLoggedOutMessage());
     }

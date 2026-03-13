@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.ViewModels;
@@ -7,11 +8,11 @@ using ShadUI;
 
 namespace Fennec.App.Routes;
 
-public record ServerRoute(IFennecClient Client, DialogManager DialogManager, IServerStore ServerStore, Guid ServerId, string ServerName, string InstanceUrl) : IRoute
+public record ServerRoute(IFennecClient Client, DialogManager DialogManager, IServerStore ServerStore, IMessageHubService MessageHubService, IMessenger Messenger, Guid ServerId, string ServerName, string InstanceUrl) : IRoute
 {
     public ObservableObject GetViewModel(IServiceProvider serviceProvider)
     {
-        var vm = new ServerViewModel(Client, DialogManager, ServerStore, ServerId, ServerName, InstanceUrl);
+        var vm = new ServerViewModel(Client, DialogManager, ServerStore, MessageHubService, Messenger, ServerId, ServerName, InstanceUrl);
         _ = vm.LoadAsync();
         return vm;
     }
