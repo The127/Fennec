@@ -10,6 +10,7 @@ public interface IMessageHubClient : IAsyncDisposable
     Task UnsubscribeFromChannelAsync(Guid serverId, Guid channelId);
     Task DisconnectAsync();
     event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
+    event Action? Reconnected;
 }
 
 public class MessageHubClient : IMessageHubClient
@@ -17,6 +18,7 @@ public class MessageHubClient : IMessageHubClient
     private HubConnection? _connection;
 
     public event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
+    public event Action? Reconnected;
 
     public async Task ConnectAsync(string baseUrl, string token)
     {
@@ -35,6 +37,12 @@ public class MessageHubClient : IMessageHubClient
         {
             MessageReceived?.Invoke(serverId, channelId, message);
         });
+
+        _connection.Reconnected += _ =>
+        {
+            Reconnected?.Invoke();
+            return Task.CompletedTask;
+        };
 
         await _connection.StartAsync();
     }

@@ -19,6 +19,7 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
     public async Task ConnectAsync(string baseUrl, string token)
     {
         hubClient.MessageReceived += OnMessageReceived;
+        hubClient.Reconnected += OnReconnected;
         await hubClient.ConnectAsync(baseUrl, token);
     }
 
@@ -35,6 +36,7 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
     public async Task DisconnectAsync()
     {
         hubClient.MessageReceived -= OnMessageReceived;
+        hubClient.Reconnected -= OnReconnected;
         _currentServerId = null;
         _currentChannelId = null;
         await hubClient.DisconnectAsync();
@@ -43,5 +45,11 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
     private void OnMessageReceived(Guid serverId, Guid channelId, Fennec.Shared.Dtos.Server.MessageReceivedDto message)
     {
         messenger.Send(new ChannelMessageReceivedMessage(serverId, channelId, message));
+    }
+
+    private void OnReconnected()
+    {
+        if (_currentServerId is not null && _currentChannelId is not null)
+            _ = hubClient.SubscribeToChannelAsync(_currentServerId.Value, _currentChannelId.Value);
     }
 }
