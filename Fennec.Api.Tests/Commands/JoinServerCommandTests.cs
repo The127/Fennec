@@ -19,13 +19,26 @@ public class JoinServerCommandTests
     private readonly IServerClient _serverClient = Substitute.For<IServerClient>();
     private readonly IAuthPrincipal _authPrincipal = Substitute.For<IAuthPrincipal>();
 
+    private readonly Guid _knownUserId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly string _issuer = "https://fennec.example.com";
     private readonly Guid _remoteServerId = Guid.NewGuid();
 
     public JoinServerCommandTests()
     {
         _authPrincipal.Id.Returns(_userId);
+        _authPrincipal.Issuer.Returns(_issuer);
         _authPrincipal.Name.Returns("alice");
+
+        var knownUser = new KnownUser
+        {
+            Id = _knownUserId,
+            RemoteId = _userId,
+            InstanceUrl = _issuer,
+            Name = "alice",
+        };
+        var mockUserSet = new List<KnownUser> { knownUser }.BuildMockDbSet();
+        _dbContext.Set<KnownUser>().Returns(mockUserSet);
 
         _federationClient.For(Arg.Any<string>()).Returns(_targetedClient);
         _targetedClient.Server.Returns(_serverClient);
@@ -71,7 +84,7 @@ public class JoinServerCommandTests
             k.Name == "Remote Server"));
 
         _dbContext.Received().Add(Arg.Is<UserJoinedKnownServer>(j =>
-            j.UserId == _userId));
+            j.KnownUserId == _knownUserId));
     }
 
     [Fact]
@@ -107,7 +120,7 @@ public class JoinServerCommandTests
 
         _dbContext.DidNotReceive().Add(Arg.Any<KnownServer>());
         _dbContext.Received().Add(Arg.Is<UserJoinedKnownServer>(j =>
-            j.UserId == _userId &&
+            j.KnownUserId == _knownUserId &&
             j.KnownServerId == existingKnownServer.Id));
     }
 }

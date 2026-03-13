@@ -24,8 +24,18 @@ public class CreateChannelGroupCommandHandler(
 {
     public async Task<CreateChannelGroupResponse> Handle(CreateChannelGroupCommand request, CancellationToken cancellationToken)
     {
+        var knownUser = await dbContext.Set<KnownUser>()
+            .Where(x => x.RemoteId == request.AuthPrincipal.Id)
+            .Where(x => x.InstanceUrl == request.AuthPrincipal.Issuer)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (knownUser is null)
+        {
+            throw new HttpForbiddenException("You must be a member of the server to create a channel group");
+        }
+
         var isMember = await dbContext.Set<ServerMember>()
-            .AnyAsync(m => m.ServerId == request.ServerId && m.UserId == request.AuthPrincipal.Id, cancellationToken);
+            .AnyAsync(m => m.ServerId == request.ServerId && m.KnownUserId == knownUser.Id, cancellationToken);
 
         if (!isMember)
         {

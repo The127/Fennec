@@ -18,7 +18,6 @@ public class AuthenticationMiddleware(IKeyService keyService, IClockService cloc
         public Guid Id => throw new UnreachableException("Anonymous user info accessed");
         public string Name => throw new UnreachableException("Anonymous user info accessed");
         public string Issuer => throw new UnreachableException("Anonymous user info accessed");
-        public bool IsLocal => throw new UnreachableException("Anonymous user info accessed");
     }
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)

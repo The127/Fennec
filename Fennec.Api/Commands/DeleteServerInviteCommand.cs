@@ -26,7 +26,12 @@ public class DeleteServerInviteCommandHandler(
             throw new HttpNotFoundException("Invite not found");
         }
 
-        if (invite.CreatedByUserId != request.AuthPrincipal.Id)
+        var knownUser = await dbContext.Set<KnownUser>()
+            .Where(x => x.RemoteId == request.AuthPrincipal.Id)
+            .Where(x => x.InstanceUrl == request.AuthPrincipal.Issuer)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (knownUser is null || invite.CreatedByKnownUserId != knownUser.Id)
         {
             throw new HttpForbiddenException("Only the creator can delete this invite");
         }

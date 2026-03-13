@@ -15,12 +15,25 @@ public class DeleteChannelGroupCommandTests
     private readonly IAuthPrincipal _authPrincipal = Substitute.For<IAuthPrincipal>();
 
     private readonly Guid _serverId = Guid.NewGuid();
+    private readonly Guid _knownUserId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly string _issuer = "https://fennec.example.com";
 
     public DeleteChannelGroupCommandTests()
     {
         _authPrincipal.Id.Returns(_userId);
+        _authPrincipal.Issuer.Returns(_issuer);
         _authPrincipal.Name.Returns("alice");
+
+        var knownUser = new KnownUser
+        {
+            Id = _knownUserId,
+            RemoteId = _userId,
+            InstanceUrl = _issuer,
+            Name = "alice",
+        };
+        var mockUserSet = new List<KnownUser> { knownUser }.BuildMockDbSet();
+        _dbContext.Set<KnownUser>().Returns(mockUserSet);
     }
 
     private DeleteChannelGroupCommandHandler CreateHandler() => new(_dbContext);
@@ -37,7 +50,7 @@ public class DeleteChannelGroupCommandTests
         var groupSet = new List<ChannelGroup> { group }.BuildMockDbSet();
         _dbContext.Set<ChannelGroup>().Returns(groupSet);
 
-        var memberSet = new List<ServerMember> { new() { ServerId = _serverId, UserId = _userId } }.BuildMockDbSet();
+        var memberSet = new List<ServerMember> { new() { ServerId = _serverId, KnownUserId = _knownUserId } }.BuildMockDbSet();
         _dbContext.Set<ServerMember>().Returns(memberSet);
 
         var command = new DeleteChannelGroupCommand

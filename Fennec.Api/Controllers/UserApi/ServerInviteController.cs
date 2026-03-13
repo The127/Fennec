@@ -66,7 +66,7 @@ public class ServerInviteController : UserControllerBase
         {
             InviteId = i.InviteId,
             Code = i.Code,
-            CreatedByUserId = i.CreatedByUserId,
+            CreatedByKnownUserId = i.CreatedByKnownUserId,
             ExpiresAt = i.ExpiresAt != null ? InstantPattern.ExtendedIso.Format(i.ExpiresAt.Value) : null,
             MaxUses = i.MaxUses,
             Uses = i.Uses,

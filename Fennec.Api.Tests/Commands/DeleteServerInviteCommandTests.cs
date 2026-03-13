@@ -14,12 +14,25 @@ public class DeleteServerInviteCommandTests
 
     private readonly IAuthPrincipal _authPrincipal = Substitute.For<IAuthPrincipal>();
 
+    private readonly Guid _knownUserId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly string _issuer = "https://fennec.example.com";
 
     public DeleteServerInviteCommandTests()
     {
         _authPrincipal.Id.Returns(_userId);
+        _authPrincipal.Issuer.Returns(_issuer);
         _authPrincipal.Name.Returns("alice");
+
+        var knownUser = new KnownUser
+        {
+            Id = _knownUserId,
+            RemoteId = _userId,
+            InstanceUrl = _issuer,
+            Name = "alice",
+        };
+        var mockUserSet = new List<KnownUser> { knownUser }.BuildMockDbSet();
+        _dbContext.Set<KnownUser>().Returns(mockUserSet);
     }
 
     private DeleteServerInviteCommandHandler CreateHandler() => new(_dbContext);
@@ -31,7 +44,7 @@ public class DeleteServerInviteCommandTests
         {
             ServerId = Guid.NewGuid(),
             Code = "aBcD1234",
-            CreatedByUserId = _userId,
+            CreatedByKnownUserId = _knownUserId,
         };
 
         var mockSet = new List<ServerInvite> { invite }.BuildMockDbSet();
@@ -56,7 +69,7 @@ public class DeleteServerInviteCommandTests
         {
             ServerId = Guid.NewGuid(),
             Code = "aBcD1234",
-            CreatedByUserId = Guid.NewGuid(), // different user
+            CreatedByKnownUserId = Guid.NewGuid(), // different user
         };
 
         var mockSet = new List<ServerInvite> { invite }.BuildMockDbSet();

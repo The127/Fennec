@@ -36,6 +36,22 @@ public class JoinServerCommandHandler(
                 },
             }, cancellationToken);
 
+        var knownUser = await dbContext.Set<KnownUser>()
+            .Where(x => x.RemoteId == request.AuthPrincipal.Id)
+            .Where(x => x.InstanceUrl == request.AuthPrincipal.Issuer)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (knownUser is null)
+        {
+            knownUser = new KnownUser
+            {
+                RemoteId = request.AuthPrincipal.Id,
+                InstanceUrl = request.AuthPrincipal.Issuer,
+                Name = request.AuthPrincipal.Name,
+            };
+            dbContext.Add(knownUser);
+        }
+
         var knownServer = await dbContext.Set<KnownServer>()
             .Where(x => x.RemoteId == redeemResponse.ServerId)
             .Where(x => x.InstanceUrl == normalizedUrl)
@@ -54,7 +70,7 @@ public class JoinServerCommandHandler(
 
         dbContext.Add(new UserJoinedKnownServer
         {
-            UserId = request.AuthPrincipal.Id,
+            KnownUserId = knownUser.Id,
             KnownServerId = knownServer.Id,
         });
 

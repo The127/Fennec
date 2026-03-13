@@ -15,12 +15,25 @@ public class CreateChannelGroupCommandTests
     private readonly IAuthPrincipal _authPrincipal = Substitute.For<IAuthPrincipal>();
 
     private readonly Guid _serverId = Guid.NewGuid();
+    private readonly Guid _knownUserId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly string _issuer = "https://fennec.example.com";
 
     public CreateChannelGroupCommandTests()
     {
         _authPrincipal.Id.Returns(_userId);
+        _authPrincipal.Issuer.Returns(_issuer);
         _authPrincipal.Name.Returns("alice");
+
+        var knownUser = new KnownUser
+        {
+            Id = _knownUserId,
+            RemoteId = _userId,
+            InstanceUrl = _issuer,
+            Name = "alice",
+        };
+        var mockUserSet = new List<KnownUser> { knownUser }.BuildMockDbSet();
+        _dbContext.Set<KnownUser>().Returns(mockUserSet);
     }
 
     private CreateChannelGroupCommandHandler CreateHandler() => new(_dbContext);
@@ -30,7 +43,7 @@ public class CreateChannelGroupCommandTests
         var members = exists
             ? new List<ServerMember>
             {
-                new() { ServerId = _serverId, UserId = _userId }
+                new() { ServerId = _serverId, KnownUserId = _knownUserId }
             }
             : new List<ServerMember>();
 

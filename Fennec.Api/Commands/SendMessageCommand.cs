@@ -33,8 +33,24 @@ public class SendMessageCommandHandler(
             throw new HttpNotFoundException("Channel not found");
         }
 
+        var knownUser = await dbContext.Set<KnownUser>()
+            .Where(x => x.RemoteId == request.AuthPrincipal.Id)
+            .Where(x => x.InstanceUrl == request.AuthPrincipal.Issuer)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (knownUser is null)
+        {
+            knownUser = new KnownUser
+            {
+                RemoteId = request.AuthPrincipal.Id,
+                InstanceUrl = request.AuthPrincipal.Issuer,
+                Name = request.AuthPrincipal.Name,
+            };
+            dbContext.Add(knownUser);
+        }
+
         var isMember = await dbContext.Set<ServerMember>()
-            .AnyAsync(m => m.ServerId == channel.ServerId && m.UserId == request.AuthPrincipal.Id, cancellationToken);
+            .AnyAsync(m => m.ServerId == channel.ServerId && m.KnownUserId == knownUser.Id, cancellationToken);
 
         if (!isMember)
         {
@@ -49,7 +65,7 @@ public class SendMessageCommandHandler(
         var message = new ChannelMessage
         {
             ChannelId = request.ChannelId,
-            AuthorId = request.AuthPrincipal.Id,
+            AuthorId = knownUser.Id,
             Type = MessageType.Text,
             Details = details,
         };

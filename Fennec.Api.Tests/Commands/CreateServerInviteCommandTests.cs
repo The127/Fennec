@@ -16,12 +16,25 @@ public class CreateServerInviteCommandTests
     private readonly IAuthPrincipal _authPrincipal = Substitute.For<IAuthPrincipal>();
 
     private readonly Guid _serverId = Guid.NewGuid();
+    private readonly Guid _knownUserId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly string _issuer = "https://fennec.example.com";
 
     public CreateServerInviteCommandTests()
     {
         _authPrincipal.Id.Returns(_userId);
+        _authPrincipal.Issuer.Returns(_issuer);
         _authPrincipal.Name.Returns("alice");
+
+        var knownUser = new KnownUser
+        {
+            Id = _knownUserId,
+            RemoteId = _userId,
+            InstanceUrl = _issuer,
+            Name = "alice",
+        };
+        var mockUserSet = new List<KnownUser> { knownUser }.BuildMockDbSet();
+        _dbContext.Set<KnownUser>().Returns(mockUserSet);
     }
 
     private CreateServerInviteCommandHandler CreateHandler() => new(_dbContext);
@@ -31,7 +44,7 @@ public class CreateServerInviteCommandTests
         var members = exists
             ? new List<ServerMember>
             {
-                new() { ServerId = _serverId, UserId = _userId }
+                new() { ServerId = _serverId, KnownUserId = _knownUserId }
             }
             : new List<ServerMember>();
 
@@ -58,7 +71,7 @@ public class CreateServerInviteCommandTests
 
         _dbContext.Received().Add(Arg.Is<ServerInvite>(i =>
             i.ServerId == _serverId &&
-            i.CreatedByUserId == _userId &&
+            i.CreatedByKnownUserId == _knownUserId &&
             i.Code.Length == 8));
         await _dbContext.Received().SaveChangesAsync(Arg.Any<CancellationToken>());
     }

@@ -8,8 +8,6 @@ public class User : EntityBase
     public required string Name { get; set; }
     public required string? DisplayName { get; set; }
     
-    public required bool IsLocal { get; set; }
-    
     public List<AuthMethod> AuthMethods { get; init; } = new();
     public List<Session> Sessions { get; init; } = new();
 }

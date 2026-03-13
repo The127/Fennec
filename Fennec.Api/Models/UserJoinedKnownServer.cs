@@ -5,8 +5,8 @@ namespace Fennec.Api.Models;
 
 public class UserJoinedKnownServer : EntityBase
 {
-    public required Guid UserId { get; init; }
-    public User User { get; init; } = null!;
+    public required Guid KnownUserId { get; init; }
+    public KnownUser KnownUser { get; init; } = null!;
     
     public required Guid KnownServerId { get; init; }
     public KnownServer KnownServer { get; init; } = null!;
@@ -16,6 +16,6 @@ public class UserJoinedKnownServerConfiguration : IEntityTypeConfiguration<UserJ
 {
     public void Configure(EntityTypeBuilder<UserJoinedKnownServer> builder)
     {
-        builder.HasIndex(x => new { x.UserId, x.KnownServerId }).IsUnique();
+        builder.HasIndex(x => new { x.KnownUserId, x.KnownServerId }).IsUnique();
     }
 }

@@ -30,8 +30,18 @@ public class CreateServerInviteCommandHandler(
 
     public async Task<CreateServerInviteResponse> Handle(CreateServerInviteCommand request, CancellationToken cancellationToken)
     {
+        var knownUser = await dbContext.Set<KnownUser>()
+            .Where(x => x.RemoteId == request.AuthPrincipal.Id)
+            .Where(x => x.InstanceUrl == request.AuthPrincipal.Issuer)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (knownUser is null)
+        {
+            throw new HttpForbiddenException("You must be a member of the server to create an invite");
+        }
+
         var isMember = await dbContext.Set<ServerMember>()
-            .AnyAsync(m => m.ServerId == request.ServerId && m.UserId == request.AuthPrincipal.Id, cancellationToken);
+            .AnyAsync(m => m.ServerId == request.ServerId && m.KnownUserId == knownUser.Id, cancellationToken);
 
         if (!isMember)
         {
@@ -44,7 +54,7 @@ public class CreateServerInviteCommandHandler(
         {
             ServerId = request.ServerId,
             Code = code,
-            CreatedByUserId = request.AuthPrincipal.Id,
+            CreatedByKnownUserId = knownUser.Id,
             ExpiresAt = request.ExpiresAt,
             MaxUses = request.MaxUses,
         };

@@ -23,7 +23,6 @@ public class RegisterUserCommandHandler(
         {
             Name = request.Name,
             DisplayName = request.DisplayName,
-            IsLocal = true,
         };
 
         var hash = passwordHasher.HashPassword(request.Password);

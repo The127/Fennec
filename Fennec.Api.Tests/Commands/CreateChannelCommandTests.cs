@@ -16,12 +16,25 @@ public class CreateChannelCommandTests
     private readonly IAuthPrincipal _authPrincipal = Substitute.For<IAuthPrincipal>();
 
     private readonly Guid _serverId = Guid.NewGuid();
+    private readonly Guid _knownUserId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly string _issuer = "https://fennec.example.com";
 
     public CreateChannelCommandTests()
     {
         _authPrincipal.Id.Returns(_userId);
+        _authPrincipal.Issuer.Returns(_issuer);
         _authPrincipal.Name.Returns("alice");
+
+        var knownUser = new KnownUser
+        {
+            Id = _knownUserId,
+            RemoteId = _userId,
+            InstanceUrl = _issuer,
+            Name = "alice",
+        };
+        var mockUserSet = new List<KnownUser> { knownUser }.BuildMockDbSet();
+        _dbContext.Set<KnownUser>().Returns(mockUserSet);
     }
 
     private CreateChannelCommandHandler CreateHandler() => new(_dbContext);
@@ -37,7 +50,7 @@ public class CreateChannelCommandTests
     private void SetupMembership(bool exists)
     {
         var members = exists
-            ? new List<ServerMember> { new() { ServerId = _serverId, UserId = _userId } }
+            ? new List<ServerMember> { new() { ServerId = _serverId, KnownUserId = _knownUserId } }
             : new List<ServerMember>();
         var memberSet = members.BuildMockDbSet();
         _dbContext.Set<ServerMember>().Returns(memberSet);

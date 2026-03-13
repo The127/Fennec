@@ -11,6 +11,7 @@ public record JoinServerFederateCommand : IRequest<JoinServerFederateResponse>
 {
     public required string InviteCode { get; init; }
     public required RemoteUserInfoDto UserInfo { get; init; }
+    public required string InstanceUrl { get; init; }
 }
 
 public record JoinServerFederateResponse
@@ -46,8 +47,24 @@ public class JoinServerFederateCommandHandler(
             throw new HttpBadRequestException("Invite has reached its maximum number of uses");
         }
 
+        var knownUser = await dbContext.Set<KnownUser>()
+            .Where(x => x.RemoteId == request.UserInfo.UserId)
+            .Where(x => x.InstanceUrl == request.InstanceUrl)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (knownUser is null)
+        {
+            knownUser = new KnownUser
+            {
+                RemoteId = request.UserInfo.UserId,
+                InstanceUrl = request.InstanceUrl,
+                Name = request.UserInfo.Name,
+            };
+            dbContext.Add(knownUser);
+        }
+
         var alreadyMember = await dbContext.Set<ServerMember>()
-            .AnyAsync(m => m.ServerId == invite.ServerId && m.UserId == request.UserInfo.UserId, cancellationToken);
+            .AnyAsync(m => m.ServerId == invite.ServerId && m.KnownUserId == knownUser.Id, cancellationToken);
 
         if (alreadyMember)
         {
@@ -65,7 +82,7 @@ public class JoinServerFederateCommandHandler(
         dbContext.Add(new ServerMember
         {
             ServerId = invite.ServerId,
-            UserId = request.UserInfo.UserId,
+            KnownUserId = knownUser.Id,
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);

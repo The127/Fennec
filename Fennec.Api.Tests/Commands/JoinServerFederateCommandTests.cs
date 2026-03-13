@@ -17,12 +17,24 @@ public class JoinServerFederateCommandTests
     private readonly IClockService _clockService = Substitute.For<IClockService>();
 
     private readonly Guid _serverId = Guid.NewGuid();
+    private readonly Guid _knownUserId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly string _issuer = "https://fennec.example.com";
     private readonly Instant _now = Instant.FromUtc(2026, 3, 12, 12, 0);
 
     public JoinServerFederateCommandTests()
     {
         _clockService.GetCurrentInstant().Returns(_now);
+
+        var knownUser = new KnownUser
+        {
+            Id = _knownUserId,
+            RemoteId = _userId,
+            InstanceUrl = _issuer,
+            Name = "alice",
+        };
+        var mockUserSet = new List<KnownUser> { knownUser }.BuildMockDbSet();
+        _dbContext.Set<KnownUser>().Returns(mockUserSet);
     }
 
     private JoinServerFederateCommandHandler CreateHandler() => new(_dbContext, _clockService);
@@ -33,7 +45,7 @@ public class JoinServerFederateCommandTests
         {
             ServerId = _serverId,
             Code = "aBcD1234",
-            CreatedByUserId = Guid.NewGuid(),
+            CreatedByKnownUserId = Guid.NewGuid(),
             ExpiresAt = expiresAt,
             MaxUses = maxUses,
             Uses = uses,
@@ -78,6 +90,7 @@ public class JoinServerFederateCommandTests
         {
             InviteCode = "aBcD1234",
             UserInfo = UserInfo(),
+            InstanceUrl = _issuer,
         };
 
         var result = await CreateHandler().Handle(command, CancellationToken.None);
@@ -85,7 +98,7 @@ public class JoinServerFederateCommandTests
         Assert.Equal("Test Server", result.Name);
         Assert.Equal(_serverId, result.ServerId);
         _dbContext.Received().Add(Arg.Is<ServerMember>(m =>
-            m.ServerId == _serverId && m.UserId == _userId));
+            m.ServerId == _serverId && m.KnownUserId == _knownUserId));
         await _dbContext.Received().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
@@ -99,6 +112,7 @@ public class JoinServerFederateCommandTests
         {
             InviteCode = "aBcD1234",
             UserInfo = UserInfo(),
+            InstanceUrl = _issuer,
         };
 
         await Assert.ThrowsAsync<HttpBadRequestException>(
@@ -115,6 +129,7 @@ public class JoinServerFederateCommandTests
         {
             InviteCode = "aBcD1234",
             UserInfo = UserInfo(),
+            InstanceUrl = _issuer,
         };
 
         await Assert.ThrowsAsync<HttpBadRequestException>(
@@ -130,6 +145,7 @@ public class JoinServerFederateCommandTests
         {
             InviteCode = "unknown1",
             UserInfo = UserInfo(),
+            InstanceUrl = _issuer,
         };
 
         await Assert.ThrowsAsync<HttpNotFoundException>(
@@ -141,7 +157,7 @@ public class JoinServerFederateCommandTests
     {
         var invite = CreateInvite();
         var server = new Server { Id = _serverId, Name = "Test Server", Visibility = Shared.Models.ServerVisibility.Public };
-        var existingMember = new ServerMember { ServerId = _serverId, UserId = _userId };
+        var existingMember = new ServerMember { ServerId = _serverId, KnownUserId = _knownUserId };
 
         SetupInvites(invite);
         SetupMembers(existingMember);
@@ -151,6 +167,7 @@ public class JoinServerFederateCommandTests
         {
             InviteCode = "aBcD1234",
             UserInfo = UserInfo(),
+            InstanceUrl = _issuer,
         };
 
         await Assert.ThrowsAsync<HttpBadRequestException>(
@@ -171,6 +188,7 @@ public class JoinServerFederateCommandTests
         {
             InviteCode = "aBcD1234",
             UserInfo = UserInfo(),
+            InstanceUrl = _issuer,
         };
 
         var result = await CreateHandler().Handle(command, CancellationToken.None);

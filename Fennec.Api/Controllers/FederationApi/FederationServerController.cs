@@ -55,6 +55,7 @@ public class FederationServerController : FederationControllerBase
         {
             InviteCode = requestDto.InviteCode,
             UserInfo = requestDto.UserInfo,
+            InstanceUrl = AuthPrincipal.Issuer,
         }, cancellationToken);
 
         return Ok(new ServerRedeemInviteFederateResponseDto

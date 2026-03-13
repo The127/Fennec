@@ -1,6 +1,7 @@
 using Fennec.Api.Models;
 using Fennec.Api.Security;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Fennec.Api.Queries;
 
@@ -20,18 +21,30 @@ public class ListUserJoinedServersQueryHandler(
     FennecDbContext dbContext
 ) : IRequestHandler<ListUserJoinedServersQuery, IQueryable<ListUserJoinedServersResponse>>
 {
-    public Task<IQueryable<ListUserJoinedServersResponse>> Handle(
+    public async Task<IQueryable<ListUserJoinedServersResponse>> Handle(
         ListUserJoinedServersQuery request,
         CancellationToken cancellationToken
     )
     {
-        return Task.FromResult(dbContext.Set<UserJoinedKnownServer>()
-            .Where(x => x.UserId == request.AuthPrincipal.Id)
+        var issuerUrl = request.AuthPrincipal.Issuer;
+        
+        var knownUser = await dbContext.Set<KnownUser>()
+            .Where(x => x.RemoteId == request.AuthPrincipal.Id)
+            .Where(x => x.InstanceUrl == issuerUrl)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (knownUser is null)
+        {
+            return Enumerable.Empty<ListUserJoinedServersResponse>().AsQueryable();
+        }
+
+        return dbContext.Set<UserJoinedKnownServer>()
+            .Where(x => x.KnownUserId == knownUser.Id)
             .Select(x => new ListUserJoinedServersResponse
             {
                 InstanceUrl = x.KnownServer.InstanceUrl,
                 ServerId = x.KnownServer.RemoteId,
                 Name = x.KnownServer.Name,
-            }));
+            });
     }
 }

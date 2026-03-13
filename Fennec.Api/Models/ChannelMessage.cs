@@ -20,7 +20,7 @@ public class ChannelMessage : EntityBase
     public Channel Channel { get; init; } = null!;
 
     public required Guid AuthorId { get; init; }
-    public User Author { get; init; } = null!;
+    public KnownUser Author { get; init; } = null!;
 
     public required MessageType Type { get; set; }
     public required JsonDocument Details { get; set; }

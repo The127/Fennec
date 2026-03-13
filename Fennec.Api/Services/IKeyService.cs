@@ -22,7 +22,6 @@ public record AuthenticationModel : IAuthPrincipal
     public required Guid Id { get; init; }
     public required string Name { get; init; }
     public required string Issuer { get; init; }
-    public required bool IsLocal { get; init; }
 }
 
 public interface IKeyService
@@ -102,7 +101,6 @@ public class KeyService : IKeyService
             return new AuthenticationModel
             {
                 Id = Guid.Parse(jwt.Subject),
-                IsLocal = jwt.Issuer == _fennecSettings.Value.IssuerUrl,
                 Name = jwt.TryGetClaim("name", out var name)
                     ? name.Value
                     : throw new BadHttpRequestException("Missing name claim"),

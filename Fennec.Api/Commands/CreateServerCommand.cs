@@ -5,6 +5,7 @@ using Fennec.Api.Settings;
 using Fennec.Shared.Models;
 using HttpExceptions;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Fennec.Api.Commands;
@@ -28,7 +29,8 @@ public class CreateServerCommandHandler(
 {
     public async Task<CreateServerResponse> Handle(CreateServerCommand request, CancellationToken cancellationToken)
     {
-        if (!request.AuthPrincipal.IsLocal)
+        var issuerUrl = fennecSettings.Value.IssuerUrl;
+        if (request.AuthPrincipal.Issuer != issuerUrl)
         {
             throw new UnauthorizedAccessException("Only local users can create servers");
         }
@@ -38,10 +40,26 @@ public class CreateServerCommandHandler(
             Name = request.Name,
             Visibility = request.Visibility,
         };
+
+        var knownUser = await dbContext.Set<KnownUser>()
+            .Where(x => x.RemoteId == request.AuthPrincipal.Id)
+            .Where(x => x.InstanceUrl == issuerUrl)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (knownUser is null)
+        {
+            knownUser = new KnownUser
+            {
+                RemoteId = request.AuthPrincipal.Id,
+                InstanceUrl = issuerUrl,
+                Name = request.AuthPrincipal.Name,
+            };
+            dbContext.Add(knownUser);
+        }
         
         var member = new ServerMember
         {
-            UserId = request.AuthPrincipal.Id,
+            KnownUserId = knownUser.Id,
             ServerId = server.Id,
         };
 
@@ -69,7 +87,7 @@ public class CreateServerCommandHandler(
         var joinedKnownServer = new UserJoinedKnownServer
         {
             KnownServerId = knownServer.Id,
-            UserId = request.AuthPrincipal.Id,
+            KnownUserId = knownUser.Id,
         };
 
         dbContext.AddRange(server, member, defaultGroup, defaultChannel, knownServer, joinedKnownServer);

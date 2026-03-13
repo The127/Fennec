@@ -15,7 +15,7 @@ public record ListServerInvitesResponse
 {
     public required Guid InviteId { get; init; }
     public required string Code { get; init; }
-    public required Guid CreatedByUserId { get; init; }
+    public required Guid CreatedByKnownUserId { get; init; }
     public required Instant? ExpiresAt { get; init; }
     public required int? MaxUses { get; init; }
     public required int Uses { get; init; }
@@ -34,7 +34,7 @@ public class ListServerInvitesQueryHandler(
             {
                 InviteId = i.Id,
                 Code = i.Code,
-                CreatedByUserId = i.CreatedByUserId,
+                CreatedByKnownUserId = i.CreatedByKnownUserId,
                 ExpiresAt = i.ExpiresAt,
                 MaxUses = i.MaxUses,
                 Uses = i.Uses,

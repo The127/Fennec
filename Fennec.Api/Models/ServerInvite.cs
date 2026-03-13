@@ -11,8 +11,8 @@ public class ServerInvite : EntityBase
 
     public required string Code { get; set; }
 
-    public required Guid CreatedByUserId { get; init; }
-    public User CreatedByUser { get; init; } = null!;
+    public required Guid CreatedByKnownUserId { get; init; }
+    public KnownUser CreatedByKnownUser { get; init; } = null!;
 
     public Instant? ExpiresAt { get; set; }
     public int? MaxUses { get; set; }

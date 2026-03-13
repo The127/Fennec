@@ -27,8 +27,16 @@ public class RenameChannelGroupCommandHandler(
             throw new HttpNotFoundException("Channel group not found");
         }
 
+        var knownUser = await dbContext.Set<KnownUser>()
+            .SingleOrDefaultAsync(u => u.RemoteId == request.AuthPrincipal.Id && u.InstanceUrl == request.AuthPrincipal.Issuer, cancellationToken);
+
+        if (knownUser is null)
+        {
+            throw new HttpForbiddenException("User not found");
+        }
+
         var isMember = await dbContext.Set<ServerMember>()
-            .AnyAsync(m => m.ServerId == group.ServerId && m.UserId == request.AuthPrincipal.Id, cancellationToken);
+            .AnyAsync(m => m.ServerId == group.ServerId && m.KnownUserId == knownUser.Id, cancellationToken);
 
         if (!isMember)
         {

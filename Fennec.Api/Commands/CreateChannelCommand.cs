@@ -34,8 +34,18 @@ public class CreateChannelCommandHandler(
             throw new HttpNotFoundException("Channel group not found");
         }
 
+        var knownUser = await dbContext.Set<KnownUser>()
+            .Where(x => x.RemoteId == request.AuthPrincipal.Id)
+            .Where(x => x.InstanceUrl == request.AuthPrincipal.Issuer)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (knownUser is null)
+        {
+            throw new HttpForbiddenException("You must be a member of the server to create a channel");
+        }
+
         var isMember = await dbContext.Set<ServerMember>()
-            .AnyAsync(m => m.ServerId == group.ServerId && m.UserId == request.AuthPrincipal.Id, cancellationToken);
+            .AnyAsync(m => m.ServerId == group.ServerId && m.KnownUserId == knownUser.Id, cancellationToken);
 
         if (!isMember)
         {

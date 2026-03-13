@@ -10,8 +10,8 @@ public class ListServerInvitesResponseItemDto
     [JsonPropertyName("code")]
     public required string Code { get; set; }
 
-    [JsonPropertyName("createdByUserId")]
-    public required Guid CreatedByUserId { get; set; }
+    [JsonPropertyName("createdByKnownUserId")]
+    public required Guid CreatedByKnownUserId { get; set; }
 
     [JsonPropertyName("expiresAt")]
     public string? ExpiresAt { get; set; }
