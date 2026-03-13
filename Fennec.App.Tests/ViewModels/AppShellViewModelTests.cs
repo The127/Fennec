@@ -5,6 +5,7 @@ using Fennec.App.ViewModels;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
+using Fennec.App.Services.Storage;
 using Fennec.App.Shortcuts;
 using Fennec.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,7 +39,7 @@ public class AppShellViewModelTests
         services.AddLogging();
         var sp = services.BuildServiceProvider();
 
-        return new AppShellViewModel(sp, _authStore, new ToastManager(), new DialogManager(), _messenger);
+        return new AppShellViewModel(sp, _authStore, Substitute.For<IDbPathProvider>(), new ToastManager(), new DialogManager(), _messenger);
     }
 
     private static AuthSession CreateSession(string username = "alice", string url = "fennec.chat") =>

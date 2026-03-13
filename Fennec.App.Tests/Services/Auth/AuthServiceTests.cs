@@ -1,5 +1,6 @@
 using Fennec.App.Exceptions;
 using Fennec.App.Services.Auth;
+using Fennec.App.Services.Storage;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Auth;
 using NSubstitute;
@@ -13,7 +14,9 @@ public class AuthServiceTests
     private readonly IClientFactory _clientFactory = Substitute.For<IClientFactory>();
     private readonly IFennecClient _client = Substitute.For<IFennecClient>();
 
-    private AuthService CreateService() => new(_authStore, _clientFactory, NullExceptionHandler.Instance);
+    private readonly IDbPathProvider _dbPathProvider = Substitute.For<IDbPathProvider>();
+
+    private AuthService CreateService() => new(_authStore, _clientFactory, NullExceptionHandler.Instance, _dbPathProvider);
 
     private AuthSession CreateSession() => new()
     {
