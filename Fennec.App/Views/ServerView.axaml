@@ -123,6 +123,13 @@
                            IsOpen="False">
                         <views:ShortcodeAutocompleteView x:Name="AutocompleteView" />
                     </Popup>
+                    <Popup x:Name="MentionAutocompletePopup"
+                           PlacementTarget="{Binding #MessageTextBox}"
+                           Placement="Top"
+                           IsLightDismissEnabled="False"
+                           IsOpen="False">
+                        <views:MentionAutocompleteView x:Name="MentionAutocompleteView" />
+                    </Popup>
                     <Border BorderBrush="{DynamicResource BorderColor}"
                             BorderThickness="1"
                             CornerRadius="{DynamicResource LgCornerRadius}"

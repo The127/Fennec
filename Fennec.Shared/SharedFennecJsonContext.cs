@@ -33,6 +33,7 @@ using System.Text.Json.Serialization;
 [JsonSerializable(typeof(SendMessageResponseDto))]
 [JsonSerializable(typeof(ListMessagesResponseDto))]
 [JsonSerializable(typeof(MessageReceivedDto))]
+[JsonSerializable(typeof(ListServerMembersResponseDto))]
 public partial class SharedFennecJsonContext : JsonSerializerContext
 {
 }

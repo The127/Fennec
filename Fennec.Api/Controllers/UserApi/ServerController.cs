@@ -1,4 +1,5 @@
 using Fennec.Api.Commands;
+using Fennec.Api.Models;
 using Fennec.Api.Queries;
 using Fennec.Api.Security;
 using Fennec.Shared.Dtos.Server;
@@ -48,6 +49,21 @@ public class ServerController : UserControllerBase
         }, cancellationToken);
 
         return NoContent();
+    }
+
+    [HttpGet("{serverId}/members")]
+    public async Task<IActionResult> ListServerMembers(
+        [FromRoute] Guid serverId,
+        [FromServices] FennecDbContext dbContext,
+        CancellationToken cancellationToken
+    )
+    {
+        var members = await dbContext.Set<ServerMember>()
+            .Where(m => m.ServerId == serverId)
+            .Select(m => new ListServerMembersResponseItemDto { Name = m.KnownUser.Name })
+            .ToListAsync(cancellationToken);
+
+        return Ok(new ListServerMembersResponseDto { Members = members });
     }
 
     [HttpGet("joined")]

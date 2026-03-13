@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             xmlns:system="using:System"
+             x:DataType="vm:MentionAutocompleteViewModel"
+             x:Class="Fennec.App.Views.MentionAutocompleteView"
+             Width="280">
+    <Border Classes="PopupPanel">
+        <ItemsControl x:Name="SuggestionsList" ItemsSource="{Binding Suggestions}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="system:String">
+                    <Border x:Name="Row" Padding="8,5" CornerRadius="4"
+                            Background="Transparent"
+                            Cursor="Hand"
+                            PointerPressed="Row_PointerPressed"
+                            PointerEntered="Row_PointerEntered">
+                        <TextBlock Text="{Binding StringFormat='@{0}'}" VerticalAlignment="Center" />
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Border>
+</UserControl>

@@ -189,6 +189,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
     public Guid ServerId { get; }
 
+    public List<string> ServerMembers { get; private set; } = [];
+
     public ShortcutContext ShortcutContext => ShortcutContext.Server;
 
     public bool HandleShortcut(string shortcutId)
@@ -650,6 +652,16 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
     public async Task LoadAsync()
     {
+        try
+        {
+            var membersResponse = await client.Server.ListMembersAsync(instanceUrl, ServerId);
+            ServerMembers = membersResponse.Members.Select(m => m.Name).ToList();
+        }
+        catch
+        {
+            // Failed to load members; autocomplete will be empty.
+        }
+
         var groups = await serverStore.GetChannelGroupsAsync(instanceUrl, client, ServerId);
         if (groups.Any())
         {

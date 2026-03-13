@@ -23,6 +23,7 @@ public interface IServerClient
     Task DeleteChannelAsync(string baseUrl, Guid serverId, Guid channelGroupId, Guid channelId, CancellationToken cancellationToken = default);
     Task<SendMessageResponseDto> SendMessageAsync(string baseUrl, Guid serverId, Guid channelId, SendMessageRequestDto requestDto, CancellationToken cancellationToken = default);
     Task<ListMessagesResponseDto> ListMessagesAsync(string baseUrl, Guid serverId, Guid channelId, CancellationToken cancellationToken = default);
+    Task<ListServerMembersResponseDto> ListMembersAsync(string baseUrl, Guid serverId, CancellationToken cancellationToken = default);
 }
 
 public class ServerClient(HttpClient httpClient) : IServerClient
@@ -227,6 +228,18 @@ public class ServerClient(HttpClient httpClient) : IServerClient
         await response.EnsureSuccessAsync(cancellationToken);
 
         var responseDto = await response.Content.ReadFromJsonAsync(SharedFennecJsonContext.Default.ListMessagesResponseDto, cancellationToken: cancellationToken);
+        return responseDto ?? throw new Exception("Error decoding response.");
+    }
+
+    public async Task<ListServerMembersResponseDto> ListMembersAsync(string baseUrl, Guid serverId, CancellationToken cancellationToken = default)
+    {
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
+        var uri = new Uri($"{baseUrl}/api/v1/servers/{serverId}/members");
+
+        var response = await httpClient.GetAsync(uri, cancellationToken);
+        await response.EnsureSuccessAsync(cancellationToken);
+
+        var responseDto = await response.Content.ReadFromJsonAsync(SharedFennecJsonContext.Default.ListServerMembersResponseDto, cancellationToken: cancellationToken);
         return responseDto ?? throw new Exception("Error decoding response.");
     }
 }

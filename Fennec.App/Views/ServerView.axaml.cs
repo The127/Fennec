@@ -16,6 +16,7 @@ namespace Fennec.App.Views;
 public partial class ServerView : UserControl
 {
     private readonly ShortcodeAutocompleteViewModel _autocompleteVm = new();
+    private readonly MentionAutocompleteViewModel _mentionVm = new();
 
     public ServerView()
     {
@@ -29,6 +30,10 @@ public partial class ServerView : UserControl
         // Autocomplete setup
         AutocompleteView.DataContext = _autocompleteVm;
         AutocompleteView.EntrySelected += entry => ApplyAutocompleteSuggestion(entry);
+
+        // Mention autocomplete setup
+        MentionAutocompleteView.DataContext = _mentionVm;
+        MentionAutocompleteView.EntrySelected += name => ApplyMentionSuggestion(name);
 
         MessageTextBox.PropertyChanged += (_, args) =>
         {
@@ -157,6 +162,29 @@ public partial class ServerView : UserControl
         var caret = MessageTextBox.CaretIndex;
         _autocompleteVm.Update(text, caret);
         AutocompletePopup.IsOpen = _autocompleteVm.IsVisible;
+
+        var vm = DataContext as ServerViewModel;
+        _mentionVm.Update(text, caret, vm?.ServerMembers ?? []);
+        MentionAutocompletePopup.IsOpen = _mentionVm.IsVisible;
+    }
+
+    private void ApplyMentionSuggestion(string name)
+    {
+        if (DataContext is not ServerViewModel vm) return;
+
+        var text = vm.MessageText;
+        var atStart = _mentionVm.AtStartIndex;
+        var caret = MessageTextBox.CaretIndex;
+
+        var before = text[..atStart];
+        var after = caret < text.Length ? text[caret..] : "";
+        var inserted = $"@{name} ";
+        vm.MessageText = before + inserted + after;
+        MessageTextBox.CaretIndex = before.Length + inserted.Length;
+
+        _mentionVm.Hide();
+        MentionAutocompletePopup.IsOpen = false;
+        MessageTextBox.Focus();
     }
 
     private void ApplyAutocompleteSuggestion(EmojiEntry entry)
@@ -201,6 +229,36 @@ public partial class ServerView : UserControl
 
     private void MessageBox_KeyDown(object? sender, KeyEventArgs e)
     {
+        if (_mentionVm.IsVisible)
+        {
+            switch (e.Key)
+            {
+                case Key.Up:
+                    _mentionVm.MoveUp();
+                    e.Handled = true;
+                    return;
+                case Key.Down:
+                    _mentionVm.MoveDown();
+                    e.Handled = true;
+                    return;
+                case Key.Tab:
+                case Key.Enter:
+                    var name = _mentionVm.Confirm();
+                    if (name is not null)
+                    {
+                        ApplyMentionSuggestion(name);
+                        MentionAutocompletePopup.IsOpen = false;
+                    }
+                    e.Handled = true;
+                    return;
+                case Key.Escape:
+                    _mentionVm.Hide();
+                    MentionAutocompletePopup.IsOpen = false;
+                    e.Handled = true;
+                    return;
+            }
+        }
+
         if (_autocompleteVm.IsVisible)
         {
             switch (e.Key)
