@@ -77,8 +77,17 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
             .SendAsync("ReceiveIceCandidate", serverId, channelId, userId, candidate, sdpMid, sdpMLineIndex);
     }
 
+    public override Task OnConnectedAsync()
+    {
+        logger.LogInformation("SignalR: Client connected {ConnectionId}", Context.ConnectionId);
+        return base.OnConnectedAsync();
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        logger.LogInformation("SignalR: Client disconnected {ConnectionId} (exception: {Exception})",
+            Context.ConnectionId, exception?.Message ?? "none");
+
         var removed = voiceState.RemoveByConnectionId(Context.ConnectionId);
         if (removed is not null)
         {
