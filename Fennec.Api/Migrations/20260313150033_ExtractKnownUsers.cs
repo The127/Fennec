@@ -84,6 +84,14 @@ namespace Fennec.Api.Migrations
                 columns: new[] { "remote_id", "instance_url" },
                 unique: true);
 
+            // Migrate existing users into known_user so FK constraints don't fail.
+            // Local users get instance_url = NULL and remote_id = their user id.
+            migrationBuilder.Sql("""
+                INSERT INTO known_user (id, remote_id, instance_url, name, created_at, updated_at)
+                SELECT id, id, NULL, name, created_at, updated_at
+                FROM "user"
+                """);
+
             migrationBuilder.AddForeignKey(
                 name: "fk_channel_message_known_user_author_id",
                 table: "channel_message",
