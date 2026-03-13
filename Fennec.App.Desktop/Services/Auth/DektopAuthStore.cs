@@ -57,7 +57,14 @@ public class DesktopAuthStore(ILogger<DesktopAuthStore> logger) : IAuthStore
         {
             config.CurrentUserId = null;
         }
+    
+        await SaveConfigAsync(config, cancellationToken);
+    }
 
+    public async Task SetCurrentSessionAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var config = await LoadConfigAsync(cancellationToken);
+        config.CurrentUserId = userId;
         await SaveConfigAsync(config, cancellationToken);
     }
 

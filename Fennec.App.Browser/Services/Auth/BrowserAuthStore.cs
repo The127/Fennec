@@ -58,6 +58,13 @@ public class BrowserAuthStore(ILogger<BrowserAuthStore> logger) : IAuthStore
         await SaveConfigAsync(config, cancellationToken);
     }
 
+    public async Task SetCurrentSessionAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var config = await LoadConfigAsync(cancellationToken);
+        config.CurrentUserId = userId;
+        await SaveConfigAsync(config, cancellationToken);
+    }
+
     private Task<AuthConfig> LoadConfigAsync(CancellationToken cancellationToken = default)
     {
         try

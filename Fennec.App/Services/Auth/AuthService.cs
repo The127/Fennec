@@ -84,4 +84,10 @@ public class AuthService(
             }
         }
     }
+
+    public async Task SwitchAccountAsync(AuthSession session, CancellationToken cancellationToken = default)
+    {
+        dbPathProvider.CurrentDbPath = dbPathProvider.GetDbPath(session.UserId);
+        await authStore.SetCurrentSessionAsync(session.UserId, cancellationToken);
+    }
 }

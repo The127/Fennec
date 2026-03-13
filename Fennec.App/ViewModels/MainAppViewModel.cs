@@ -430,6 +430,13 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     }
 
     [RelayCommand]
+    private void SwitchAccount()
+    {
+        _messenger.Send(new UserLoggedOutMessage());
+        _messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.SwitchAccount));
+    }
+
+    [RelayCommand]
     private async Task Logout(CancellationToken cancellationToken)
     {
         await _messageHubService.DisconnectAsync();

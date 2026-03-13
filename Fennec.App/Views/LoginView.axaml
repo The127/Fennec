@@ -32,6 +32,9 @@
                              Text="{Binding Password}" />
                     <Button Classes="Primary" Content="Log in" Command="{Binding LoginCommand}"/>
                     <Button Classes="Ghost" 
+                            Content="Already logged in? Switch account"
+                            Command="{Binding NavigateToSwitchAccountCommand}" />
+                    <Button Classes="Ghost" 
                             Content="Need an account? Register"
                             Command="{Binding NavigateToRegisterCommand}" />
                 </StackPanel>

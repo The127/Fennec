@@ -93,4 +93,10 @@ public partial class LoginViewModel : ObservableValidator
     {
         Messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.Register));
     }
+
+    [RelayCommand]
+    private void NavigateToSwitchAccount()
+    {
+        Messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.SwitchAccount));
+    }
 }

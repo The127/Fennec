@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             xmlns:controls="using:Fennec.App.Controls"
+             xmlns:auth="using:Fennec.App.Services.Auth"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:shadui="using:ShadUI"
+             x:Class="Fennec.App.Views.SwitchAccountView"
+             x:DataType="vm:SwitchAccountViewModel">
+    <Panel Background="Transparent">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="24">
+            <controls:FennecLogo Height="64" Width="64" HorizontalAlignment="Center" />
+            <shadui:Card HasShadow="True" Width="600">
+                <shadui:Card.Header>
+                    <StackPanel Spacing="4">
+                        <shadui:CardTitle FontSize="18">Switch Account</shadui:CardTitle>
+                        <shadui:CardDescription>Select an account to log in</shadui:CardDescription>
+                    </StackPanel>
+                </shadui:Card.Header>
+                <StackPanel Spacing="16">
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
+                    
+                    <ItemsControl ItemsSource="{Binding Sessions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="auth:AuthSession">
+                                <Button Classes="Ghost" 
+                                        HorizontalAlignment="Stretch"
+                                        Command="{Binding $parent[UserControl].((vm:SwitchAccountViewModel)DataContext).SwitchAccountCommand}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource ShadUIBackground}">
+                                            <TextBlock Text="{Binding Username[0]}" 
+                                                       VerticalAlignment="Center" 
+                                                       HorizontalAlignment="Center"
+                                                       FontWeight="Bold"/>
+                                        </Border>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Username}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Url}" FontSize="12" Opacity="0.7"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Classes="Ghost" 
+                            Content="Log in with another account"
+                            Command="{Binding NavigateToLoginCommand}" />
+                </StackPanel>
+            </shadui:Card>
+        </StackPanel>
+    </Panel>
+</UserControl>
