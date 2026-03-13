@@ -44,14 +44,36 @@ public partial class ServerView : UserControl
             if (DataContext is ServerViewModel vm)
             {
                 vm.Messages.CollectionChanged += OnMessagesChanged;
-                vm.MessageInputFocusRequested += () => MessageTextBox.Focus();
+                vm.MessageInputFocusRequested += () =>
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        MessageTextBox.Focus();
+                        MessageScrollViewer.ScrollToEnd();
+                    }, DispatcherPriority.Loaded);
                 vm.EmojiPickerRequested += OpenEmojiPicker;
                 vm.AttachFileRequested += () => _ = OpenFilePickerAsync();
             }
         };
 
+        AddHandler(KeyDownEvent, OnViewKeyDown, RoutingStrategies.Tunnel);
+        MessageTextBox.AddHandler(KeyDownEvent, MessageBox_KeyDown, RoutingStrategies.Tunnel);
+
         AttachedToVisualTree += (_, _) =>
             Dispatcher.UIThread.Post(() => MessageTextBox.Focus(), DispatcherPriority.Loaded);
+    }
+
+    private async void OnViewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.C && e.KeyModifiers == KeyModifiers.Control
+            && DataContext is ServerViewModel vm && vm.HasSelectedMessages)
+        {
+            e.Handled = true;
+            var text = vm.GetSelectedMessagesText();
+            if (text is null) return;
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard is not null)
+                await clipboard.SetTextAsync(text);
+        }
     }
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -156,6 +178,27 @@ public partial class ServerView : UserControl
         MessageTextBox.Focus();
     }
 
+    private void OnMessagePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Border { DataContext: MessageItem message }) return;
+        if (DataContext is not ServerViewModel vm) return;
+
+        var props = e.GetCurrentPoint(this).Properties;
+        if (!props.IsLeftButtonPressed) return;
+
+        var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        vm.SelectMessage(message, shift, ctrl);
+    }
+
+    private async void OnCopyMessageClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string content }) return;
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard is null) return;
+        await clipboard.SetTextAsync(content);
+    }
+
     private void MessageBox_KeyDown(object? sender, KeyEventArgs e)
     {
         if (_autocompleteVm.IsVisible)
@@ -188,15 +231,9 @@ public partial class ServerView : UserControl
             }
         }
 
-        if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.Shift)
-        {
-            var caretIndex = MessageTextBox.CaretIndex;
-            var text = MessageTextBox.Text ?? "";
-            MessageTextBox.Text = text.Insert(caretIndex, "\n");
-            MessageTextBox.CaretIndex = caretIndex + 1;
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Enter && DataContext is ServerViewModel vm)
+        // Shift+Enter: let AcceptsReturn insert the newline (don't handle)
+        // Plain Enter: send the message
+        if (e.Key == Key.Enter && e.KeyModifiers != KeyModifiers.Shift && DataContext is ServerViewModel vm)
         {
             vm.SendMessageCommand.Execute(null);
             e.Handled = true;

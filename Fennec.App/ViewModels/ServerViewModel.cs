@@ -53,7 +53,7 @@ public class AttachmentItem(string fileName, Uri path)
     public Uri Path { get; } = path;
 }
 
-public class MessageItem
+public partial class MessageItem : ObservableObject
 {
     public required Guid MessageId { get; init; }
     public required string Content { get; init; }
@@ -66,6 +66,9 @@ public class MessageItem
     public required bool ShowAuthor { get; init; }
     public required bool ShowTimeSeparator { get; init; }
     public required string TimeSeparatorText { get; init; }
+
+    [ObservableProperty]
+    private bool _isSelected;
     public bool IsEmojiOnly => !string.IsNullOrWhiteSpace(Content) && IsAllEmoji(Content);
 
     private static bool IsAllEmoji(string text)
@@ -160,6 +163,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
         switch (shortcutId)
         {
             case "server.focusMessage":
+                ClearMessageSelection();
                 MessageInputFocusRequested?.Invoke();
                 return true;
             case "server.openEmoji":
@@ -176,6 +180,54 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
     public event Action? MessageInputFocusRequested;
     public event Action? EmojiPickerRequested;
     public event Action? AttachFileRequested;
+    private MessageItem? _lastClickedMessage;
+
+    public void SelectMessage(MessageItem message, bool isShift, bool isCtrl)
+    {
+        if (isShift && _lastClickedMessage is not null)
+        {
+            // Range select from last clicked to current
+            var startIdx = Messages.IndexOf(_lastClickedMessage);
+            var endIdx = Messages.IndexOf(message);
+            if (startIdx < 0 || endIdx < 0) return;
+
+            if (startIdx > endIdx)
+                (startIdx, endIdx) = (endIdx, startIdx);
+
+            if (!isCtrl)
+                ClearMessageSelection();
+
+            for (var i = startIdx; i <= endIdx; i++)
+                Messages[i].IsSelected = true;
+        }
+        else if (isCtrl)
+        {
+            message.IsSelected = !message.IsSelected;
+        }
+        else
+        {
+            ClearMessageSelection();
+            message.IsSelected = true;
+        }
+
+        _lastClickedMessage = message;
+    }
+
+    public void ClearMessageSelection()
+    {
+        foreach (var m in Messages)
+            m.IsSelected = false;
+    }
+
+    public bool HasSelectedMessages => Messages.Any(m => m.IsSelected);
+
+    public string? GetSelectedMessagesText()
+    {
+        var selected = Messages.Where(m => m.IsSelected).ToList();
+        if (selected.Count == 0) return null;
+
+        return string.Join(Environment.NewLine, selected.Select(m => m.Content));
+    }
 
     public ObservableCollection<ChannelGroupItem> ChannelGroups { get; } = [];
 
@@ -204,6 +256,7 @@ public partial class ServerViewModel(IFennecClient client, DialogManager dialogM
         SelectedChannel = channel;
         channel.IsSelected = true;
         await LoadMessagesAsync();
+        MessageInputFocusRequested?.Invoke();
     }
 
     [RelayCommand]

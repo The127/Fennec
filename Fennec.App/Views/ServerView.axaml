@@ -21,6 +21,11 @@
                                       TrueSize="30"
                                       FalseSize="15" />
     </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="Border.selected">
+            <Setter Property="Background" Value="{DynamicResource InfoColor20}" />
+        </Style>
+    </UserControl.Styles>
     <Grid ColumnDefinitions="240 *">
         <!-- Left: Channels -->
         <Border Grid.Column="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0">
@@ -172,10 +177,10 @@
                                          Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
                                          Text="{Binding MessageText}"
                                          TextWrapping="Wrap"
+                                         AcceptsReturn="True"
                                          FontSize="15"
                                          Padding="14,8"
-                                         shadui:ControlAssist.Height="100"
-                                         KeyDown="MessageBox_KeyDown" />
+                                         shadui:ControlAssist.Height="100" />
                                 <Button x:Name="AttachFileButton"
                                         Grid.Column="1"
                                         Classes="Ghost"
@@ -265,13 +270,36 @@
                                     </StackPanel>
 
                                     <!-- Message content -->
-                                    <Border Background="{DynamicResource SecondaryColor50}"
-                                            CornerRadius="8"
+                                    <Border CornerRadius="8"
                                             Padding="12,8"
                                             Margin="42,2,48,2"
-                                            ToolTip.Tip="{Binding ExactTime}">
-                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
-                                                   FontSize="{Binding IsEmojiOnly, Converter={StaticResource EmojiOnlyFontSizeConverter}}" />
+                                            ToolTip.Tip="{Binding ExactTime}"
+                                            Background="{DynamicResource SecondaryColor50}"
+                                            Classes.selected="{Binding IsSelected}"
+                                            PointerPressed="OnMessagePressed">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Content}" TextWrapping="Wrap"
+                                                       FontSize="{Binding IsEmojiOnly, Converter={StaticResource EmojiOnlyFontSizeConverter}}" />
+                                            <Button Grid.Column="1"
+                                                    VerticalAlignment="Top"
+                                                    Padding="4" Margin="4,0,0,0"
+                                                    Cursor="Hand"
+                                                    Opacity="0"
+                                                    Classes="ghost"
+                                                    Tag="{Binding Content}"
+                                                    Click="OnCopyMessageClick">
+                                                <Button.Styles>
+                                                    <Style Selector="Border:pointerover Button">
+                                                        <Setter Property="Opacity" Value="0.6" />
+                                                    </Style>
+                                                    <Style Selector="Border:pointerover Button:pointerover">
+                                                        <Setter Property="Opacity" Value="1" />
+                                                    </Style>
+                                                </Button.Styles>
+                                                <mi:MaterialIcon Kind="ContentCopy" Width="14" Height="14" />
+                                            </Button>
+                                        </Grid>
                                     </Border>
                                 </StackPanel>
                             </DataTemplate>
