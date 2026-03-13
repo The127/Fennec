@@ -30,6 +30,11 @@
         <themes:ShadTheme />
         <materialIcons:MaterialIconStyles />
 
+        <!-- Ensure the bundled emoji font is used as a fallback for all text -->
+        <Style Selector=":is(TemplatedControl)">
+            <Setter Property="FontFamily" Value="Inter, fonts:NotoColorEmoji#Noto Color Emoji" />
+        </Style>
+
         <!-- Reusable floating panel style for popups (emoji picker, autocomplete) -->
         <Style Selector="Border.PopupPanel">
             <Setter Property="Background" Value="{DynamicResource CardBackgroundColor}" />
