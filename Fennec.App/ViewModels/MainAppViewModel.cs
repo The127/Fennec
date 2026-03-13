@@ -202,7 +202,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         }
 
         await NavigateToDashboardAsync();
-        await LoadServersAsync();
+        await LoadServersAsync(waitForRefresh: true);
     }
 
     [RelayCommand]
@@ -246,14 +246,14 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
     private async Task LoadServersAndNavigateToServerAsync(Guid serverId, string serverName)
     {
-        await LoadServersAsync();
+        await LoadServersAsync(waitForRefresh: true);
         if (_client is null) return;
         await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _messenger, serverId, serverName, _session!.Url));
     }
 
     public void Receive(ServerJoinedMessage message)
     {
-        _ = LoadServersAsync();
+        _ = LoadServersAsync(waitForRefresh: true);
     }
 
     public void ApplySession(AuthSession session)
@@ -266,12 +266,19 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         AvatarFallback = session.Username[..1].ToUpperInvariant();
     }
 
-    private async Task LoadServersAsync()
+    private async Task LoadServersAsync(bool waitForRefresh = false)
     {
         if (_client is null || _session is null) return;
 
         var servers = await _serverStore.GetJoinedServersAsync(_session.Url, _client);
         UpdateServersList(servers);
+
+        if (waitForRefresh)
+        {
+            await _serverStore.WaitForRefreshesAsync();
+            var freshServers = await _serverStore.GetJoinedServersAsync(_session.Url, _client);
+            UpdateServersList(freshServers);
+        }
     }
 
     private void UpdateServersList(List<ListJoinedServersResponseItemDto>? servers)
