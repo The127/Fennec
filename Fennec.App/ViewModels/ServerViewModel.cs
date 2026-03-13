@@ -119,9 +119,13 @@ public partial class MessageItem : ObservableObject
             if (value == 0x2122 || value == 0x2139) continue;   // TM, info
             if (value >= 0x23E9 && value <= 0x23FA) continue;   // Media controls
             if (value >= 0x200D && value <= 0x200D) continue;   // ZWJ (already handled)
-            if (value >= 0x20E3 && value <= 0x20E3) continue;   // Combining enclosing keycap
-            if (value >= 0x0030 && value <= 0x0039) continue;   // Digits (keycap sequences)
-            if (value == 0x002A || value == 0x0023) continue;   // * and # (keycap sequences)
+            if (value == 0x20E3) continue;                        // Combining enclosing keycap
+            // Digits, * and # only as part of keycap sequences (multi-rune elements like 1️⃣)
+            if ((value >= 0x0030 && value <= 0x0039) || value == 0x002A || value == 0x0023)
+            {
+                if (textElement.EnumerateRunes().Count() > 1) continue;
+                return false;
+            }
             if (value >= 0x1F1E0 && value <= 0x1F1FF) continue; // Regional indicators (flags)
             return false;
         }
