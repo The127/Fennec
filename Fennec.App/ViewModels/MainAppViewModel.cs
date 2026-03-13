@@ -204,9 +204,10 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             {
                 await _messageHubService.ConnectAsync(_session.Url, _session.SessionToken);
             }
-            catch
+            catch (Exception ex)
             {
                 // SignalR connection failure shouldn't block startup — messages still load via HTTP.
+                _exceptionHandler.Handle(ex, "SignalR connection failed during startup");
             }
         }
 

@@ -40,6 +40,8 @@ public interface IMessageHubClient : IAsyncDisposable
 public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubClient
 {
     private HubConnection? _connection;
+    private TaskCompletionSource _connectedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
 
     public event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
     public event Action? Reconnected;
@@ -57,6 +59,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         if (_connection is not null)
             await DisconnectAsync();
 
+        baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
         logger.LogInformation("SignalR: Connecting to {Url}/hubs/messages", baseUrl);
         ConnectionStateChanged?.Invoke(HubConnectionStatus.Connecting);
 
@@ -103,6 +106,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         _connection.Reconnected += _ =>
         {
             logger.LogInformation("SignalR: Reconnected");
+            _connectedTcs.TrySetResult();
             ConnectionStateChanged?.Invoke(HubConnectionStatus.Connected);
             Reconnected?.Invoke();
             return Task.CompletedTask;
@@ -111,6 +115,8 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         _connection.Closed += ex =>
         {
             logger.LogWarning(ex, "SignalR: Connection closed");
+            _connectedTcs.TrySetCanceled();
+            _connectedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             ConnectionStateChanged?.Invoke(HubConnectionStatus.Disconnected);
             return Task.CompletedTask;
         };
@@ -124,33 +130,58 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
 
         await _connection.StartAsync();
         logger.LogInformation("SignalR: Connected (state={State})", _connection.State);
+        _connectedTcs.TrySetResult();
         ConnectionStateChanged?.Invoke(HubConnectionStatus.Connected);
     }
 
     public async Task SubscribeToChannelAsync(Guid serverId, Guid channelId)
     {
-        if (_connection?.State == HubConnectionState.Connected)
+        if (_connection?.State != HubConnectionState.Connected)
         {
-            logger.LogInformation("SignalR: Subscribing to server={ServerId} channel={ChannelId}", serverId, channelId);
-            await _connection.InvokeAsync("SubscribeToChannel", serverId, channelId);
+            logger.LogInformation("SignalR: Waiting for connection before subscribing to server={ServerId} channel={ChannelId}", serverId, channelId);
+            try
+            {
+                await _connectedTcs.Task.WaitAsync(ConnectTimeout);
+            }
+            catch (TimeoutException)
+            {
+                logger.LogWarning("SignalR: Timed out waiting for connection to subscribe");
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogWarning("SignalR: Connection closed while waiting to subscribe");
+                return;
+            }
         }
-        else
-        {
-            logger.LogWarning("SignalR: Cannot subscribe - connection state is {State}", _connection?.State);
-        }
+
+        logger.LogInformation("SignalR: Subscribing to server={ServerId} channel={ChannelId}", serverId, channelId);
+        await _connection!.InvokeAsync("SubscribeToChannel", serverId, channelId);
     }
 
     public async Task UnsubscribeFromChannelAsync(Guid serverId, Guid channelId)
     {
-        if (_connection?.State == HubConnectionState.Connected)
+        if (_connection?.State != HubConnectionState.Connected)
         {
-            logger.LogInformation("SignalR: Unsubscribing from server={ServerId} channel={ChannelId}", serverId, channelId);
-            await _connection.InvokeAsync("UnsubscribeFromChannel", serverId, channelId);
+            logger.LogInformation("SignalR: Waiting for connection before unsubscribing from server={ServerId} channel={ChannelId}", serverId, channelId);
+            try
+            {
+                await _connectedTcs.Task.WaitAsync(ConnectTimeout);
+            }
+            catch (TimeoutException)
+            {
+                logger.LogWarning("SignalR: Timed out waiting for connection to unsubscribe");
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogWarning("SignalR: Connection closed while waiting to unsubscribe");
+                return;
+            }
         }
-        else
-        {
-            logger.LogWarning("SignalR: Cannot unsubscribe - connection state is {State}", _connection?.State);
-        }
+
+        logger.LogInformation("SignalR: Unsubscribing from server={ServerId} channel={ChannelId}", serverId, channelId);
+        await _connection!.InvokeAsync("UnsubscribeFromChannel", serverId, channelId);
     }
 
     // Voice methods
@@ -192,6 +223,8 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         {
             await _connection.DisposeAsync();
             _connection = null;
+            _connectedTcs.TrySetCanceled();
+            _connectedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             ConnectionStateChanged?.Invoke(HubConnectionStatus.Disconnected);
         }
     }

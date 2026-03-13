@@ -183,6 +183,16 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<VoiceParticipantLeftMessage>(this);
         messenger.Register<VoiceStateChangedMessage>(this);
         messenger.Register<HubConnectionStateChangedMessage>(this);
+
+        // Initialize hub status from current state (message may have been sent before registration)
+        (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
+        {
+            HubStatus.Connected => ("Connected", "#4CAF50"),
+            HubStatus.Connecting => ("Connecting...", "#FFC107"),
+            HubStatus.Reconnecting => ("Reconnecting...", "#FFC107"),
+            HubStatus.Disconnected => ("Disconnected", "#F44336"),
+            _ => ("Unknown", "#808080"),
+        };
     }
     [ObservableProperty]
     private string _serverName;

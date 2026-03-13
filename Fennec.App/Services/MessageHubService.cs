@@ -12,12 +12,14 @@ public interface IMessageHubService
     Task DisconnectAsync();
     Guid? CurrentServerId { get; }
     Guid? CurrentChannelId { get; }
+    HubConnectionStatus CurrentStatus { get; }
 }
 
 public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger, ILogger<MessageHubService> logger) : IMessageHubService
 {
     public Guid? CurrentServerId => _currentServerId;
     public Guid? CurrentChannelId => _currentChannelId;
+    public HubConnectionStatus CurrentStatus { get; private set; } = HubConnectionStatus.Disconnected;
 
     private Guid? _currentServerId;
     private Guid? _currentChannelId;
@@ -66,14 +68,19 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
 
     private void OnReconnected()
     {
-        logger.LogInformation("MessageHubService: Reconnected, re-subscribing to server={ServerId} channel={ChannelId}",
-            _currentServerId, _currentChannelId);
-        if (_currentServerId is not null && _currentChannelId is not null)
-            _ = hubClient.SubscribeToChannelAsync(_currentServerId.Value, _currentChannelId.Value);
+        // Re-subscription is handled by OnConnectionStateChanged when status becomes Connected.
     }
 
     private void OnConnectionStateChanged(HubConnectionStatus status)
     {
+        CurrentStatus = status;
         messenger.Send(new HubConnectionStateChangedMessage(status));
+
+        if (status == HubConnectionStatus.Connected && _currentServerId is not null && _currentChannelId is not null)
+        {
+            logger.LogInformation("MessageHubService: Connection established, subscribing to server={ServerId} channel={ChannelId}",
+                _currentServerId, _currentChannelId);
+            _ = hubClient.SubscribeToChannelAsync(_currentServerId.Value, _currentChannelId.Value);
+        }
     }
 }
