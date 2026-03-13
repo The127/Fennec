@@ -23,13 +23,13 @@ public class ServerStore(
         return Task.WhenAll(tasks);
     }
 
-    private void TrackRefresh(string key, Func<Task> action, CancellationToken cancellationToken)
+    private Task TrackRefresh(string key, Func<Task> action, CancellationToken cancellationToken)
     {
         lock (_lock)
         {
             if (_pendingRefreshes.TryGetValue(key, out var existing) && !existing.IsCompleted)
             {
-                return;
+                return existing;
             }
 
             var task = Task.Run(async () =>
@@ -51,14 +51,15 @@ public class ServerStore(
             }, cancellationToken);
 
             _pendingRefreshes[key] = task;
+            return task;
         }
     }
 
     public async Task<List<ListJoinedServersResponseItemDto>> GetJoinedServersAsync(string homeUrl, IFennecClient client, CancellationToken cancellationToken = default)
     {
         var cached = await serverRepo.GetJoinedServersAsync(cancellationToken);
-        
-        TrackRefresh($"servers:{homeUrl}", async () =>
+
+        var refreshTask = TrackRefresh($"servers:{homeUrl}", async () =>
         {
             try
             {
@@ -71,6 +72,12 @@ public class ServerStore(
             }
         }, cancellationToken);
 
+        if (cached.Count == 0)
+        {
+            await refreshTask;
+            return await serverRepo.GetJoinedServersAsync(cancellationToken);
+        }
+
         return cached;
     }
 
@@ -78,7 +85,7 @@ public class ServerStore(
     {
         var cached = await groupRepo.GetChannelGroupsAsync(serverId, cancellationToken);
 
-        TrackRefresh($"groups:{serverId}", async () =>
+        var refreshTask = TrackRefresh($"groups:{serverId}", async () =>
         {
             try
             {
@@ -91,6 +98,12 @@ public class ServerStore(
             }
         }, cancellationToken);
 
+        if (cached.Count == 0)
+        {
+            await refreshTask;
+            return await groupRepo.GetChannelGroupsAsync(serverId, cancellationToken);
+        }
+
         return cached;
     }
 
@@ -98,7 +111,7 @@ public class ServerStore(
     {
         var cached = await channelRepo.GetChannelsAsync(serverId, channelGroupId, cancellationToken);
 
-        TrackRefresh($"channels:{channelGroupId}", async () =>
+        var refreshTask = TrackRefresh($"channels:{channelGroupId}", async () =>
         {
             try
             {
@@ -110,6 +123,12 @@ public class ServerStore(
                 logger.LogError(ex, "Failed to refresh channels for group {GroupId} from {Url}", channelGroupId, instanceUrl);
             }
         }, cancellationToken);
+
+        if (cached.Count == 0)
+        {
+            await refreshTask;
+            return await channelRepo.GetChannelsAsync(serverId, channelGroupId, cancellationToken);
+        }
 
         return cached;
     }
