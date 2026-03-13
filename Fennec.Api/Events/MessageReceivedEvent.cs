@@ -1,6 +1,9 @@
 using Fennec.Api.Hubs;
+using Fennec.Api.Models;
+using Fennec.Api.Services;
 using Fennec.Shared.Dtos.Server;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Fennec.Api.Events;
 
@@ -11,7 +14,7 @@ public record MessageReceivedEvent : INotification
     public required MessageReceivedDto Message { get; init; }
 }
 
-public class SendNotificationOnMessageReceivedEventHandler(
+public class NotifyActiveChannelUsersOnMessageReceivedEventHandler(
     IMessageEventService messageEventService
 ) : INotificationHandler<MessageReceivedEvent>
 {
@@ -23,5 +26,23 @@ public class SendNotificationOnMessageReceivedEventHandler(
             notification.Message,
             cancellationToken
         );
+    }
+}
+
+public class ProcessNotificationsOnMessageReceivedEventHandler(
+    INotificationService notificationService,
+    FennecDbContext dbContext
+) : INotificationHandler<MessageReceivedEvent>
+{
+    public async Task Handle(MessageReceivedEvent notification, CancellationToken cancellationToken)
+    {
+        var message = await dbContext.Set<ChannelMessage>()
+            .Include(m => m.Author)
+            .FirstOrDefaultAsync(m => m.Id == notification.Message.MessageId, cancellationToken);
+            
+        if (message != null)
+        {
+            await notificationService.ProcessMessageAsync(message, cancellationToken);
+        }
     }
 }
