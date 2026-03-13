@@ -9,4 +9,7 @@ public class AppSettings
 
     [JsonPropertyName("themeMode")]
     public string ThemeMode { get; set; } = "Auto";
+
+    [JsonPropertyName("zoomLevel")]
+    public double ZoomLevel { get; set; } = 1.0;
 }

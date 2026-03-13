@@ -19,6 +19,9 @@ public class KeymapService : IKeymapService
         Register("server.openEmoji",    "Open Emoji Picker",   "Ctrl+E",       ShortcutContext.Server);
         Register("server.attachFile",   "Attach File",         "Ctrl+Shift+A", ShortcutContext.Server);
         Register("nav.focusSearch",     "Focus Search",        "Ctrl+F",       ShortcutContext.MainApp);
+        Register("app.zoomIn",          "Zoom In",             "Ctrl+OemPlus",  ShortcutContext.Global);
+        Register("app.zoomOut",         "Zoom Out",            "Ctrl+OemMinus", ShortcutContext.Global);
+        Register("app.zoomReset",       "Reset Zoom",          "Ctrl+D0",       ShortcutContext.Global);
     }
 
     private void Register(string id, string displayName, string gesture, ShortcutContext context)

@@ -8,7 +8,7 @@ using ShadUI;
 namespace Fennec.App.ViewModels;
 
 public partial class AppShellViewModel
-    : ObservableRecipient, IRecipient<LoginSucceededMessage>, IRecipient<UserLoggedOutMessage>
+    : ObservableRecipient, IRecipient<LoginSucceededMessage>, IRecipient<UserLoggedOutMessage>, IRecipient<ZoomChangedMessage>
 {
     [ObservableProperty]
     private ObservableObject _currentViewModel;
@@ -21,6 +21,9 @@ public partial class AppShellViewModel
 
     [ObservableProperty]
     private DialogManager _dialogManager;
+
+    [ObservableProperty]
+    private double _zoomLevel = 1.0;
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IAuthStore _authStore;
@@ -76,5 +79,10 @@ public partial class AppShellViewModel
     {
         CurrentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
         State = AppShellState.LoggedOut;
+    }
+
+    public void Receive(ZoomChangedMessage message)
+    {
+        ZoomLevel = message.ZoomLevel;
     }
 }

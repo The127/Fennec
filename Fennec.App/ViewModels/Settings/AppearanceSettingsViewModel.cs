@@ -51,11 +51,15 @@ public partial class AppearanceSettingsViewModel : ObservableObject
         var app = Application.Current!;
         var osTheme = GetOsTheme();
         app.RequestedThemeVariant = AppThemes.Resolve(SelectedPalette, SelectedMode, osTheme);
-        _ = _settingsStore.SaveAsync(new AppSettings
-        {
-            Theme = SelectedPalette.Name,
-            ThemeMode = SelectedMode.Name,
-        });
+        _ = SaveThemeAsync();
+    }
+
+    private async Task SaveThemeAsync()
+    {
+        var settings = await _settingsStore.LoadAsync();
+        settings.Theme = SelectedPalette.Name;
+        settings.ThemeMode = SelectedMode.Name;
+        await _settingsStore.SaveAsync(settings);
     }
 
     private static ThemeVariant? GetOsTheme()

@@ -10,12 +10,17 @@
         x:DataType="vm:AppShellViewModel"
         Icon="/Assets/logo.ico"
         Title="Fennec">
-        <Panel>
-                <views:AppShellView />
-                <shadui:DialogHost
-                        x:Name="PART_DialogHost"
-                        Manager="{Binding DialogManager}" />
-        </Panel>
+        <LayoutTransformControl>
+                <LayoutTransformControl.LayoutTransform>
+                        <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
+                </LayoutTransformControl.LayoutTransform>
+                <Panel>
+                        <views:AppShellView />
+                        <shadui:DialogHost
+                                x:Name="PART_DialogHost"
+                                Manager="{Binding DialogManager}" />
+                </Panel>
+        </LayoutTransformControl>
         <Window.Resources>
                 <ResourceDictionary>
                         <ResourceDictionary.ThemeDictionaries>

@@ -159,18 +159,66 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             case "nav.focusSearch":
                 SearchFocusRequested?.Invoke();
                 return true;
+            case "app.zoomIn":
+                ZoomInCommand.Execute(null);
+                return true;
+            case "app.zoomOut":
+                ZoomOutCommand.Execute(null);
+                return true;
+            case "app.zoomReset":
+                ZoomResetCommand.Execute(null);
+                return true;
             default:
                 return false;
         }
     }
 
+    private const double ZoomStep = 0.1;
+    private const double ZoomMin = 0.5;
+    private const double ZoomMax = 2.0;
+
     public async Task InitializeAsync()
     {
         var settings = await _settingsStore.LoadAsync();
         CurrentThemeMode = AppThemes.ModeFromName(settings.ThemeMode);
+        _messenger.Send(new ZoomChangedMessage(settings.ZoomLevel));
 
         await NavigateToDashboardAsync();
         await LoadServersAsync();
+    }
+
+    [RelayCommand]
+    private async Task ZoomInAsync()
+    {
+        var settings = await _settingsStore.LoadAsync();
+        var newZoom = Math.Min(settings.ZoomLevel + ZoomStep, ZoomMax);
+        await ApplyZoomAsync(settings, newZoom);
+    }
+
+    [RelayCommand]
+    private async Task ZoomOutAsync()
+    {
+        var settings = await _settingsStore.LoadAsync();
+        var newZoom = Math.Max(settings.ZoomLevel - ZoomStep, ZoomMin);
+        await ApplyZoomAsync(settings, newZoom);
+    }
+
+    [RelayCommand]
+    private async Task ZoomResetAsync()
+    {
+        var settings = await _settingsStore.LoadAsync();
+        await ApplyZoomAsync(settings, 1.0);
+    }
+
+    private async Task ApplyZoomAsync(AppSettings settings, double zoomLevel)
+    {
+        zoomLevel = Math.Round(zoomLevel, 1);
+        settings.ZoomLevel = zoomLevel;
+        await _settingsStore.SaveAsync(settings);
+        _messenger.Send(new ZoomChangedMessage(zoomLevel));
+        _toastManager.CreateToast($"Zoom: {zoomLevel:P0}")
+            .WithDelay(2)
+            .ShowInfo();
     }
 
     public void Receive(ServerCreatedMessage message)
@@ -310,7 +358,9 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
         app.RequestedThemeVariant = AppThemes.Resolve(palette, mode, osTheme);
         CurrentThemeMode = mode;
-        await _settingsStore.SaveAsync(new AppSettings { Theme = palette.Name, ThemeMode = mode.Name });
+        settings.Theme = palette.Name;
+        settings.ThemeMode = mode.Name;
+        await _settingsStore.SaveAsync(settings);
     }
 
     [RelayCommand]
