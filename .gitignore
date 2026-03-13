@@ -572,3 +572,4 @@ Temporary Items
 # End of https://www.toptal.com/developers/gitignore/api/macos,rider,jetbrains+all,csharp
 
 .junie
+.run/
