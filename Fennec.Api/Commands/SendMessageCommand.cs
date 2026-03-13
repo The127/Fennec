@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Fennec.Api.Events;
 using Fennec.Api.Models;
 using Fennec.Api.Security;
 using HttpExceptions;
@@ -20,7 +21,8 @@ public record SendMessageResponse
 }
 
 public class SendMessageCommandHandler(
-    FennecDbContext dbContext
+    FennecDbContext dbContext,
+    IMediator mediator
 ) : IRequestHandler<SendMessageCommand, SendMessageResponse>
 {
     public async Task<SendMessageResponse> Handle(SendMessageCommand request, CancellationToken cancellationToken)
@@ -72,6 +74,13 @@ public class SendMessageCommandHandler(
 
         dbContext.Add(message);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await mediator.Publish(new MessageReceivedEvent
+        {
+            ServerId = channel.ServerId,
+            ChannelId = request.ChannelId,
+            Message = message,
+        }, cancellationToken);
 
         return new SendMessageResponse
         {

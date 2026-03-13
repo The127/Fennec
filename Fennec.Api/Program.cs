@@ -1,4 +1,5 @@
 using Fennec.Api.FederationClient;
+using Fennec.Api.Hubs;
 using HttpExceptions;
 using Fennec.Api.Middlewares;
 using Fennec.Api.Models;
@@ -10,7 +11,11 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
+
+builder.Services.AddScoped<IMessageEventService, MessageEventService>();
 
 builder.Services.AddMediatR(config => config.RegisterServicesFromAssemblyContaining<Program>());
 
@@ -67,5 +72,6 @@ app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpExceptions();
 app.UseHttpsRedirection();
 app.MapControllers();
+app.MapHub<MessageHub>("/hubs/messages");
 
 app.Run();
