@@ -60,7 +60,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         CurrentServerId = serverId;
         CurrentChannelId = channelId;
 
-        TryInitAudioEndPoint();
+        await TryInitAudioEndPointAsync();
 
         var participants = await _voiceHub.JoinVoiceChannelAsync(serverId, channelId);
         IsConnected = true;
@@ -128,11 +128,11 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             SetMuted(true);
     }
 
-    private void TryInitAudioEndPoint()
+    private async Task TryInitAudioEndPointAsync()
     {
         try
         {
-            var settings = _settingsStore.LoadAsync().GetAwaiter().GetResult();
+            var settings = await _settingsStore.LoadAsync();
             var inputIndex = PortAudioEndPoint.FindDeviceByName(settings.InputDeviceName, settings.AudioHostApi);
             var outputIndex = PortAudioEndPoint.FindDeviceByName(settings.OutputDeviceName, settings.AudioHostApi);
 
