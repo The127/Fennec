@@ -17,6 +17,9 @@
         <conv:BoolToBrushConverter x:Key="OverLimitBrushConverter"
                                    TrueBrush="#E74C3C"
                                    FalseBrush="#A0A0A0" />
+        <conv:BoolToFontSizeConverter x:Key="EmojiOnlyFontSizeConverter"
+                                      TrueSize="30"
+                                      FalseSize="15" />
     </UserControl.Resources>
     <Grid ColumnDefinitions="240 *">
         <!-- Left: Channels -->
@@ -169,6 +172,7 @@
                                          Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
                                          Text="{Binding MessageText}"
                                          TextWrapping="Wrap"
+                                         FontSize="15"
                                          Padding="14,8"
                                          shadui:ControlAssist.Height="100"
                                          KeyDown="MessageBox_KeyDown" />
@@ -245,7 +249,7 @@
                                           IsVisible="{Binding ShowTimeSeparator}">
                                         <Separator Grid.Column="0" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1" Text="{Binding TimeSeparatorText}"
-                                                   Classes="Muted" FontSize="11" Margin="12,0" />
+                                                   Classes="Muted" FontSize="12" Margin="12,0" />
                                         <Separator Grid.Column="2" VerticalAlignment="Center" />
                                     </Grid>
 
@@ -255,8 +259,8 @@
                                                 IsVisible="{Binding ShowAuthor}">
                                         <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="32" Width="32" />
                                         <TextBlock Text="{Binding AuthorName}" FontWeight="SemiBold"
-                                                   VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding LocalTime}" Classes="Muted" FontSize="11"
+                                                   FontSize="15" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding LocalTime}" Classes="Muted" FontSize="12"
                                                    VerticalAlignment="Center" />
                                     </StackPanel>
 
@@ -266,7 +270,8 @@
                                             Padding="12,8"
                                             Margin="42,2,48,2"
                                             ToolTip.Tip="{Binding ExactTime}">
-                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                                   FontSize="{Binding IsEmojiOnly, Converter={StaticResource EmojiOnlyFontSizeConverter}}" />
                                     </Border>
                                 </StackPanel>
                             </DataTemplate>
