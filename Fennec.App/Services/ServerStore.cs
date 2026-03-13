@@ -10,11 +10,55 @@ public class ServerStore(
     IChannelRepository channelRepo,
     ILogger<ServerStore> logger) : IServerStore
 {
+    private readonly Dictionary<string, Task> _pendingRefreshes = [];
+    private readonly object _lock = new();
+
+    public Task WaitForRefreshesAsync()
+    {
+        List<Task> tasks;
+        lock (_lock)
+        {
+            tasks = _pendingRefreshes.Values.ToList();
+        }
+        return Task.WhenAll(tasks);
+    }
+
+    private void TrackRefresh(string key, Func<Task> action, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            if (_pendingRefreshes.TryGetValue(key, out var existing) && !existing.IsCompleted)
+            {
+                return;
+            }
+
+            var task = Task.Run(async () =>
+            {
+                try
+                {
+                    await action();
+                }
+                finally
+                {
+                    lock (_lock)
+                    {
+                        if (_pendingRefreshes.TryGetValue(key, out var current) && current.Id == Task.CurrentId)
+                        {
+                            _pendingRefreshes.Remove(key);
+                        }
+                    }
+                }
+            }, cancellationToken);
+
+            _pendingRefreshes[key] = task;
+        }
+    }
+
     public async Task<List<ListJoinedServersResponseItemDto>> GetJoinedServersAsync(string homeUrl, IFennecClient client, CancellationToken cancellationToken = default)
     {
         var cached = await serverRepo.GetJoinedServersAsync(cancellationToken);
         
-        _ = Task.Run(async () =>
+        TrackRefresh($"servers:{homeUrl}", async () =>
         {
             try
             {
@@ -34,7 +78,7 @@ public class ServerStore(
     {
         var cached = await groupRepo.GetChannelGroupsAsync(serverId, cancellationToken);
 
-        _ = Task.Run(async () =>
+        TrackRefresh($"groups:{serverId}", async () =>
         {
             try
             {
@@ -54,7 +98,7 @@ public class ServerStore(
     {
         var cached = await channelRepo.GetChannelsAsync(serverId, channelGroupId, cancellationToken);
 
-        _ = Task.Run(async () =>
+        TrackRefresh($"channels:{channelGroupId}", async () =>
         {
             try
             {

@@ -96,29 +96,68 @@ public class ServerRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task SetJoinedServersAsync_ConcurrentCalls_DoesNotCreateDuplicates()
+    public async Task SetJoinedServersAsync_ReconcilesExistingServers()
     {
-        var serverId = Guid.NewGuid();
-        var servers = new List<ListJoinedServersResponseItemDto>
+        // Arrange
+        var serverId1 = Guid.NewGuid();
+        var serverId2 = Guid.NewGuid();
+        
+        await _serverStore.SetJoinedServersAsync(new List<ListJoinedServersResponseItemDto>
         {
-            new() { Id = serverId, Name = "Server 1", InstanceUrl = "https://1.fennec.chat" }
+            new() { Id = serverId1, Name = "Original Name 1", InstanceUrl = "https://1.fennec.chat" },
+            new() { Id = serverId2, Name = "Original Name 2", InstanceUrl = "https://2.fennec.chat" }
+        });
+
+        var updatedServers = new List<ListJoinedServersResponseItemDto>
+        {
+            new() { Id = serverId1, Name = "Updated Name 1", InstanceUrl = "https://1.fennec.chat" },
+            new() { Id = Guid.NewGuid(), Name = "New Server", InstanceUrl = "https://3.fennec.chat" }
         };
 
-        // Simulate concurrent calls. 
-        // Note: Using the same DbContext instance for both calls might not fully simulate 
-        // real-world concurrency if the app uses different Scopes, 
-        // but here ServerStore is a Singleton and DbContext is registered with AddDbContext 
-        // (which is scoped by default, but App.axaml.cs registrations might be different).
-        // In App.axaml.cs, IServerStore is Singleton.
-        
-        var task1 = _serverStore.SetJoinedServersAsync(servers);
-        var task2 = _serverStore.SetJoinedServersAsync(servers);
+        // Act
+        await _serverStore.SetJoinedServersAsync(updatedServers);
 
-        await Task.WhenAll(task1, task2);
-
+        // Assert
         var result = await _serverStore.GetJoinedServersAsync();
-        Assert.Single(result);
-        Assert.Equal(serverId, result[0].Id);
+        Assert.Equal(2, result.Count);
+        
+        var s1 = result.Single(x => x.Id == serverId1);
+        Assert.Equal("Updated Name 1", s1.Name);
+        
+        Assert.Contains(result, x => x.Name == "New Server");
+        Assert.DoesNotContain(result, x => x.Id == serverId2);
+    }
+
+    [Fact]
+    public async Task SetChannelGroupsAsync_ReconcilesExistingGroups()
+    {
+        // Arrange
+        var serverId = Guid.NewGuid();
+        var groupId1 = Guid.NewGuid();
+        var groupId2 = Guid.NewGuid();
+
+        await _serverStore.AddJoinedServerAsync(new ListJoinedServersResponseItemDto { Id = serverId, Name = "S", InstanceUrl = "U" });
+        await _serverStore.SetChannelGroupsAsync(serverId, new List<ListChannelGroupsResponseItemDto>
+        {
+            new() { ChannelGroupId = groupId1, Name = "Group 1" },
+            new() { ChannelGroupId = groupId2, Name = "Group 2" }
+        });
+
+        var updatedGroups = new List<ListChannelGroupsResponseItemDto>
+        {
+            new() { ChannelGroupId = groupId1, Name = "Updated Group 1" },
+            new() { ChannelGroupId = Guid.NewGuid(), Name = "Group 3" }
+        };
+
+        // Act
+        await _serverStore.SetChannelGroupsAsync(serverId, updatedGroups);
+
+        // Assert
+        var result = await _serverStore.GetChannelGroupsAsync(serverId);
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, g => g.Name == "Updated Group 1");
+        Assert.Contains(result, g => g.Name == "Group 3");
+        Assert.DoesNotContain(result, g => g.ChannelGroupId == groupId2);
     }
 
     public void Dispose()

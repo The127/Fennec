@@ -23,20 +23,33 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
 
     public async Task SetJoinedServersAsync(List<ListJoinedServersResponseItemDto> servers, CancellationToken cancellationToken = default)
     {
-        // For a full set, we clear and re-add or reconcile. 
-        // In this simple store, we'll reconcile.
-        var existing = await dbContext.Servers.ToListAsync(cancellationToken);
-        dbContext.Servers.RemoveRange(existing);
+        var existing = await dbContext.Servers.ToDictionaryAsync(x => x.Id, cancellationToken);
+        var toAdd = new List<LocalServer>();
         
-        var locals = servers.Select((s, i) => new LocalServer
+        for (int i = 0; i < servers.Count; i++)
         {
-            Id = s.Id,
-            Name = s.Name,
-            InstanceUrl = s.InstanceUrl,
-            SortOrder = i
-        });
+            var s = servers[i];
+            if (existing.TryGetValue(s.Id, out var local))
+            {
+                local.Name = s.Name;
+                local.InstanceUrl = s.InstanceUrl;
+                local.SortOrder = i;
+                existing.Remove(s.Id);
+            }
+            else
+            {
+                toAdd.Add(new LocalServer
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    InstanceUrl = s.InstanceUrl,
+                    SortOrder = i
+                });
+            }
+        }
         
-        await dbContext.Servers.AddRangeAsync(locals, cancellationToken);
+        dbContext.Servers.RemoveRange(existing.Values);
+        await dbContext.Servers.AddRangeAsync(toAdd, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -86,18 +99,33 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
     {
         var existing = await dbContext.ChannelGroups
             .Where(x => x.ServerId == serverId)
-            .ToListAsync(cancellationToken);
-        dbContext.ChannelGroups.RemoveRange(existing);
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        
+        var toAdd = new List<LocalChannelGroup>();
 
-        var locals = groups.Select((g, i) => new LocalChannelGroup
+        for (int i = 0; i < groups.Count; i++)
         {
-            Id = g.ChannelGroupId,
-            Name = g.Name,
-            ServerId = serverId,
-            SortOrder = i
-        });
+            var g = groups[i];
+            if (existing.TryGetValue(g.ChannelGroupId, out var local))
+            {
+                local.Name = g.Name;
+                local.SortOrder = i;
+                existing.Remove(g.ChannelGroupId);
+            }
+            else
+            {
+                toAdd.Add(new LocalChannelGroup
+                {
+                    Id = g.ChannelGroupId,
+                    Name = g.Name,
+                    ServerId = serverId,
+                    SortOrder = i
+                });
+            }
+        }
 
-        await dbContext.ChannelGroups.AddRangeAsync(locals, cancellationToken);
+        dbContext.ChannelGroups.RemoveRange(existing.Values);
+        await dbContext.ChannelGroups.AddRangeAsync(toAdd, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -120,20 +148,36 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
     {
         var existing = await dbContext.Channels
             .Where(x => x.ServerId == serverId && x.ChannelGroupId == channelGroupId)
-            .ToListAsync(cancellationToken);
-        dbContext.Channels.RemoveRange(existing);
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        
+        var toAdd = new List<LocalChannel>();
 
-        var locals = channels.Select((c, i) => new LocalChannel
+        for (int i = 0; i < channels.Count; i++)
         {
-            Id = c.ChannelId,
-            Name = c.Name,
-            ChannelGroupId = channelGroupId,
-            ServerId = serverId,
-            ChannelType = c.ChannelType,
-            SortOrder = i
-        });
+            var c = channels[i];
+            if (existing.TryGetValue(c.ChannelId, out var local))
+            {
+                local.Name = c.Name;
+                local.ChannelType = c.ChannelType;
+                local.SortOrder = i;
+                existing.Remove(c.ChannelId);
+            }
+            else
+            {
+                toAdd.Add(new LocalChannel
+                {
+                    Id = c.ChannelId,
+                    Name = c.Name,
+                    ChannelGroupId = channelGroupId,
+                    ServerId = serverId,
+                    ChannelType = c.ChannelType,
+                    SortOrder = i
+                });
+            }
+        }
 
-        await dbContext.Channels.AddRangeAsync(locals, cancellationToken);
+        dbContext.Channels.RemoveRange(existing.Values);
+        await dbContext.Channels.AddRangeAsync(toAdd, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

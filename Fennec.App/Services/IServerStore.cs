@@ -10,4 +10,6 @@ public interface IServerStore
     Task<List<ListChannelGroupsResponseItemDto>> GetChannelGroupsAsync(string instanceUrl, IFennecClient client, Guid serverId, CancellationToken cancellationToken = default);
     
     Task<List<ListChannelsResponseItemDto>> GetChannelsAsync(string instanceUrl, IFennecClient client, Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default);
+    
+    Task WaitForRefreshesAsync();
 }

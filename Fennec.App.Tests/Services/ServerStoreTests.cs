@@ -48,8 +48,7 @@ public class ServerStoreTests
         // Assert
         Assert.Equal(cached, result);
         
-        // Wait a bit for the Task.Run to complete (not ideal, but simple)
-        await Task.Delay(100);
+        await _sut.WaitForRefreshesAsync();
         
         await _serverRepo.Received(1).SetJoinedServersAsync(Arg.Is<List<ListJoinedServersResponseItemDto>>(x => x.Count == 1 && x[0].Name == "Remote Server"));
     }
@@ -78,7 +77,7 @@ public class ServerStoreTests
         // Assert
         Assert.Equal(cached, result);
         
-        await Task.Delay(100);
+        await _sut.WaitForRefreshesAsync();
         
         await _groupRepo.Received(1).SetChannelGroupsAsync(serverId, Arg.Is<List<ListChannelGroupsResponseItemDto>>(x => x.Count == 1 && x[0].Name == "Remote Group"));
     }
@@ -108,7 +107,7 @@ public class ServerStoreTests
         // Assert
         Assert.Equal(cached, result);
         
-        await Task.Delay(100);
+        await _sut.WaitForRefreshesAsync();
         
         await _channelRepo.Received(1).SetChannelsAsync(serverId, groupId, Arg.Is<List<ListChannelsResponseItemDto>>(x => x.Count == 1 && x[0].Name == "Remote Channel"));
     }
