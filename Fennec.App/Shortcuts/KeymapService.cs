@@ -4,7 +4,8 @@ namespace Fennec.App.Shortcuts;
 
 public class KeymapService : IKeymapService
 {
-    private readonly List<ShortcutBinding> _bindings = [];
+    private readonly Dictionary<string, ShortcutBinding> _bindings = new();
+    private readonly Dictionary<string, KeyGesture> _defaults = new();
 
     public KeymapService()
     {
@@ -26,25 +27,79 @@ public class KeymapService : IKeymapService
 
     private void Register(string id, string displayName, string gesture, ShortcutContext context)
     {
-        _bindings.Add(new ShortcutBinding(id, displayName, KeyGesture.Parse(gesture), context));
+        var keyGesture = KeyGesture.Parse(gesture);
+        _defaults[id] = keyGesture;
+        _bindings[id] = new ShortcutBinding(id, displayName, keyGesture, context);
     }
 
     public ShortcutBinding? FindBinding(KeyGesture gesture, ShortcutContext context)
     {
         // Try context-specific first, then fall back to Global
-        var match = _bindings.FirstOrDefault(b => b.Context == context && Matches(b.Gesture, gesture));
+        var match = _bindings.Values.FirstOrDefault(b => b.Context == context && Matches(b.Gesture, gesture));
         if (match is not null) return match;
 
         if (context != ShortcutContext.Global)
-            match = _bindings.FirstOrDefault(b => b.Context == ShortcutContext.Global && Matches(b.Gesture, gesture));
+            match = _bindings.Values.FirstOrDefault(b => b.Context == ShortcutContext.Global && Matches(b.Gesture, gesture));
 
         return match;
     }
 
-    public IReadOnlyList<ShortcutBinding> GetBindings() => _bindings.AsReadOnly();
+    public ShortcutBinding? FindBindingById(string id)
+        => _bindings.GetValueOrDefault(id);
+
+    public IReadOnlyList<ShortcutBinding> GetBindings()
+        => _bindings.Values.ToList().AsReadOnly();
 
     public IReadOnlyList<ShortcutBinding> GetBindingsForContext(ShortcutContext context)
-        => _bindings.Where(b => b.Context == context).ToList().AsReadOnly();
+        => _bindings.Values.Where(b => b.Context == context).ToList().AsReadOnly();
+
+    public KeyGesture GetDefaultGesture(string id)
+        => _defaults.TryGetValue(id, out var gesture)
+            ? gesture
+            : throw new ArgumentException($"Unknown binding ID: {id}");
+
+    public BindingConflict? UpdateBinding(string id, KeyGesture newGesture)
+    {
+        if (!_bindings.TryGetValue(id, out var binding))
+            throw new ArgumentException($"Unknown binding ID: {id}");
+
+        // Check for conflicts in the same context or Global
+        var conflict = _bindings.Values.FirstOrDefault(b =>
+            b.Id != id &&
+            Matches(b.Gesture, newGesture) &&
+            (b.Context == binding.Context || b.Context == ShortcutContext.Global || binding.Context == ShortcutContext.Global));
+
+        if (conflict is not null)
+            return new BindingConflict(conflict.Id, conflict.DisplayName);
+
+        _bindings[id] = binding with { Gesture = newGesture };
+        return null;
+    }
+
+    public void ResetBinding(string id)
+    {
+        if (!_bindings.TryGetValue(id, out var binding))
+            throw new ArgumentException($"Unknown binding ID: {id}");
+
+        _bindings[id] = binding with { Gesture = _defaults[id] };
+    }
+
+    public void LoadOverrides(Dictionary<string, string> overrides)
+    {
+        foreach (var (id, gestureStr) in overrides)
+        {
+            if (!_bindings.ContainsKey(id)) continue;
+            try
+            {
+                var gesture = KeyGesture.Parse(gestureStr);
+                _bindings[id] = _bindings[id] with { Gesture = gesture };
+            }
+            catch
+            {
+                // Skip invalid gestures
+            }
+        }
+    }
 
     private static bool Matches(KeyGesture a, KeyGesture b)
         => a.Key == b.Key && a.KeyModifiers == b.KeyModifiers;

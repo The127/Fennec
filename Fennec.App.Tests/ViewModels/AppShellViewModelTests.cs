@@ -29,6 +29,9 @@ public class AppShellViewModelTests
         services.AddSingleton(Substitute.For<IServerStore>());
         services.AddSingleton<IExceptionHandler>(NullExceptionHandler.Instance);
         services.AddSingleton<IKeymapService, KeymapService>();
+        var settingsStore = Substitute.For<ISettingsStore>();
+        settingsStore.LoadAsync(Arg.Any<CancellationToken>()).Returns(new AppSettings());
+        services.AddSingleton(settingsStore);
         services.AddSingleton(new ToastManager());
         services.AddSingleton(new DialogManager());
         services.AddLogging();

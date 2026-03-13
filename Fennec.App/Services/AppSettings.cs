@@ -12,4 +12,7 @@ public class AppSettings
 
     [JsonPropertyName("zoomLevel")]
     public double ZoomLevel { get; set; } = 1.0;
+
+    [JsonPropertyName("keyBindings")]
+    public Dictionary<string, string>? KeyBindings { get; set; }
 }

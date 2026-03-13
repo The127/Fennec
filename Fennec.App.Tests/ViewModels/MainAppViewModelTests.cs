@@ -25,6 +25,7 @@ public class MainAppViewModelTests
     private readonly IServerClient _serverClient = Substitute.For<IServerClient>();
     private readonly IServerStore _serverStore = Substitute.For<IServerStore>();
     private readonly IKeymapService _keymapService = new KeymapService();
+    private readonly ISettingsStore _settingsStore = Substitute.For<ISettingsStore>();
 
     public MainAppViewModelTests()
     {
@@ -34,11 +35,13 @@ public class MainAppViewModelTests
             .Returns(new ListJoinedServersResponseDto { Servers = [] });
         _serverStore.GetJoinedServersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ListJoinedServersResponseItemDto>()));
+        _settingsStore.LoadAsync(Arg.Any<CancellationToken>())
+            .Returns(new AppSettings());
     }
 
     private MainAppViewModel CreateViewModel()
     {
-        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullExceptionHandler.Instance, new DialogManager(), _serverStore, _keymapService);
+        var vm = new MainAppViewModel(_router, _messenger, _authService, _clientFactory, new ToastManager(), NullExceptionHandler.Instance, new DialogManager(), _serverStore, _keymapService, _settingsStore);
         vm.ApplySession(new AuthSession
         {
             Username = "alice",

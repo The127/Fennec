@@ -183,6 +183,9 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         CurrentThemeMode = AppThemes.ModeFromName(settings.ThemeMode);
         _messenger.Send(new ZoomChangedMessage(settings.ZoomLevel));
 
+        if (settings.KeyBindings is { Count: > 0 })
+            _keymapService.LoadOverrides(settings.KeyBindings);
+
         await NavigateToDashboardAsync();
         await LoadServersAsync();
     }

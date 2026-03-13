@@ -6,36 +6,85 @@
              mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
              x:Class="Fennec.App.Views.Settings.KeybindingsSettingsView"
              x:DataType="vm:KeybindingsSettingsViewModel">
-    <DataGrid ItemsSource="{Binding Bindings}"
-              IsReadOnly="True"
-              CanUserReorderColumns="False"
-              CanUserSortColumns="True"
-              GridLinesVisibility="Horizontal"
-              SelectionMode="Single"
-              HeadersVisibility="Column">
-        <DataGrid.Columns>
-            <DataGridTextColumn Header="Action"
-                                Binding="{Binding DisplayName}"
-                                Width="*" />
-            <DataGridTemplateColumn Header="Shortcut"
-                                    Width="180"
-                                    CanUserSort="False">
-                <DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate x:DataType="vm:ShortcutBindingItem">
-                        <Border Background="{DynamicResource SecondaryColor}"
-                                CornerRadius="4" Padding="6,3"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{Binding GestureText}"
-                                       FontFamily="Consolas,Menlo,monospace"
-                                       FontSize="12" />
-                        </Border>
-                    </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Context"
-                                Binding="{Binding ContextLabel}"
-                                Width="120" />
-        </DataGrid.Columns>
-    </DataGrid>
+    <DockPanel>
+        <!-- Conflict message banner -->
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource DestructiveColor}"
+                CornerRadius="4" Padding="8,4" Margin="0,0,0,8"
+                IsVisible="{Binding ConflictMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding ConflictMessage}"
+                       Foreground="White" FontSize="12" />
+        </Border>
+
+        <DataGrid ItemsSource="{Binding Bindings}"
+                  IsReadOnly="True"
+                  CanUserReorderColumns="False"
+                  CanUserSortColumns="True"
+                  GridLinesVisibility="Horizontal"
+                  SelectionMode="Single"
+                  HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Action"
+                                    Binding="{Binding DisplayName}"
+                                    Width="*" />
+                <DataGridTemplateColumn Header="Shortcut"
+                                        Width="200"
+                                        CanUserSort="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:ShortcutBindingItem">
+                            <Panel>
+                                <!-- Normal state: click to edit -->
+                                <Border Background="{DynamicResource SecondaryColor}"
+                                        CornerRadius="4" Padding="6,3"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
+                                        Cursor="Hand"
+                                        IsVisible="{Binding !IsCapturing}"
+                                        PointerPressed="OnShortcutPressed">
+                                    <TextBlock Text="{Binding GestureText}"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12" />
+                                </Border>
+
+                                <!-- Capture state -->
+                                <Border Background="{DynamicResource PrimaryColor}"
+                                        CornerRadius="4" Padding="6,3"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding IsCapturing}"
+                                        Focusable="True"
+                                        Name="CaptureBox"
+                                        KeyDown="OnCaptureKeyDown"
+                                        LostFocus="OnCaptureLostFocus">
+                                    <TextBlock Text="Press shortcut..."
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource PrimaryForegroundColor}"
+                                               FontStyle="Italic" />
+                                </Border>
+                            </Panel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Context"
+                                    Binding="{Binding ContextLabel}"
+                                    Width="100" />
+                <DataGridTemplateColumn Header=""
+                                        Width="70"
+                                        CanUserSort="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:ShortcutBindingItem">
+                            <Button Content="Reset"
+                                    FontSize="11"
+                                    Padding="6,2"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding IsModified}"
+                                    Command="{Binding $parent[DataGrid].((vm:KeybindingsSettingsViewModel)DataContext).ResetBindingCommand}"
+                                    CommandParameter="{Binding}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
 </UserControl>
