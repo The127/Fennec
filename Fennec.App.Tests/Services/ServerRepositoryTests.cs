@@ -9,7 +9,7 @@ namespace Fennec.App.Tests.Services;
 public class ServerRepositoryTests : IDisposable
 {
     private readonly SqliteConnection _connection;
-    private readonly AppDbContext _dbContext;
+    private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly ServerRepository _serverStore;
 
     public ServerRepositoryTests()
@@ -21,10 +21,12 @@ public class ServerRepositoryTests : IDisposable
             .UseSqlite(_connection)
             .Options;
 
-        _dbContext = new AppDbContext(options);
-        _dbContext.Database.EnsureCreated();
+        _dbContextFactory = new TestDbContextFactory(options);
 
-        _serverStore = new ServerRepository(_dbContext);
+        using var dbContext = _dbContextFactory.CreateDbContext();
+        dbContext.Database.EnsureCreated();
+
+        _serverStore = new ServerRepository(_dbContextFactory);
     }
 
     [Fact]
@@ -161,7 +163,11 @@ public class ServerRepositoryTests : IDisposable
 
     public void Dispose()
     {
-        _dbContext.Dispose();
         _connection.Dispose();
+    }
+
+    private class TestDbContextFactory(DbContextOptions<AppDbContext> options) : IDbContextFactory<AppDbContext>
+    {
+        public AppDbContext CreateDbContext() => new(options);
     }
 }

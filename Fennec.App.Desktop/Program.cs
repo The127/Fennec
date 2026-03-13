@@ -46,6 +46,6 @@ sealed class Program
         services.AddSingleton<ISettingsStore, DesktopSettingsStore>();
         services.AddSingleton<IDbPathProvider, DesktopDbPathProvider>();
         
-        services.AddDbContext<AppDbContext>();
+        services.AddDbContextFactory<AppDbContext>();
     }
 }

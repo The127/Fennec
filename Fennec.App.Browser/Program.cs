@@ -39,6 +39,6 @@ internal sealed partial class Program
         // a specialized IDB/WASM persistence driver. 
         // For standard EF Core SQLite, we'll start with in-memory 
         // or standard Sqlite (which on Wasm can be backed by IDB)
-        services.AddDbContext<AppDbContext>();
+        services.AddDbContextFactory<AppDbContext>();
     }
 }

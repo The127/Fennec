@@ -5,10 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Fennec.App.Services;
 
-public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChannelGroupRepository, IChannelRepository
+public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) : IServerRepository, IChannelGroupRepository, IChannelRepository
 {
     public async Task<List<ListJoinedServersResponseItemDto>> GetJoinedServersAsync(CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         return await dbContext.Servers
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.JoinedAtUtc)
@@ -23,9 +24,10 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
 
     public async Task SetJoinedServersAsync(List<ListJoinedServersResponseItemDto> servers, CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var existing = await dbContext.Servers.ToDictionaryAsync(x => x.Id, cancellationToken);
         var toAdd = new List<LocalServer>();
-        
+
         for (int i = 0; i < servers.Count; i++)
         {
             var s = servers[i];
@@ -47,7 +49,7 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
                 });
             }
         }
-        
+
         dbContext.Servers.RemoveRange(existing.Values);
         await dbContext.Servers.AddRangeAsync(toAdd, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -55,6 +57,7 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
 
     public async Task AddJoinedServerAsync(ListJoinedServersResponseItemDto server, CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         if (await dbContext.Servers.AnyAsync(x => x.Id == server.Id, cancellationToken))
             return;
 
@@ -74,6 +77,7 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
 
     public async Task RemoveJoinedServerAsync(Guid serverId, CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var server = await dbContext.Servers.FindAsync([serverId], cancellationToken);
         if (server != null)
         {
@@ -84,6 +88,7 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
 
     public async Task<List<ListChannelGroupsResponseItemDto>> GetChannelGroupsAsync(Guid serverId, CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         return await dbContext.ChannelGroups
             .Where(x => x.ServerId == serverId)
             .OrderBy(x => x.SortOrder)
@@ -97,10 +102,11 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
 
     public async Task SetChannelGroupsAsync(Guid serverId, List<ListChannelGroupsResponseItemDto> groups, CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var existing = await dbContext.ChannelGroups
             .Where(x => x.ServerId == serverId)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
-        
+
         var toAdd = new List<LocalChannelGroup>();
 
         for (int i = 0; i < groups.Count; i++)
@@ -131,6 +137,7 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
 
     public async Task<List<ListChannelsResponseItemDto>> GetChannelsAsync(Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         return await dbContext.Channels
             .Where(x => x.ServerId == serverId && x.ChannelGroupId == channelGroupId)
             .OrderBy(x => x.SortOrder)
@@ -146,10 +153,11 @@ public class ServerRepository(AppDbContext dbContext) : IServerRepository, IChan
 
     public async Task SetChannelsAsync(Guid serverId, Guid channelGroupId, List<ListChannelsResponseItemDto> channels, CancellationToken cancellationToken = default)
     {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var existing = await dbContext.Channels
             .Where(x => x.ServerId == serverId && x.ChannelGroupId == channelGroupId)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
-        
+
         var toAdd = new List<LocalChannel>();
 
         for (int i = 0; i < channels.Count; i++)
