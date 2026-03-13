@@ -40,6 +40,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private readonly IKeymapService _keymapService;
     private readonly ISettingsStore _settingsStore;
     private readonly IMessageHubService _messageHubService;
+    private readonly IAuthStore _authStore;
 
     public MainAppViewModel(
         IRouter router,
@@ -52,7 +53,8 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         IServerStore serverStore,
         IKeymapService keymapService,
         ISettingsStore settingsStore,
-        IMessageHubService messageHubService)
+        IMessageHubService messageHubService,
+        IAuthStore authStore)
     {
         _routerField = router;
         _router = router;
@@ -66,6 +68,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         _keymapService = keymapService;
         _settingsStore = settingsStore;
         _messageHubService = messageHubService;
+        _authStore = authStore;
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
@@ -439,8 +442,32 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     [RelayCommand]
     private void SwitchAccount()
     {
-        _messenger.Send(new UserLoggedOutMessage());
-        _messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.SwitchAccount));
+        var vm = new SwitchAccountViewModel(_dialogManager, _authStore, _session?.UserId);
+        _dialogManager.CreateDialog(vm)
+            .Dismissible()
+            .WithSuccessCallback<SwitchAccountViewModel>(ctx =>
+            {
+                if (ctx.LoginRequested)
+                {
+                    _messenger.Send(new UserLoggedOutMessage());
+                    return Task.CompletedTask;
+                }
+
+                if (ctx.SelectedSession is not null)
+                {
+                    return SwitchToAccountAsync(ctx.SelectedSession);
+                }
+
+                return Task.CompletedTask;
+            })
+            .Show();
+    }
+
+    private async Task SwitchToAccountAsync(AuthSession session)
+    {
+        await _messageHubService.DisconnectAsync();
+        await _authService.SwitchAccountAsync(session);
+        _messenger.Send(new LoginSucceededMessage(session));
     }
 
     [RelayCommand]

@@ -92,7 +92,8 @@ public partial class App : Application
         services.AddSingleton(new DialogManager()
             .Register<Views.CreateChannelDialogView, ViewModels.CreateChannelDialogViewModel>()
             .Register<Views.QuickNavDialogView, ViewModels.QuickNavDialogViewModel>()
-            .Register<Views.Settings.SettingsView, ViewModels.Settings.SettingsViewModel>());
+            .Register<Views.Settings.SettingsView, ViewModels.Settings.SettingsViewModel>()
+            .Register<Views.SwitchAccountView, ViewModels.SwitchAccountViewModel>());
         services.AddSingleton<IRouter, Router>();
         services.AddSingleton<IClientFactory, ClientFactory>();
         services.AddSingleton<IAuthService, AuthService>();

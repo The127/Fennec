@@ -25,7 +25,6 @@ public partial class AuthViewModel : ObservableRecipient, IRecipient<AuthNavigat
         {
             AuthNavigationTarget.Login => ActivatorUtilities.CreateInstance<LoginViewModel>(_serviceProvider),
             AuthNavigationTarget.Register => ActivatorUtilities.CreateInstance<RegisterViewModel>(_serviceProvider),
-            AuthNavigationTarget.SwitchAccount => ActivatorUtilities.CreateInstance<SwitchAccountViewModel>(_serviceProvider),
             _ => throw new InvalidOperationException("Unknown target: " + message.Target)
         };
     }

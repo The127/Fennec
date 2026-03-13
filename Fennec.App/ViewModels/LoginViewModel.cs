@@ -29,16 +29,22 @@ public partial class LoginViewModel : ObservableValidator
     private readonly IAuthService _authService;
     private readonly ToastManager _toastManager;
     private readonly IExceptionHandler _exceptionHandler;
+    private readonly DialogManager _dialogManager;
+    private readonly IAuthStore _authStore;
 
     public LoginViewModel(
         IAuthService authService,
         IMessenger messenger,
         ToastManager toastManager,
-        IExceptionHandler exceptionHandler)
+        IExceptionHandler exceptionHandler,
+        DialogManager dialogManager,
+        IAuthStore authStore)
     {
         _authService = authService;
         _toastManager = toastManager;
         _exceptionHandler = exceptionHandler;
+        _dialogManager = dialogManager;
+        _authStore = authStore;
         Messenger = messenger;
     }
 
@@ -97,6 +103,18 @@ public partial class LoginViewModel : ObservableValidator
     [RelayCommand]
     private void NavigateToSwitchAccount()
     {
-        Messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.SwitchAccount));
+        var vm = new SwitchAccountViewModel(_dialogManager, _authStore);
+        _dialogManager.CreateDialog(vm)
+            .Dismissible()
+            .WithSuccessCallback<SwitchAccountViewModel>(async ctx =>
+            {
+                if (ctx.SelectedSession is not null)
+                {
+                    await _authService.SwitchAccountAsync(ctx.SelectedSession);
+                    Messenger.Send(new LoginSucceededMessage(ctx.SelectedSession));
+                }
+                // LoginRequested is a no-op here — we're already on the login page
+            })
+            .Show();
     }
 }

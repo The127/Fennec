@@ -1,56 +1,82 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Fennec.App.ViewModels"
-             xmlns:controls="using:Fennec.App.Controls"
              xmlns:auth="using:Fennec.App.Services.Auth"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             xmlns:shadui="using:ShadUI"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:DataType="vm:SwitchAccountViewModel"
              x:Class="Fennec.App.Views.SwitchAccountView"
-             x:DataType="vm:SwitchAccountViewModel">
-    <Panel Background="Transparent">
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="24">
-            <controls:FennecLogo Height="64" Width="64" HorizontalAlignment="Center" />
-            <shadui:Card HasShadow="True" Width="600">
-                <shadui:Card.Header>
-                    <StackPanel Spacing="4">
-                        <shadui:CardTitle FontSize="18">Switch Account</shadui:CardTitle>
-                        <shadui:CardDescription>Select an account to log in</shadui:CardDescription>
-                    </StackPanel>
-                </shadui:Card.Header>
-                <StackPanel Spacing="16">
-                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
-                    
-                    <ItemsControl ItemsSource="{Binding Sessions}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="auth:AuthSession">
-                                <Button Classes="Ghost" 
-                                        HorizontalAlignment="Stretch"
-                                        Command="{Binding $parent[UserControl].((vm:SwitchAccountViewModel)DataContext).SwitchAccountCommand}"
-                                        CommandParameter="{Binding}">
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource ShadUIBackground}">
-                                            <TextBlock Text="{Binding Username[0]}" 
-                                                       VerticalAlignment="Center" 
-                                                       HorizontalAlignment="Center"
-                                                       FontWeight="Bold"/>
-                                        </Border>
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Username}" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding Url}" FontSize="12" Opacity="0.7"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+             Width="360">
+    <StackPanel Spacing="0" Margin="24,24,24,16">
+        <TextBlock Classes="H4" Text="Switch Account" Margin="0,0,0,4" />
+        <TextBlock Text="Select an account to continue with" Classes="Muted" FontSize="13"
+                   Margin="0,0,0,16" />
 
-                    <Button Classes="Ghost" 
-                            Content="Log in with another account"
-                            Command="{Binding NavigateToLoginCommand}" />
-                </StackPanel>
-            </shadui:Card>
-        </StackPanel>
-    </Panel>
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Margin="0,0,0,8" />
+
+        <!-- Account list -->
+        <ItemsControl ItemsSource="{Binding Sessions}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="auth:AuthSession">
+                    <Button HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            Padding="12" Margin="0,0,0,4"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            Command="{Binding $parent[UserControl].((vm:SwitchAccountViewModel)DataContext).SelectAccountCommand}"
+                            CommandParameter="{Binding}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <!-- Avatar -->
+                            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="20"
+                                    Background="{DynamicResource PrimaryColor}">
+                                <TextBlock Text="{Binding Username[0]}"
+                                           Foreground="{DynamicResource PrimaryForegroundColor}"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Center"
+                                           FontWeight="Bold"
+                                           FontSize="16" />
+                            </Border>
+                            <!-- Name + URL -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                                <TextBlock Text="{Binding Username}" FontWeight="SemiBold" FontSize="14" />
+                                <TextBlock Text="{Binding Url}" FontSize="12" Opacity="0.5" />
+                            </StackPanel>
+                            <!-- Arrow -->
+                            <mi:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                             Width="20" Height="20" Opacity="0.4"
+                                             VerticalAlignment="Center" />
+                        </Grid>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Separator -->
+        <Border Height="1" Background="{DynamicResource BorderColor}"
+                Margin="0,8,0,8" />
+
+        <!-- Login with another account -->
+        <Button HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Padding="12" CornerRadius="8"
+                Background="Transparent"
+                Command="{Binding LoginWithAnotherAccountCommand}">
+            <Grid ColumnDefinitions="Auto,*">
+                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="20"
+                        Background="{DynamicResource SecondaryColor}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1.5">
+                    <mi:MaterialIcon Kind="Plus" Width="20" Height="20"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Grid.Column="1" Text="Log in with another account"
+                           VerticalAlignment="Center" Margin="12,0,0,0"
+                           FontSize="14" />
+            </Grid>
+        </Button>
+
+        <!-- Cancel -->
+        <Button Content="Cancel" Command="{Binding CancelCommand}"
+                HorizontalAlignment="Right" Margin="0,12,0,0" />
+    </StackPanel>
 </UserControl>

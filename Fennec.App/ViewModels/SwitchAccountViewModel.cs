@@ -1,16 +1,16 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
-using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
+using ShadUI;
 using System.Collections.ObjectModel;
 
 namespace Fennec.App.ViewModels;
 
-public partial class SwitchAccountViewModel : ObservableRecipient
+public partial class SwitchAccountViewModel : ObservableObject
 {
-    private readonly IAuthService _authService;
+    private readonly DialogManager _dialogManager;
     private readonly IAuthStore _authStore;
+    private readonly Guid? _currentUserId;
 
     [ObservableProperty]
     private ObservableCollection<AuthSession> _sessions = [];
@@ -18,21 +18,30 @@ public partial class SwitchAccountViewModel : ObservableRecipient
     [ObservableProperty]
     private bool _isLoading;
 
+    [ObservableProperty]
+    private AuthSession? _selectedSession;
+
+    public bool LoginRequested { get; private set; }
+
     public SwitchAccountViewModel(
-        IAuthService authService,
-        IAuthStore authStore
-    )
+        DialogManager dialogManager,
+        IAuthStore authStore,
+        Guid? currentUserId = null)
     {
-        _authService = authService;
+        _dialogManager = dialogManager;
         _authStore = authStore;
+        _currentUserId = currentUserId;
+        _ = LoadSessionsAsync();
     }
 
-    public async Task InitializeAsync()
+    private async Task LoadSessionsAsync()
     {
         IsLoading = true;
         try
         {
             var sessions = await _authStore.GetSessionsAsync();
+            if (_currentUserId is not null)
+                sessions = sessions.Where(s => s.UserId != _currentUserId.Value).ToList();
             Sessions = new ObservableCollection<AuthSession>(sessions);
         }
         finally
@@ -42,15 +51,22 @@ public partial class SwitchAccountViewModel : ObservableRecipient
     }
 
     [RelayCommand]
-    private async Task SwitchAccount(AuthSession session)
+    private void SelectAccount(AuthSession session)
     {
-        await _authService.SwitchAccountAsync(session);
-        Messenger.Send(new LoginSucceededMessage(session));
+        SelectedSession = session;
+        _dialogManager.Close(this, new CloseDialogOptions { Success = true });
     }
 
     [RelayCommand]
-    private void NavigateToLogin()
+    private void LoginWithAnotherAccount()
     {
-        Messenger.Send(new AuthNavigationMessage(AuthNavigationTarget.Login));
+        LoginRequested = true;
+        _dialogManager.Close(this, new CloseDialogOptions { Success = true });
+    }
+
+    [RelayCommand]
+    private void Cancel()
+    {
+        _dialogManager.Close(this);
     }
 }
