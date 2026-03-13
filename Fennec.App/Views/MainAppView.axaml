@@ -72,7 +72,9 @@
                         </TextBox.InnerRightContent>
                     </TextBox>
                     <shadui:SimpleDropdown
+                        x:Name="ProfileDropdown"
                         Grid.Column="3"
+                        Cursor="Hand"
                         HorizontalAlignment="Right"
                         PopupPlacement="BottomEdgeAlignedRight"
                         PopupWidth="200">
@@ -122,11 +124,11 @@
                                 </Button>
                             </UniformGrid>
                         </Border>
-                        <MenuItem Header="Profile" />
-                        <MenuItem Header="Switch Account" />
+                        <MenuItem Header="Profile" Click="ProfileMenuItem_Click" />
+                        <MenuItem Header="Switch Account" Click="ProfileMenuItem_Click" />
                         <Separator />
-                        <MenuItem Header="Logout" Command="{Binding LogoutCommand}" />
-                        <MenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />
+                        <MenuItem Header="Logout" Command="{Binding LogoutCommand}" Click="ProfileMenuItem_Click" />
+                        <MenuItem Header="Settings" Click="SettingsMenuItem_Click" />
                     </shadui:SimpleDropdown>
                 </Grid>
             </Border>
