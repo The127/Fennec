@@ -55,8 +55,8 @@ public partial class ServerView : UserControl
             }
         };
 
-        AddHandler(KeyDownEvent, OnViewKeyDown, RoutingStrategies.Tunnel);
-        MessageTextBox.AddHandler(KeyDownEvent, MessageBox_KeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, OnViewKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+        MessageTextBox.AddHandler(KeyDownEvent, MessageBox_KeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
 
         AttachedToVisualTree += (_, _) =>
             Dispatcher.UIThread.Post(() => MessageTextBox.Focus(), DispatcherPriority.Loaded);
@@ -64,8 +64,9 @@ public partial class ServerView : UserControl
 
     private async void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.C && e.KeyModifiers == KeyModifiers.Control
-            && DataContext is ServerViewModel vm && vm.HasSelectedMessages)
+        if (DataContext is not ServerViewModel vm) return;
+
+        if (e.Key == Key.C && e.KeyModifiers == KeyModifiers.Control && vm.HasSelectedMessages)
         {
             e.Handled = true;
             var text = vm.GetSelectedMessagesText();
@@ -231,9 +232,20 @@ public partial class ServerView : UserControl
             }
         }
 
+        if (DataContext is not ServerViewModel vm) return;
+
+        // Escape: clear message selection, scroll to bottom
+        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && vm.HasSelectedMessages)
+        {
+            e.Handled = true;
+            vm.ClearMessageSelection();
+            MessageScrollViewer.ScrollToEnd();
+            return;
+        }
+
         // Shift+Enter: let AcceptsReturn insert the newline (don't handle)
         // Plain Enter: send the message
-        if (e.Key == Key.Enter && e.KeyModifiers != KeyModifiers.Shift && DataContext is ServerViewModel vm)
+        if (e.Key == Key.Enter && e.KeyModifiers != KeyModifiers.Shift)
         {
             vm.SendMessageCommand.Execute(null);
             e.Handled = true;

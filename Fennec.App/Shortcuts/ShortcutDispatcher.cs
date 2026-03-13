@@ -16,13 +16,11 @@ public class ShortcutDispatcher
 
     public void Attach(InputElement target)
     {
-        target.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        target.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Handled) return;
-
         var gesture = new KeyGesture(e.Key, e.KeyModifiers);
         var handlers = _collectHandlers().ToList();
 
