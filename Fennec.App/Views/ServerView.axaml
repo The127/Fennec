@@ -280,6 +280,7 @@
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBlock Grid.Column="0"
                                                        Text="{Binding Content}" TextWrapping="Wrap"
+                                                       FontFamily="Inter, fonts:NotoColorEmoji#Noto Color Emoji"
                                                        FontSize="{Binding IsEmojiOnly, Converter={StaticResource EmojiOnlyFontSizeConverter}}" />
                                             <Button Grid.Column="1"
                                                     VerticalAlignment="Top"
