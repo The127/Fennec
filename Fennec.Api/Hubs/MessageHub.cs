@@ -46,17 +46,29 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
 
     public async Task<List<VoiceParticipantDto>> JoinVoiceChannel(Guid serverId, Guid channelId)
     {
-        var (userId, username) = GetCallerIdentity();
-        var groupName = VoiceGroup(serverId, channelId);
+        try
+        {
+            var (userId, username) = GetCallerIdentity();
+            var groupName = VoiceGroup(serverId, channelId);
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-        var participants = voiceState.AddParticipant(serverId, channelId, userId, username, Context.ConnectionId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            var participants = voiceState.AddParticipant(serverId, channelId, userId, username, Context.ConnectionId);
 
-        var participantDto = new VoiceParticipantDto { UserId = userId, Username = username };
-        await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
-        await Clients.Group(ServerGroup(serverId)).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
+            var participantDto = new VoiceParticipantDto { UserId = userId, Username = username };
+            await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
+            await Clients.Group(ServerGroup(serverId)).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
 
-        return participants;
+            return participants;
+        }
+        catch (HubException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "JoinVoiceChannel failed for server={ServerId} channel={ChannelId}", serverId, channelId);
+            throw new HubException($"Failed to join voice channel: {ex.Message}");
+        }
     }
 
     public async Task LeaveVoiceChannel(Guid serverId, Guid channelId)
