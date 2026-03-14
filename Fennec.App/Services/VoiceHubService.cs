@@ -39,7 +39,7 @@ public class VoiceHubService : IVoiceHubService
     {
         _hubClient.VoiceParticipantJoined += (serverId, channelId, participant) =>
         {
-            _messenger.Send(new VoiceParticipantJoinedMessage(serverId, channelId, participant.UserId, participant.Username));
+            _messenger.Send(new VoiceParticipantJoinedMessage(serverId, channelId, participant.UserId, participant.Username, participant.InstanceUrl));
         };
 
         _hubClient.VoiceParticipantLeft += (serverId, channelId, userId) =>

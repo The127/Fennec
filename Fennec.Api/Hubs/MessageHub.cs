@@ -48,13 +48,13 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
     {
         try
         {
-            var (userId, username) = GetCallerIdentity();
+            var (userId, username, instanceUrl) = GetCallerIdentity();
             var groupName = VoiceGroup(serverId, channelId);
 
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            var participants = voiceState.AddParticipant(serverId, channelId, userId, username, Context.ConnectionId);
+            var participants = voiceState.AddParticipant(serverId, channelId, userId, username, instanceUrl, Context.ConnectionId);
 
-            var participantDto = new VoiceParticipantDto { UserId = userId, Username = username };
+            var participantDto = new VoiceParticipantDto { UserId = userId, Username = username, InstanceUrl = instanceUrl };
             await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
             await Clients.Group(ServerGroup(serverId)).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
 
@@ -73,7 +73,7 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
 
     public async Task LeaveVoiceChannel(Guid serverId, Guid channelId)
     {
-        var (userId, _) = GetCallerIdentity();
+        var (userId, _, _) = GetCallerIdentity();
         var groupName = VoiceGroup(serverId, channelId);
 
         voiceState.RemoveParticipant(serverId, channelId, userId);
@@ -85,7 +85,7 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
 
     public async Task SendSdpOffer(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
     {
-        var (userId, _) = GetCallerIdentity();
+        var (userId, _, _) = GetCallerIdentity();
         var groupName = VoiceGroup(serverId, channelId);
 
         // Find target connection
@@ -98,14 +98,14 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
 
     public async Task SendSdpAnswer(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
     {
-        var (userId, _) = GetCallerIdentity();
+        var (userId, _, _) = GetCallerIdentity();
         await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
             .SendAsync("ReceiveSdpAnswer", serverId, channelId, userId, sdp);
     }
 
     public async Task SendIceCandidate(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex)
     {
-        var (userId, _) = GetCallerIdentity();
+        var (userId, _, _) = GetCallerIdentity();
         await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
             .SendAsync("ReceiveIceCandidate", serverId, channelId, userId, candidate, sdpMid, sdpMLineIndex);
     }
@@ -134,7 +134,7 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
         await base.OnDisconnectedAsync(exception);
     }
 
-    private (Guid UserId, string Username) GetCallerIdentity()
+    private (Guid UserId, string Username, string? InstanceUrl) GetCallerIdentity()
     {
         var httpContext = Context.GetHttpContext();
         var token = httpContext?.Request.Query["access_token"].FirstOrDefault();
@@ -154,7 +154,8 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
         var jwt = handler.ReadJwtToken(token);
         var sub = jwt.Subject ?? throw new HubException("Token missing subject");
         var name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "Unknown";
-        return (Guid.Parse(sub), name);
+        var issuer = jwt.Issuer;
+        return (Guid.Parse(sub), name, issuer);
     }
 
     private static string VoiceGroup(Guid serverId, Guid channelId) => $"voice-{serverId}-{channelId}";

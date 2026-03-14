@@ -18,6 +18,7 @@ public record ListMessagesResponse
     public required Guid MessageId { get; init; }
     public required Guid AuthorId { get; init; }
     public required string AuthorName { get; init; }
+    public string? AuthorInstanceUrl { get; init; }
     public required string CreatedAt { get; init; }
     public required MessageType Type { get; init; }
     public required JsonDocument Details { get; init; }
@@ -64,6 +65,7 @@ public class ListMessagesQueryHandler(
                 MessageId = m.Id,
                 AuthorId = m.AuthorId,
                 AuthorName = m.Author.Name, // KnownUser doesn't have DisplayName currently, but it should probably.
+                AuthorInstanceUrl = m.Author.InstanceUrl,
                 CreatedAt = m.CreatedAt.ToString(),
                 Type = m.Type,
                 Details = m.Details,

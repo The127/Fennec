@@ -169,8 +169,49 @@
                                                                 <DataTemplate x:DataType="vm:VoiceParticipantItem">
                                                                     <StackPanel Orientation="Horizontal" Spacing="6"
                                                                                 Margin="0,2">
-                                                                        <mi:MaterialIcon Kind="AccountCircle" Width="14" Height="14"
-                                                                                         Opacity="0.5" />
+                                                                        <Button Padding="0" MinWidth="0" MinHeight="0"
+                                                                                Cursor="Hand"
+                                                                                Background="Transparent" BorderThickness="0">
+                                                                            <Button.Styles>
+                                                                                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                                                    <Setter Property="Background" Value="Transparent" />
+                                                                                </Style>
+                                                                            </Button.Styles>
+                                                                            <Button.Flyout>
+                                                                                <Flyout Placement="RightEdgeAlignedTop"
+                                                                                        FlyoutPresenterClasses="PopupPanel">
+                                                                                    <Border Classes="PopupPanel" Padding="12" MinWidth="200">
+                                                                                        <StackPanel Spacing="12">
+                                                                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                                                                <shadui:Avatar Fallback="{Binding Username[0]}" Height="40" Width="40" />
+                                                                                                <StackPanel VerticalAlignment="Center">
+                                                                                                    <TextBlock Text="{Binding Username}" FontWeight="SemiBold" FontSize="15" />
+                                                                                                    <TextBlock Text="{Binding Identity}" Classes="Muted" FontSize="12" />
+                                                                                                </StackPanel>
+                                                                                            </StackPanel>
+                                                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                                                <Button Classes="Primary" Padding="8,4"
+                                                                                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddFriendCommand}">
+                                                                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                                                        <mi:MaterialIcon Kind="AccountPlus" Width="14" Height="14" />
+                                                                                                        <TextBlock Text="Add Friend" FontSize="12" />
+                                                                                                    </StackPanel>
+                                                                                                </Button>
+                                                                                                <Button Classes="Primary" Padding="8,4"
+                                                                                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).SendDirectMessageCommand}">
+                                                                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                                                        <mi:MaterialIcon Kind="MessageText" Width="14" Height="14" />
+                                                                                                        <TextBlock Text="Message" FontSize="12" />
+                                                                                                    </StackPanel>
+                                                                                                </Button>
+                                                                                            </StackPanel>
+                                                                                        </StackPanel>
+                                                                                    </Border>
+                                                                                </Flyout>
+                                                                            </Button.Flyout>
+                                                                            <mi:MaterialIcon Kind="AccountCircle" Width="14" Height="14"
+                                                                                             Opacity="0.5" />
+                                                                        </Button>
                                                                         <TextBlock Text="{Binding Username}" FontSize="12"
                                                                                    Opacity="0.7" />
                                                                     </StackPanel>
@@ -360,7 +401,48 @@
                                     <StackPanel Orientation="Horizontal" Spacing="10"
                                                 Margin="0,12,0,4"
                                                 IsVisible="{Binding ShowAuthor}">
-                                        <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="32" Width="32" />
+                                        <Button Padding="0" MinWidth="0" MinHeight="0"
+                                                CornerRadius="16" Cursor="Hand"
+                                                Background="Transparent" BorderThickness="0">
+                                            <Button.Styles>
+                                                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                </Style>
+                                            </Button.Styles>
+                                            <Button.Flyout>
+                                                <Flyout Placement="RightEdgeAlignedTop"
+                                                        FlyoutPresenterClasses="PopupPanel">
+                                                    <Border Classes="PopupPanel" Padding="12" MinWidth="200">
+                                                        <StackPanel Spacing="12">
+                                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                                <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="40" Width="40" />
+                                                                <StackPanel VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding AuthorName}" FontWeight="SemiBold" FontSize="15" />
+                                                                    <TextBlock Text="{Binding AuthorIdentity}" Classes="Muted" FontSize="12" />
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <Button Classes="Primary" Padding="8,4"
+                                                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddFriendCommand}">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                        <mi:MaterialIcon Kind="AccountPlus" Width="14" Height="14" />
+                                                                        <TextBlock Text="Add Friend" FontSize="12" />
+                                                                    </StackPanel>
+                                                                </Button>
+                                                                <Button Classes="Primary" Padding="8,4"
+                                                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).SendDirectMessageCommand}">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                        <mi:MaterialIcon Kind="MessageText" Width="14" Height="14" />
+                                                                        <TextBlock Text="Message" FontSize="12" />
+                                                                    </StackPanel>
+                                                                </Button>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Flyout>
+                                            </Button.Flyout>
+                                            <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="32" Width="32" />
+                                        </Button>
                                         <TextBlock Text="{Binding AuthorName}" FontWeight="SemiBold"
                                                    FontSize="15" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding LocalTime}" Classes="Muted" FontSize="12"

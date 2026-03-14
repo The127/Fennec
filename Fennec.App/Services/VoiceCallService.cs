@@ -69,7 +69,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         // Notify UI about all current participants (including self)
         foreach (var participant in participants)
         {
-            _messenger.Send(new VoiceParticipantJoinedMessage(serverId, channelId, participant.UserId, participant.Username));
+            _messenger.Send(new VoiceParticipantJoinedMessage(serverId, channelId, participant.UserId, participant.Username, participant.InstanceUrl));
         }
 
         // Create peer connections to all existing participants except self (joiner offers)

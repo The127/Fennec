@@ -86,6 +86,7 @@ public class SendMessageCommandHandler(
                 Content = request.Content,
                 AuthorId = knownUser.Id,
                 AuthorName = knownUser.Name,
+                AuthorInstanceUrl = knownUser.InstanceUrl,
                 CreatedAt = message.CreatedAt.ToString(),
             },
         }, cancellationToken);

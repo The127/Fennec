@@ -20,10 +20,12 @@ using ShadUI;
 
 namespace Fennec.App.ViewModels;
 
-public class VoiceParticipantItem(Guid userId, string username)
+public class VoiceParticipantItem(Guid userId, string username, string? instanceUrl)
 {
     public Guid UserId { get; } = userId;
     public string Username { get; } = username;
+    public string? InstanceUrl { get; } = instanceUrl;
+    public string Identity => instanceUrl is not null ? $"{username}@{instanceUrl}" : username;
 }
 
 public partial class ChannelItem(Guid id, string name, ChannelType channelType, Guid channelGroupId) : ObservableObject
@@ -70,6 +72,8 @@ public partial class MessageItem : ObservableObject
     public required string Content { get; init; }
     public required Guid AuthorId { get; init; }
     public required string AuthorName { get; init; }
+    public string? AuthorInstanceUrl { get; init; }
+    public string AuthorIdentity => AuthorInstanceUrl is not null ? $"{AuthorName}@{AuthorInstanceUrl}" : AuthorName;
     public required string AvatarFallback { get; init; }
     public required string CreatedAt { get; init; }
     public required string LocalTime { get; init; }
@@ -164,10 +168,11 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     private readonly IVoiceCallService _voiceCallService;
     private readonly IMessenger _messenger;
     private readonly ILogger<ServerViewModel> _logger;
+    private readonly ToastManager _toastManager;
     private readonly string instanceUrl;
     private readonly string _currentUsername;
 
-    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, ILogger<ServerViewModel> logger, Guid serverId, string serverName, string instanceUrl, string currentUsername)
+    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, ToastManager toastManager, ILogger<ServerViewModel> logger, Guid serverId, string serverName, string instanceUrl, string currentUsername)
     {
         this.client = client;
         this.dialogManager = dialogManager;
@@ -175,6 +180,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         _messageHubService = messageHubService;
         _voiceCallService = voiceCallService;
         _messenger = messenger;
+        _toastManager = toastManager;
         _logger = logger;
         ServerId = serverId;
         _serverName = serverName;
@@ -456,6 +462,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             content: content,
             authorId: Guid.Empty,
             authorName: _currentUsername,
+            authorInstanceUrl: null,
             createdAt: nowString);
         optimistic.IsPending = true;
 
@@ -490,7 +497,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         }
     }
 
-    private MessageItem BuildMessageItem(Guid messageId, string content, Guid authorId, string authorName, string createdAt)
+    private MessageItem BuildMessageItem(Guid messageId, string content, Guid authorId, string authorName, string? authorInstanceUrl, string createdAt)
     {
         var lastMessage = Messages.LastOrDefault();
         var parsed = InstantPattern.ExtendedIso.Parse(createdAt);
@@ -518,6 +525,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             Content = content,
             AuthorId = authorId,
             AuthorName = authorName,
+            AuthorInstanceUrl = authorInstanceUrl,
             AvatarFallback = authorName.Length > 0 ? authorName[..1].ToUpper() : "?",
             CreatedAt = createdAt,
             LocalTime = FormatLocalTime(createdAt),
@@ -541,7 +549,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             if (Messages.Any(m => m.MessageId == dto.MessageId))
                 return;
 
-            var item = BuildMessageItem(dto.MessageId, dto.Content, dto.AuthorId, dto.AuthorName, dto.CreatedAt);
+            var item = BuildMessageItem(dto.MessageId, dto.Content, dto.AuthorId, dto.AuthorName, dto.AuthorInstanceUrl, dto.CreatedAt);
 
             Messages.Add(item);
             _allMessages.Add(item);
@@ -572,6 +580,26 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 _ => ("Unknown", "#808080"),
             };
         });
+    }
+
+    // --- User Profile Actions ---
+
+    [RelayCommand]
+    private void AddFriend()
+    {
+        _toastManager.CreateToast("Not Implemented")
+            .WithContent("Adding friends is not yet available.")
+            .WithDelay(3)
+            .ShowWarning();
+    }
+
+    [RelayCommand]
+    private void SendDirectMessage()
+    {
+        _toastManager.CreateToast("Not Implemented")
+            .WithContent("Direct messages are not yet available.")
+            .WithDelay(3)
+            .ShowWarning();
     }
 
     // --- Voice ---
@@ -651,7 +679,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             if (channel.VoiceParticipants.Any(p => p.UserId == message.UserId))
                 return;
 
-            channel.VoiceParticipants.Add(new VoiceParticipantItem(message.UserId, message.Username));
+            channel.VoiceParticipants.Add(new VoiceParticipantItem(message.UserId, message.Username, message.InstanceUrl));
         });
     }
 
@@ -739,6 +767,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                     Content = msg.Content,
                     AuthorId = msg.AuthorId,
                     AuthorName = msg.AuthorName,
+                    AuthorInstanceUrl = msg.AuthorInstanceUrl,
                     AvatarFallback = msg.AuthorName.Length > 0 ? msg.AuthorName[..1].ToUpper() : "?",
                     CreatedAt = msg.CreatedAt,
                     LocalTime = FormatLocalTime(msg.CreatedAt),
@@ -884,7 +913,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                     var channel = FindChannel(channelId);
                     if (channel is null) continue;
                     foreach (var p in participants)
-                        channel.VoiceParticipants.Add(new VoiceParticipantItem(p.UserId, p.Username));
+                        channel.VoiceParticipants.Add(new VoiceParticipantItem(p.UserId, p.Username, p.InstanceUrl));
                 }
             }
             catch (Exception ex)

@@ -60,7 +60,7 @@ public class ServerController : UserControllerBase
     {
         var members = await dbContext.Set<ServerMember>()
             .Where(m => m.ServerId == serverId)
-            .Select(m => new ListServerMembersResponseItemDto { Name = m.KnownUser.Name })
+            .Select(m => new ListServerMembersResponseItemDto { Name = m.KnownUser.Name, InstanceUrl = m.KnownUser.InstanceUrl })
             .ToListAsync(cancellationToken);
 
         return Ok(new ListServerMembersResponseDto { Members = members });

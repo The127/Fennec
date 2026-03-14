@@ -66,6 +66,7 @@ public class MessageController : UserControllerBase
                     Content = content,
                     AuthorId = m.AuthorId,
                     AuthorName = m.AuthorName,
+                    AuthorInstanceUrl = m.AuthorInstanceUrl,
                     CreatedAt = m.CreatedAt,
                 };
             }).ToList(),

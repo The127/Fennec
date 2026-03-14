@@ -16,6 +16,9 @@ public class ListMessagesResponseItemDto
     [JsonPropertyName("authorName")]
     public required string AuthorName { get; set; }
 
+    [JsonPropertyName("authorInstanceUrl")]
+    public string? AuthorInstanceUrl { get; set; }
+
     [JsonPropertyName("createdAt")]
     public required string CreatedAt { get; set; }
 }

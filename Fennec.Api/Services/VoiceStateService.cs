@@ -5,11 +5,11 @@ namespace Fennec.Api.Services;
 
 public class VoiceStateService
 {
-    private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), List<(Guid UserId, string Username, string ConnectionId)>> _channels = new();
+    private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), List<(Guid UserId, string Username, string? InstanceUrl, string ConnectionId)>> _channels = new();
     private readonly ConcurrentDictionary<string, (Guid ServerId, Guid ChannelId, Guid UserId)> _connectionMap = new();
     private readonly object _lock = new();
 
-    public List<VoiceParticipantDto> AddParticipant(Guid serverId, Guid channelId, Guid userId, string username, string connectionId)
+    public List<VoiceParticipantDto> AddParticipant(Guid serverId, Guid channelId, Guid userId, string username, string? instanceUrl, string connectionId)
     {
         lock (_lock)
         {
@@ -19,10 +19,10 @@ public class VoiceStateService
             // Remove existing entry for this user (reconnect scenario)
             list.RemoveAll(p => p.UserId == userId);
 
-            list.Add((userId, username, connectionId));
+            list.Add((userId, username, instanceUrl, connectionId));
             _connectionMap[connectionId] = (serverId, channelId, userId);
 
-            return list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username }).ToList();
+            return list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username, InstanceUrl = p.InstanceUrl }).ToList();
         }
     }
 
@@ -68,7 +68,7 @@ public class VoiceStateService
         {
             var key = (serverId, channelId);
             if (_channels.TryGetValue(key, out var list))
-                return list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username }).ToList();
+                return list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username, InstanceUrl = p.InstanceUrl }).ToList();
             return [];
         }
     }
@@ -82,7 +82,7 @@ public class VoiceStateService
             {
                 if (key.ServerId == serverId && list.Count > 0)
                 {
-                    result[key.ChannelId] = list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username }).ToList();
+                    result[key.ChannelId] = list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username, InstanceUrl = p.InstanceUrl }).ToList();
                 }
             }
             return result;
