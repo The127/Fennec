@@ -47,6 +47,11 @@
     <Color x:Key="TabItemSelectedColor">#E5E9F0</Color>
     <Color x:Key="TabItemsBackgroundColor">#D8DEE9</Color>
 
+    <!-- code block colors -->
+    <SolidColorBrush x:Key="CodeBlockBackgroundBrush" Color="#BFC5D2" />
+    <SolidColorBrush x:Key="InlineCodeBackgroundBrush" Color="#CDD3DE" />
+    <SolidColorBrush x:Key="CodeBlockBorderBrush" Color="#D8DEE9" />
+
     <!-- notification colors — Aurora palette (same in both modes) -->
     <Color x:Key="InfoColor">#5E81AC</Color>
     <Color x:Key="SuccessColor">#A3BE8C</Color>

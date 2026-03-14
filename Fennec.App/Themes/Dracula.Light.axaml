@@ -47,6 +47,11 @@
     <Color x:Key="TabItemSelectedColor">#F5F5FA</Color>
     <Color x:Key="TabItemsBackgroundColor">#DCDEEF</Color>
 
+    <!-- code block colors -->
+    <SolidColorBrush x:Key="CodeBlockBackgroundBrush" Color="#C0C2D8" />
+    <SolidColorBrush x:Key="InlineCodeBackgroundBrush" Color="#D0D2E5" />
+    <SolidColorBrush x:Key="CodeBlockBorderBrush" Color="#CFCFDE" />
+
     <!-- notification colors -->
     <Color x:Key="InfoColor">#036A96</Color>
     <Color x:Key="SuccessColor">#14720A</Color>
