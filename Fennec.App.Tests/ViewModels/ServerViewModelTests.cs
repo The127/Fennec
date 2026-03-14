@@ -30,7 +30,7 @@ public class ServerViewModelTests
 
     private readonly ILogger<ServerViewModel> _logger = Substitute.For<ILogger<ServerViewModel>>();
 
-    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverStore, _messageHubService, _voiceCallService, _messenger, new ToastManager(), _logger, _serverId, "Test Server", "https://fennec.chat", "testuser");
+    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverStore, _messageHubService, _voiceCallService, _messenger, new ToastManager(), _logger, _serverId, "Test Server", "https://fennec.chat", Guid.NewGuid(), "testuser");
 
     [Fact]
     public async Task Loading_populates_channel_groups_with_channels()

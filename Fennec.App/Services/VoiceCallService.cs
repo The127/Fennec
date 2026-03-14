@@ -8,7 +8,7 @@ namespace Fennec.App.Services;
 
 public interface IVoiceCallService
 {
-    Task JoinAsync(Guid serverId, Guid channelId);
+    Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl);
     Task LeaveAsync();
     void SetMuted(bool muted);
     void SetDeafened(bool deafened);
@@ -32,6 +32,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     public bool IsConnected { get; private set; }
     public Guid? CurrentServerId { get; private set; }
     public Guid? CurrentChannelId { get; private set; }
+    public string? CurrentInstanceUrl { get; private set; }
     public bool IsMuted { get; private set; }
     public bool IsDeafened { get; private set; }
 
@@ -52,17 +53,18 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _voiceHub.IceCandidateReceived += OnIceCandidateReceived;
     }
 
-    public async Task JoinAsync(Guid serverId, Guid channelId)
+    public async Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl)
     {
         if (IsConnected)
             await LeaveAsync();
 
         CurrentServerId = serverId;
         CurrentChannelId = channelId;
+        CurrentInstanceUrl = instanceUrl;
 
         await TryInitAudioEndPointAsync();
 
-        var participants = await _voiceHub.JoinVoiceChannelAsync(serverId, channelId);
+        var participants = await _voiceHub.JoinVoiceChannelAsync(serverId, channelId, instanceUrl);
         IsConnected = true;
         _messenger.Send(new VoiceStateChangedMessage(true, serverId, channelId));
 
@@ -89,7 +91,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
         try
         {
-            await _voiceHub.LeaveVoiceChannelAsync(serverId, channelId);
+            await _voiceHub.LeaveVoiceChannelAsync(serverId, channelId, CurrentInstanceUrl!);
         }
         catch (Exception ex)
         {
@@ -102,6 +104,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         IsConnected = false;
         CurrentServerId = null;
         CurrentChannelId = null;
+        CurrentInstanceUrl = null;
         IsMuted = false;
         IsDeafened = false;
 

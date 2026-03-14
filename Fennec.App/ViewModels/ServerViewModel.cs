@@ -20,12 +20,15 @@ using ShadUI;
 
 namespace Fennec.App.ViewModels;
 
-public class VoiceParticipantItem(Guid userId, string username, string? instanceUrl)
+public partial class VoiceParticipantItem(Guid userId, string username, string? instanceUrl) : ObservableObject
 {
     public Guid UserId { get; } = userId;
     public string Username { get; } = username;
     public string? InstanceUrl { get; } = instanceUrl;
     public string Identity => instanceUrl is not null ? $"{username}@{instanceUrl}" : username;
+
+    [ObservableProperty]
+    private bool _isMuted;
 }
 
 public partial class ChannelItem(Guid id, string name, ChannelType channelType, Guid channelGroupId) : ObservableObject
@@ -171,8 +174,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     private readonly ToastManager _toastManager;
     private readonly string instanceUrl;
     private readonly string _currentUsername;
+    private readonly Guid _currentUserId;
 
-    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, ToastManager toastManager, ILogger<ServerViewModel> logger, Guid serverId, string serverName, string instanceUrl, string currentUsername)
+    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, ToastManager toastManager, ILogger<ServerViewModel> logger, Guid serverId, string serverName, string instanceUrl, Guid currentUserId, string currentUsername)
     {
         this.client = client;
         this.dialogManager = dialogManager;
@@ -185,6 +189,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         ServerId = serverId;
         _serverName = serverName;
         this.instanceUrl = instanceUrl;
+        _currentUserId = currentUserId;
         _currentUsername = currentUsername;
 
         messenger.Register<ChannelMessageReceivedMessage>(this);
@@ -629,7 +634,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
         try
         {
-            await _voiceCallService.JoinAsync(ServerId, channel.Id);
+            await _voiceCallService.JoinAsync(ServerId, channel.Id, instanceUrl);
         }
         catch (Exception ex)
         {
@@ -655,6 +660,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     {
         IsMuted = !IsMuted;
         _voiceCallService.SetMuted(IsMuted);
+        UpdateLocalParticipantMuteState();
     }
 
     [RelayCommand]
@@ -664,6 +670,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         _voiceCallService.SetDeafened(IsDeafened);
         if (IsDeafened)
             IsMuted = true;
+        UpdateLocalParticipantMuteState();
     }
 
     public void Receive(VoiceParticipantJoinedMessage message)
@@ -727,6 +734,15 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             if (channel is not null) return channel;
         }
         return null;
+    }
+
+    private void UpdateLocalParticipantMuteState()
+    {
+        if (CurrentVoiceChannelId is null) return;
+        var channel = FindChannel(CurrentVoiceChannelId.Value);
+        var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == _currentUserId);
+        if (participant is not null)
+            participant.IsMuted = IsMuted;
     }
 
     // --- End Voice ---
@@ -907,7 +923,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             // Populate existing voice participants
             try
             {
-                var voiceState = await _messageHubService.GetServerVoiceStateAsync(ServerId);
+                var voiceState = await _messageHubService.GetServerVoiceStateAsync(ServerId, instanceUrl);
                 foreach (var (channelId, participants) in voiceState)
                 {
                     var channel = FindChannel(channelId);

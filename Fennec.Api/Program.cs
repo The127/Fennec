@@ -22,6 +22,7 @@ builder.Services.AddScoped<INotificationEventService, NotificationEventService>(
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddSingleton<IMentionParser, MentionParser>();
 builder.Services.AddSingleton<VoiceStateService>();
+builder.Services.AddScoped<IVoiceEventService, VoiceEventService>();
 
 builder.Services.AddMediatR(config => config.RegisterServicesFromAssemblyContaining<Program>());
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));

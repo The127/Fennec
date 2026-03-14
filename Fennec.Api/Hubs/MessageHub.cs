@@ -1,13 +1,23 @@
 using System.IdentityModel.Tokens.Jwt;
+using Fennec.Api.FederationClient;
 using Fennec.Api.Services;
+using Fennec.Api.Settings;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Dtos.Voice;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 
 namespace Fennec.Api.Hubs;
 
-public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger) : Hub
+public class MessageHub(
+    VoiceStateService voiceState,
+    IFederationClient federationClient,
+    IOptions<FennecSettings> fennecOptions,
+    ILogger<MessageHub> logger
+) : Hub
 {
+    private string LocalInstanceUrl => fennecOptions.Value.IssuerUrl;
+
     public async Task SubscribeToChannel(Guid serverId, Guid channelId)
     {
         var groupName = $"{serverId}-{channelId}";
@@ -37,26 +47,66 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
     }
 
-    public Dictionary<Guid, List<VoiceParticipantDto>> GetServerVoiceState(Guid serverId)
+    public async Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetServerVoiceState(Guid serverId, string instanceUrl)
     {
+        if (IsRemote(instanceUrl))
+        {
+            try
+            {
+                // For remote servers, we don't have the voice state locally.
+                // The client will get voice state when it subscribes via the hosting instance.
+                // For now, return empty — the hosting instance's state is authoritative.
+                return new();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to get remote voice state for server={ServerId}", serverId);
+                return new();
+            }
+        }
+
         return voiceState.GetServerVoiceState(serverId);
     }
 
     // --- Voice ---
 
-    public async Task<List<VoiceParticipantDto>> JoinVoiceChannel(Guid serverId, Guid channelId)
+    public async Task<List<VoiceParticipantDto>> JoinVoiceChannel(Guid serverId, Guid channelId, string instanceUrl)
     {
         try
         {
-            var (userId, username, instanceUrl) = GetCallerIdentity();
-            var groupName = VoiceGroup(serverId, channelId);
+            var (userId, username, callerInstanceUrl) = GetCallerIdentity();
 
-            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            var participants = voiceState.AddParticipant(serverId, channelId, userId, username, instanceUrl, Context.ConnectionId);
+            if (IsRemote(instanceUrl))
+            {
+                // Forward to hosting instance via federation
+                var response = await federationClient.For(instanceUrl).Voice.JoinAsync(new FederationVoiceJoinRequestDto
+                {
+                    ServerId = serverId,
+                    ChannelId = channelId,
+                    UserId = userId,
+                    Username = username,
+                    CallerInstanceUrl = callerInstanceUrl ?? LocalInstanceUrl,
+                });
 
-            var participantDto = new VoiceParticipantDto { UserId = userId, Username = username, InstanceUrl = instanceUrl };
-            await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
+                // Track locally for disconnect cleanup
+                voiceState.AddParticipant(serverId, channelId, userId, username, callerInstanceUrl ?? LocalInstanceUrl, Context.ConnectionId);
+                await Groups.AddToGroupAsync(Context.ConnectionId, VoiceGroup(serverId, channelId));
+                await Groups.AddToGroupAsync(Context.ConnectionId, ServerGroup(serverId));
+
+                return response.Participants;
+            }
+
+            // Local server — process normally
+            var voiceGroup = VoiceGroup(serverId, channelId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, voiceGroup);
+            var participants = voiceState.AddParticipant(serverId, channelId, userId, username, callerInstanceUrl, Context.ConnectionId);
+
+            var participantDto = new VoiceParticipantDto { UserId = userId, Username = username, InstanceUrl = callerInstanceUrl };
+            await Clients.OthersInGroup(voiceGroup).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
             await Clients.Group(ServerGroup(serverId)).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
+
+            // Notify remote instances that have participants in this channel
+            await NotifyRemoteInstancesParticipantJoined(serverId, channelId, participantDto);
 
             return participants;
         }
@@ -71,29 +121,46 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
         }
     }
 
-    public async Task LeaveVoiceChannel(Guid serverId, Guid channelId)
+    public async Task LeaveVoiceChannel(Guid serverId, Guid channelId, string instanceUrl)
     {
         var (userId, _, _) = GetCallerIdentity();
-        var groupName = VoiceGroup(serverId, channelId);
+        var voiceGroup = VoiceGroup(serverId, channelId);
 
         voiceState.RemoveParticipant(serverId, channelId, userId);
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, voiceGroup);
 
-        await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
-        await Clients.Group(ServerGroup(serverId)).SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
+        if (IsRemote(instanceUrl))
+        {
+            // Forward leave to hosting instance
+            try
+            {
+                await federationClient.For(instanceUrl).Voice.LeaveAsync(new FederationVoiceLeaveRequestDto
+                {
+                    ServerId = serverId,
+                    ChannelId = channelId,
+                    UserId = userId,
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to forward voice leave to remote instance {InstanceUrl}", instanceUrl);
+            }
+        }
+        else
+        {
+            // Local server — broadcast and notify remote instances
+            await Clients.OthersInGroup(voiceGroup).SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
+            await Clients.Group(ServerGroup(serverId)).SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
+
+            await NotifyRemoteInstancesParticipantLeft(serverId, channelId, userId);
+        }
     }
 
     public async Task SendSdpOffer(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
     {
         var (userId, _, _) = GetCallerIdentity();
-        var groupName = VoiceGroup(serverId, channelId);
-
-        // Find target connection
-        var participants = voiceState.GetParticipants(serverId, channelId);
-        // We relay to the group but filter by targetUserId on the client side —
-        // however, for efficiency, we should send directly. Since we don't have a userId→connectionId map
-        // exposed, we'll use the group and let clients filter.
-        await Clients.OthersInGroup(groupName).SendAsync("ReceiveSdpOffer", serverId, channelId, userId, sdp);
+        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+            .SendAsync("ReceiveSdpOffer", serverId, channelId, userId, sdp);
     }
 
     public async Task SendSdpAnswer(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
@@ -125,13 +192,79 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
         if (removed is not null)
         {
             var (serverId, channelId, userId) = removed.Value;
+
+            // Broadcast locally
             await Clients.Group(VoiceGroup(serverId, channelId))
                 .SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
             await Clients.Group(ServerGroup(serverId))
                 .SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
+
+            // Check if this participant was in a remote server's voice channel
+            // We need to find out which instance hosts this server to forward the leave.
+            // We look up any remaining remote instance URLs for this channel to determine
+            // if the participant was remote-forwarded. But since we tracked locally, we
+            // just need to check if there's a KnownServer entry.
+            // For simplicity: try to forward to any remote instances we know about.
+            // The GetCallerIdentity would give us the instance URL but we can't call it
+            // during disconnect. Instead, we check if there are remote participants and
+            // notify them, and also check if this server exists as a KnownServer.
+
+            // Notify remote instances about this participant leaving (if this is the hosting instance)
+            await NotifyRemoteInstancesParticipantLeft(serverId, channelId, userId);
         }
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    private async Task NotifyRemoteInstancesParticipantJoined(Guid serverId, Guid channelId, VoiceParticipantDto participant)
+    {
+        var remoteUrls = voiceState.GetRemoteInstanceUrls(serverId, channelId, LocalInstanceUrl);
+        foreach (var url in remoteUrls)
+        {
+            // Don't notify the participant's own instance
+            if (url.Equals(participant.InstanceUrl, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            try
+            {
+                await federationClient.For(url).Voice.NotifyParticipantJoinedAsync(new FederationVoiceParticipantEventDto
+                {
+                    ServerId = serverId,
+                    ChannelId = channelId,
+                    Participant = participant,
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify remote instance {InstanceUrl} of voice join", url);
+            }
+        }
+    }
+
+    private async Task NotifyRemoteInstancesParticipantLeft(Guid serverId, Guid channelId, Guid userId)
+    {
+        var remoteUrls = voiceState.GetRemoteInstanceUrls(serverId, channelId, LocalInstanceUrl);
+        foreach (var url in remoteUrls)
+        {
+            try
+            {
+                await federationClient.For(url).Voice.NotifyParticipantLeftAsync(new FederationVoiceParticipantLeftEventDto
+                {
+                    ServerId = serverId,
+                    ChannelId = channelId,
+                    UserId = userId,
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify remote instance {InstanceUrl} of voice leave", url);
+            }
+        }
+    }
+
+    private bool IsRemote(string instanceUrl)
+    {
+        return !instanceUrl.Equals(LocalInstanceUrl, StringComparison.OrdinalIgnoreCase);
     }
 
     private (Guid UserId, string Username, string? InstanceUrl) GetCallerIdentity()

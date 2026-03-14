@@ -7,8 +7,8 @@ namespace Fennec.App.Services;
 
 public interface IVoiceHubService
 {
-    Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId);
-    Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId);
+    Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl);
+    Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl);
     Task SendSdpOfferAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp);
     Task SendSdpAnswerAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp);
     Task SendIceCandidateAsync(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex);
@@ -63,11 +63,11 @@ public class VoiceHubService : IVoiceHubService
         };
     }
 
-    public Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId)
-        => _hubClient.JoinVoiceChannelAsync(serverId, channelId);
+    public Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl)
+        => _hubClient.JoinVoiceChannelAsync(serverId, channelId, instanceUrl);
 
-    public Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId)
-        => _hubClient.LeaveVoiceChannelAsync(serverId, channelId);
+    public Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl)
+        => _hubClient.LeaveVoiceChannelAsync(serverId, channelId, instanceUrl);
 
     public Task SendSdpOfferAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
         => _hubClient.SendSdpOfferAsync(serverId, channelId, targetUserId, sdp);

@@ -11,7 +11,7 @@ public interface IMessageHubService
     Task SubscribeToChannelAsync(Guid serverId, Guid channelId);
     Task SubscribeToServerAsync(Guid serverId);
     Task UnsubscribeFromServerAsync(Guid serverId);
-    Task<Dictionary<Guid, List<Fennec.Shared.Dtos.Voice.VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId);
+    Task<Dictionary<Guid, List<Fennec.Shared.Dtos.Voice.VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId, string instanceUrl);
     Task DisconnectAsync();
     Guid? CurrentServerId { get; }
     Guid? CurrentChannelId { get; }
@@ -26,6 +26,7 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
 
     private Guid? _currentServerId;
     private Guid? _currentChannelId;
+    private readonly HashSet<Guid> _subscribedServerIds = [];
 
     public async Task ConnectAsync(string baseUrl, string token)
     {
@@ -51,14 +52,20 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
         await hubClient.SubscribeToChannelAsync(serverId, channelId);
     }
 
-    public Task SubscribeToServerAsync(Guid serverId)
-        => hubClient.SubscribeToServerAsync(serverId);
+    public async Task SubscribeToServerAsync(Guid serverId)
+    {
+        _subscribedServerIds.Add(serverId);
+        await hubClient.SubscribeToServerAsync(serverId);
+    }
 
-    public Task UnsubscribeFromServerAsync(Guid serverId)
-        => hubClient.UnsubscribeFromServerAsync(serverId);
+    public async Task UnsubscribeFromServerAsync(Guid serverId)
+    {
+        _subscribedServerIds.Remove(serverId);
+        await hubClient.UnsubscribeFromServerAsync(serverId);
+    }
 
-    public Task<Dictionary<Guid, List<Fennec.Shared.Dtos.Voice.VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId)
-        => hubClient.GetServerVoiceStateAsync(serverId);
+    public Task<Dictionary<Guid, List<Fennec.Shared.Dtos.Voice.VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId, string instanceUrl)
+        => hubClient.GetServerVoiceStateAsync(serverId, instanceUrl);
 
     public async Task DisconnectAsync()
     {
@@ -88,11 +95,22 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
         CurrentStatus = status;
         messenger.Send(new HubConnectionStateChangedMessage(status));
 
-        if (status == HubConnectionStatus.Connected && _currentServerId is not null && _currentChannelId is not null)
+        if (status == HubConnectionStatus.Connected)
         {
-            logger.LogInformation("MessageHubService: Connection established, subscribing to server={ServerId} channel={ChannelId}",
-                _currentServerId, _currentChannelId);
-            _ = hubClient.SubscribeToChannelAsync(_currentServerId.Value, _currentChannelId.Value);
+            // Re-subscribe to channel if we had one
+            if (_currentServerId is not null && _currentChannelId is not null)
+            {
+                logger.LogInformation("MessageHubService: Connection established, subscribing to server={ServerId} channel={ChannelId}",
+                    _currentServerId, _currentChannelId);
+                _ = hubClient.SubscribeToChannelAsync(_currentServerId.Value, _currentChannelId.Value);
+            }
+
+            // Re-subscribe to all server groups
+            foreach (var serverId in _subscribedServerIds)
+            {
+                logger.LogInformation("MessageHubService: Re-subscribing to server group server={ServerId}", serverId);
+                _ = hubClient.SubscribeToServerAsync(serverId);
+            }
         }
     }
 }

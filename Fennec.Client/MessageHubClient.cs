@@ -20,15 +20,15 @@ public interface IMessageHubClient : IAsyncDisposable
     Task UnsubscribeFromChannelAsync(Guid serverId, Guid channelId);
     Task SubscribeToServerAsync(Guid serverId);
     Task UnsubscribeFromServerAsync(Guid serverId);
-    Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId);
+    Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId, string instanceUrl);
     Task DisconnectAsync();
     event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
     event Action? Reconnected;
     event Action<HubConnectionStatus>? ConnectionStateChanged;
 
     // Voice
-    Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId);
-    Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId);
+    Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl);
+    Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl);
     Task SendSdpOfferAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp);
     Task SendSdpAnswerAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp);
     Task SendIceCandidateAsync(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex);
@@ -209,26 +209,26 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
             await _connection.InvokeAsync("UnsubscribeFromServer", serverId);
     }
 
-    public async Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId)
+    public async Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId, string instanceUrl)
     {
         if (_connection?.State != HubConnectionState.Connected)
             return new();
-        return await _connection.InvokeAsync<Dictionary<Guid, List<VoiceParticipantDto>>>("GetServerVoiceState", serverId);
+        return await _connection.InvokeAsync<Dictionary<Guid, List<VoiceParticipantDto>>>("GetServerVoiceState", serverId, instanceUrl);
     }
 
     // Voice methods
 
-    public async Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId)
+    public async Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl)
     {
         if (_connection?.State != HubConnectionState.Connected)
             return [];
-        return await _connection.InvokeAsync<List<VoiceParticipantDto>>("JoinVoiceChannel", serverId, channelId);
+        return await _connection.InvokeAsync<List<VoiceParticipantDto>>("JoinVoiceChannel", serverId, channelId, instanceUrl);
     }
 
-    public async Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId)
+    public async Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl)
     {
         if (_connection?.State == HubConnectionState.Connected)
-            await _connection.InvokeAsync("LeaveVoiceChannel", serverId, channelId);
+            await _connection.InvokeAsync("LeaveVoiceChannel", serverId, channelId, instanceUrl);
     }
 
     public async Task SendSdpOfferAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp)

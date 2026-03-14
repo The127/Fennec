@@ -5,11 +5,11 @@ namespace Fennec.Api.Services;
 
 public class VoiceStateService
 {
-    private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), List<(Guid UserId, string Username, string? InstanceUrl, string ConnectionId)>> _channels = new();
+    private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), List<(Guid UserId, string Username, string? InstanceUrl, string? ConnectionId)>> _channels = new();
     private readonly ConcurrentDictionary<string, (Guid ServerId, Guid ChannelId, Guid UserId)> _connectionMap = new();
     private readonly object _lock = new();
 
-    public List<VoiceParticipantDto> AddParticipant(Guid serverId, Guid channelId, Guid userId, string username, string? instanceUrl, string connectionId)
+    public List<VoiceParticipantDto> AddParticipant(Guid serverId, Guid channelId, Guid userId, string username, string? instanceUrl, string? connectionId)
     {
         lock (_lock)
         {
@@ -20,7 +20,8 @@ public class VoiceStateService
             list.RemoveAll(p => p.UserId == userId);
 
             list.Add((userId, username, instanceUrl, connectionId));
-            _connectionMap[connectionId] = (serverId, channelId, userId);
+            if (connectionId is not null)
+                _connectionMap[connectionId] = (serverId, channelId, userId);
 
             return list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username, InstanceUrl = p.InstanceUrl }).ToList();
         }
@@ -69,6 +70,24 @@ public class VoiceStateService
             var key = (serverId, channelId);
             if (_channels.TryGetValue(key, out var list))
                 return list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username, InstanceUrl = p.InstanceUrl }).ToList();
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Returns the distinct instance URLs of remote participants in a channel (non-null, different from the given local instance URL).
+    /// </summary>
+    public List<string> GetRemoteInstanceUrls(Guid serverId, Guid channelId, string localInstanceUrl)
+    {
+        lock (_lock)
+        {
+            var key = (serverId, channelId);
+            if (_channels.TryGetValue(key, out var list))
+                return list
+                    .Where(p => p.InstanceUrl is not null && !p.InstanceUrl.Equals(localInstanceUrl, StringComparison.OrdinalIgnoreCase))
+                    .Select(p => p.InstanceUrl!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
             return [];
         }
     }

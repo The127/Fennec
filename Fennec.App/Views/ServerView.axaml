@@ -214,6 +214,9 @@
                                                                         </Button>
                                                                         <TextBlock Text="{Binding Username}" FontSize="12"
                                                                                    Opacity="0.7" />
+                                                                        <mi:MaterialIcon Kind="MicrophoneOff" Width="12" Height="12"
+                                                                                         Opacity="0.5"
+                                                                                         IsVisible="{Binding IsMuted}" />
                                                                     </StackPanel>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
