@@ -258,7 +258,9 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     {
         await LoadServersAsync(waitForRefresh: true);
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, serverId, serverName, _session!.Url, Username));
+        var server = Servers.FirstOrDefault(s => s.Id == serverId);
+        var instanceUrl = server?.InstanceUrl ?? _session!.Url;
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, serverId, serverName, instanceUrl, Username));
     }
 
     public void Receive(ServerJoinedMessage message)

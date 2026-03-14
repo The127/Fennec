@@ -139,7 +139,7 @@ public partial class App : Application
 
         SetupGlobalExceptionHandlers();
 
-        Task.Run(mainViewModel.InitializeAsync);
+        _ = mainViewModel.InitializeAsync();
 
         base.OnFrameworkInitializationCompleted();
     }
