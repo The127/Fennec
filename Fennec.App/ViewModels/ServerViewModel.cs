@@ -13,6 +13,7 @@ using Fennec.Client;
 using HubStatus = Fennec.Client.HubConnectionStatus;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Text;
 using ShadUI;
@@ -162,10 +163,11 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     private readonly IMessageHubService _messageHubService;
     private readonly IVoiceCallService _voiceCallService;
     private readonly IMessenger _messenger;
+    private readonly ILogger<ServerViewModel> _logger;
     private readonly string instanceUrl;
     private readonly string _currentUsername;
 
-    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, Guid serverId, string serverName, string instanceUrl, string currentUsername)
+    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, ILogger<ServerViewModel> logger, Guid serverId, string serverName, string instanceUrl, string currentUsername)
     {
         this.client = client;
         this.dialogManager = dialogManager;
@@ -173,6 +175,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         _messageHubService = messageHubService;
         _voiceCallService = voiceCallService;
         _messenger = messenger;
+        _logger = logger;
         ServerId = serverId;
         _serverName = serverName;
         this.instanceUrl = instanceUrl;
@@ -327,10 +330,10 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             await _messageHubService.SubscribeToChannelAsync(ServerId, channel.Id);
             SubscribedChannelName = channel.Name;
         }
-        catch
+        catch (Exception ex)
         {
             SubscribedChannelName = null;
-            // SignalR subscription failure shouldn't block channel selection.
+            _logger.LogWarning(ex, "Failed to subscribe to channel");
         }
 
         // Auto-join voice when clicking a voice-enabled channel
@@ -340,9 +343,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             {
                 await _voiceCallService.JoinAsync(ServerId, channel.Id);
             }
-            catch
+            catch (Exception ex)
             {
-                // Voice join failure shouldn't block channel selection.
+                _logger.LogWarning(ex, "Failed to auto-join voice channel");
             }
         }
 
@@ -613,9 +616,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         {
             await _voiceCallService.JoinAsync(ServerId, channel.Id);
         }
-        catch
+        catch (Exception ex)
         {
-            // Failed to join voice channel.
+            _logger.LogWarning(ex, "Failed to join voice channel");
         }
     }
 
@@ -626,9 +629,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         {
             await _voiceCallService.LeaveAsync();
         }
-        catch
+        catch (Exception ex)
         {
-            // Failed to leave voice channel.
+            _logger.LogWarning(ex, "Failed to leave voice channel");
         }
     }
 
@@ -684,13 +687,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     {
         Dispatcher.UIThread.Post(() =>
         {
-            // Clear participants from the old channel when disconnecting
-            if (!message.IsConnected && CurrentVoiceChannelId is not null)
-            {
-                var oldChannel = FindChannel(CurrentVoiceChannelId.Value);
-                oldChannel?.VoiceParticipants.Clear();
-            }
-
             IsInVoiceChannel = message.IsConnected;
             CurrentVoiceChannelId = message.ChannelId;
 
@@ -864,9 +860,19 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             var membersResponse = await client.Server.ListMembersAsync(instanceUrl, ServerId);
             ServerMembers = membersResponse.Members.Select(m => m.Name).ToList();
         }
-        catch
+        catch (Exception ex)
         {
-            // Failed to load members; autocomplete will be empty.
+            _logger.LogWarning(ex, "Failed to load server members");
+        }
+
+        // Subscribe to server-level events (voice presence)
+        try
+        {
+            await _messageHubService.SubscribeToServerAsync(ServerId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to subscribe to server group");
         }
 
         var groups = await serverStore.GetChannelGroupsAsync(instanceUrl, client, ServerId);
@@ -880,6 +886,23 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                     .Select(c => new ChannelItem(c.ChannelId, c.Name, c.ChannelType, c.ChannelGroupId))
                     .ToList();
                 ChannelGroups.Add(new ChannelGroupItem(group.ChannelGroupId, group.Name, channelItems));
+            }
+
+            // Populate existing voice participants
+            try
+            {
+                var voiceState = await _messageHubService.GetServerVoiceStateAsync(ServerId);
+                foreach (var (channelId, participants) in voiceState)
+                {
+                    var channel = FindChannel(channelId);
+                    if (channel is null) continue;
+                    foreach (var p in participants)
+                        channel.VoiceParticipants.Add(new VoiceParticipantItem(p.UserId, p.Username));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to fetch voice state");
             }
 
             if (SelectedChannel is null)

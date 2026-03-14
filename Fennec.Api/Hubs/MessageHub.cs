@@ -23,6 +23,25 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
     }
 
+    public async Task SubscribeToServer(Guid serverId)
+    {
+        var groupName = ServerGroup(serverId);
+        logger.LogInformation("SignalR: Connection {ConnectionId} subscribing to server group {Group}", Context.ConnectionId, groupName);
+        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+    }
+
+    public async Task UnsubscribeFromServer(Guid serverId)
+    {
+        var groupName = ServerGroup(serverId);
+        logger.LogInformation("SignalR: Connection {ConnectionId} unsubscribing from server group {Group}", Context.ConnectionId, groupName);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+    }
+
+    public Dictionary<Guid, List<VoiceParticipantDto>> GetServerVoiceState(Guid serverId)
+    {
+        return voiceState.GetServerVoiceState(serverId);
+    }
+
     // --- Voice ---
 
     public async Task<List<VoiceParticipantDto>> JoinVoiceChannel(Guid serverId, Guid channelId)
@@ -33,8 +52,9 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
         var participants = voiceState.AddParticipant(serverId, channelId, userId, username, Context.ConnectionId);
 
-        await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantJoined", serverId, channelId,
-            new VoiceParticipantDto { UserId = userId, Username = username });
+        var participantDto = new VoiceParticipantDto { UserId = userId, Username = username };
+        await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
+        await Clients.Group(ServerGroup(serverId)).SendAsync("VoiceParticipantJoined", serverId, channelId, participantDto);
 
         return participants;
     }
@@ -48,6 +68,7 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
 
         await Clients.OthersInGroup(groupName).SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
+        await Clients.Group(ServerGroup(serverId)).SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
     }
 
     public async Task SendSdpOffer(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
@@ -94,6 +115,8 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
             var (serverId, channelId, userId) = removed.Value;
             await Clients.Group(VoiceGroup(serverId, channelId))
                 .SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
+            await Clients.Group(ServerGroup(serverId))
+                .SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
         }
 
         await base.OnDisconnectedAsync(exception);
@@ -103,6 +126,15 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
     {
         var httpContext = Context.GetHttpContext();
         var token = httpContext?.Request.Query["access_token"].FirstOrDefault();
+
+        // Fallback: check Authorization header (used by non-WebSocket transports)
+        if (token is null)
+        {
+            var auth = httpContext?.Request.Headers.Authorization.FirstOrDefault();
+            if (auth is not null && auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                token = auth["Bearer ".Length..];
+        }
+
         if (token is null)
             throw new HubException("No access token provided");
 
@@ -114,6 +146,7 @@ public class MessageHub(VoiceStateService voiceState, ILogger<MessageHub> logger
     }
 
     private static string VoiceGroup(Guid serverId, Guid channelId) => $"voice-{serverId}-{channelId}";
+    private static string ServerGroup(Guid serverId) => $"server-{serverId}";
 }
 
 public interface IMessageEventService

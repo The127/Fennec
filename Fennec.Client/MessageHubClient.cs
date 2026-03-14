@@ -18,6 +18,9 @@ public interface IMessageHubClient : IAsyncDisposable
     Task ConnectAsync(string baseUrl, string token);
     Task SubscribeToChannelAsync(Guid serverId, Guid channelId);
     Task UnsubscribeFromChannelAsync(Guid serverId, Guid channelId);
+    Task SubscribeToServerAsync(Guid serverId);
+    Task UnsubscribeFromServerAsync(Guid serverId);
+    Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId);
     Task DisconnectAsync();
     event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
     event Action? Reconnected;
@@ -182,6 +185,35 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
 
         logger.LogInformation("SignalR: Unsubscribing from server={ServerId} channel={ChannelId}", serverId, channelId);
         await _connection!.InvokeAsync("UnsubscribeFromChannel", serverId, channelId);
+    }
+
+    public async Task SubscribeToServerAsync(Guid serverId)
+    {
+        if (_connection?.State != HubConnectionState.Connected)
+        {
+            try
+            {
+                await _connectedTcs.Task.WaitAsync(ConnectTimeout);
+            }
+            catch (TimeoutException) { return; }
+            catch (OperationCanceledException) { return; }
+        }
+
+        logger.LogInformation("SignalR: Subscribing to server group server={ServerId}", serverId);
+        await _connection!.InvokeAsync("SubscribeToServer", serverId);
+    }
+
+    public async Task UnsubscribeFromServerAsync(Guid serverId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+            await _connection.InvokeAsync("UnsubscribeFromServer", serverId);
+    }
+
+    public async Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId)
+    {
+        if (_connection?.State != HubConnectionState.Connected)
+            return new();
+        return await _connection.InvokeAsync<Dictionary<Guid, List<VoiceParticipantDto>>>("GetServerVoiceState", serverId);
     }
 
     // Voice methods

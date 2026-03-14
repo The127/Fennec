@@ -4,6 +4,8 @@ using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.ViewModels;
 using Fennec.Client;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ShadUI;
 
 namespace Fennec.App.Routes;
@@ -12,7 +14,8 @@ public record ServerRoute(IFennecClient Client, DialogManager DialogManager, ISe
 {
     public ObservableObject GetViewModel(IServiceProvider serviceProvider)
     {
-        var vm = new ServerViewModel(Client, DialogManager, ServerStore, MessageHubService, VoiceCallService, Messenger, ServerId, ServerName, InstanceUrl, CurrentUsername);
+        var logger = serviceProvider.GetRequiredService<ILogger<ServerViewModel>>();
+        var vm = new ServerViewModel(Client, DialogManager, ServerStore, MessageHubService, VoiceCallService, Messenger, logger, ServerId, ServerName, InstanceUrl, CurrentUsername);
         _ = vm.LoadAsync();
         return vm;
     }

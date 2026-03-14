@@ -9,6 +9,9 @@ public interface IMessageHubService
 {
     Task ConnectAsync(string baseUrl, string token);
     Task SubscribeToChannelAsync(Guid serverId, Guid channelId);
+    Task SubscribeToServerAsync(Guid serverId);
+    Task UnsubscribeFromServerAsync(Guid serverId);
+    Task<Dictionary<Guid, List<Fennec.Shared.Dtos.Voice.VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId);
     Task DisconnectAsync();
     Guid? CurrentServerId { get; }
     Guid? CurrentChannelId { get; }
@@ -47,6 +50,15 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
         logger.LogInformation("MessageHubService: Subscribing to server={ServerId} channel={ChannelId}", serverId, channelId);
         await hubClient.SubscribeToChannelAsync(serverId, channelId);
     }
+
+    public Task SubscribeToServerAsync(Guid serverId)
+        => hubClient.SubscribeToServerAsync(serverId);
+
+    public Task UnsubscribeFromServerAsync(Guid serverId)
+        => hubClient.UnsubscribeFromServerAsync(serverId);
+
+    public Task<Dictionary<Guid, List<Fennec.Shared.Dtos.Voice.VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId)
+        => hubClient.GetServerVoiceStateAsync(serverId);
 
     public async Task DisconnectAsync()
     {

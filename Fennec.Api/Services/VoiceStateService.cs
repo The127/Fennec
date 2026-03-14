@@ -72,4 +72,20 @@ public class VoiceStateService
             return [];
         }
     }
+
+    public Dictionary<Guid, List<VoiceParticipantDto>> GetServerVoiceState(Guid serverId)
+    {
+        lock (_lock)
+        {
+            var result = new Dictionary<Guid, List<VoiceParticipantDto>>();
+            foreach (var (key, list) in _channels)
+            {
+                if (key.ServerId == serverId && list.Count > 0)
+                {
+                    result[key.ChannelId] = list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username }).ToList();
+                }
+            }
+            return result;
+        }
+    }
 }

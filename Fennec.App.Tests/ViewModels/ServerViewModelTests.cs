@@ -5,6 +5,7 @@ using Fennec.Client;
 using Fennec.Client.Clients;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using ShadUI;
 
@@ -27,7 +28,9 @@ public class ServerViewModelTests
             .Returns(Task.FromResult(new List<ListChannelGroupsResponseItemDto>()));
     }
 
-    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverStore, _messageHubService, _voiceCallService, _messenger, _serverId, "Test Server", "https://fennec.chat", "testuser");
+    private readonly ILogger<ServerViewModel> _logger = Substitute.For<ILogger<ServerViewModel>>();
+
+    private ServerViewModel CreateViewModel() => new(_client, new DialogManager(), _serverStore, _messageHubService, _voiceCallService, _messenger, _logger, _serverId, "Test Server", "https://fennec.chat", "testuser");
 
     [Fact]
     public async Task Loading_populates_channel_groups_with_channels()
