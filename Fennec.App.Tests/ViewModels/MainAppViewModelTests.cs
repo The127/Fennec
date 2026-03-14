@@ -8,6 +8,7 @@ using Fennec.App.Shortcuts;
 using Fennec.App.ViewModels;
 using Fennec.Client;
 using Fennec.Client.Clients;
+using Fennec.Shared.Dtos.Auth;
 using Fennec.Shared.Dtos.Server;
 using NSubstitute;
 using ShadUI;
@@ -29,11 +30,15 @@ public class MainAppViewModelTests
     private readonly IVoiceCallService _voiceCallService = Substitute.For<IVoiceCallService>();
     private readonly IVoiceHubService _voiceHubService = Substitute.For<IVoiceHubService>();
     private readonly IAuthStore _authStore = Substitute.For<IAuthStore>();
+    private readonly IAuthClient _authClient = Substitute.For<IAuthClient>();
 
     public MainAppViewModelTests()
     {
         _clientFactory.Create().Returns(_client);
         _client.Server.Returns(_serverClient);
+        _client.Auth.Returns(_authClient);
+        _authClient.GetPublicTokenAsync(Arg.Any<string>(), Arg.Any<GetPublicTokenRequestDto>(), Arg.Any<CancellationToken>())
+            .Returns(new GetPublicTokenResponseDto { Token = "jwt-token" });
         _serverClient.ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ListJoinedServersResponseDto { Servers = [] });
         _serverStore.GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>())
@@ -169,5 +174,19 @@ public class MainAppViewModelTests
 
         // Assert
         Assert.Single(vm.Servers);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_connects_hub_with_public_token_not_session_token()
+    {
+        var vm = CreateViewModel();
+
+        await vm.InitializeAsync();
+
+        await _authClient.Received().GetPublicTokenAsync(
+            "https://fennec.chat",
+            Arg.Is<GetPublicTokenRequestDto>(r => r.Audience == "https://fennec.chat"),
+            Arg.Any<CancellationToken>());
+        await _messageHubService.Received().ConnectAsync("https://fennec.chat", "jwt-token");
     }
 }

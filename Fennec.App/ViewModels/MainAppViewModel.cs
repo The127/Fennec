@@ -14,6 +14,7 @@ using Fennec.App.Shortcuts;
 using Fennec.App.Themes;
 using Fennec.App.ViewModels.Settings;
 using Fennec.Client;
+using Fennec.Shared.Dtos.Auth;
 using Fennec.Shared.Dtos.Server;
 using ShadUI;
 
@@ -202,7 +203,10 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         {
             try
             {
-                await _messageHubService.ConnectAsync(_session.Url, _session.SessionToken);
+                var publicToken = await _client.Auth.GetPublicTokenAsync(
+                    _session.Url,
+                    new GetPublicTokenRequestDto { Audience = _session.Url });
+                await _messageHubService.ConnectAsync(_session.Url, publicToken.Token);
             }
             catch (Exception ex)
             {
