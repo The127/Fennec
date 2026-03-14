@@ -137,6 +137,8 @@ public partial class App : Application
             };
         }
 
+        SetupGlobalExceptionHandlers();
+
         Task.Run(mainViewModel.InitializeAsync);
 
         base.OnFrameworkInitializationCompleted();
@@ -184,6 +186,23 @@ public partial class App : Application
         RequestedThemeVariant = AppThemes.Resolve(
             settings.Theme,
             AppThemes.ResolveEffectiveMode(mode, osTheme));
+    }
+
+    private void SetupGlobalExceptionHandlers()
+    {
+        var handler = _services.GetRequiredService<IExceptionHandler>();
+
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            if (e.ExceptionObject is Exception ex)
+                handler.Handle(ex, "Unhandled AppDomain exception");
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            handler.Handle(e.Exception, "Unobserved task exception");
+            e.SetObserved();
+        };
     }
 
     private void DisableAvaloniaDataAnnotationValidation()
