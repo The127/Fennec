@@ -55,7 +55,7 @@ public partial class AppShellViewModel
 
     public async Task InitializeAsync()
     {
-        await Task.Delay(500);
+        await Task.Delay(1500);
         
         var currentSession = await _authStore.GetCurrentAuthSessionAsync();
         if (currentSession is not null)
