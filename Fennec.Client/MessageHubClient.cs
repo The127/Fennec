@@ -71,7 +71,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(token);
             })
-            .WithAutomaticReconnect()
+            .WithAutomaticReconnect(new ForeverRetryPolicy())
             .Build();
 
         _connection.On<Guid, Guid, MessageReceivedDto>("MessageReceived", (serverId, channelId, message) =>
@@ -264,5 +264,23 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     public async ValueTask DisposeAsync()
     {
         await DisconnectAsync();
+    }
+}
+
+internal sealed class ForeverRetryPolicy : IRetryPolicy
+{
+    public TimeSpan? NextRetryDelay(RetryContext retryContext)
+    {
+        var attempt = retryContext.PreviousRetryCount;
+        var delay = attempt switch
+        {
+            0 => 0,
+            1 => 2,
+            2 => 5,
+            3 => 10,
+            4 => 30,
+            _ => 60,
+        };
+        return TimeSpan.FromSeconds(delay);
     }
 }
