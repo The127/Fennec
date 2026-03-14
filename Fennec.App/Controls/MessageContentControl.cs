@@ -42,9 +42,9 @@ public class MessageContentControl : UserControl
         IsEmojiOnlyProperty.Changed.AddClassHandler<MessageContentControl>((c, _) => c.Rebuild());
     }
 
-    private static void BindBrushToResource(Border border, AvaloniaProperty property, string resourceKey)
+    private static void BindBrushToResource(StyledElement element, AvaloniaProperty property, string resourceKey)
     {
-        border.Bind(property, border.GetResourceObservable(resourceKey));
+        element.Bind(property, element.GetResourceObservable(resourceKey));
     }
 
     private void Rebuild()
@@ -127,24 +127,14 @@ public class MessageContentControl : UserControl
                     tb.Inlines!.Add(new Run(plain.Text));
                     break;
                 case InlineCodeSegment inline:
-                    var codeTb = new TextBlock
+                    var codeSpan = new Span
                     {
-                        Text = inline.Code,
                         FontFamily = MonoFont,
                         FontSize = 13,
-                        VerticalAlignment = VerticalAlignment.Center,
                     };
-                    var border = new Border
-                    {
-                        Child = codeTb,
-                        CornerRadius = new CornerRadius(4),
-                        Padding = new Thickness(5, 2),
-                        BorderThickness = new Thickness(1),
-                        VerticalAlignment = VerticalAlignment.Center,
-                    };
-                    BindBrushToResource(border, Border.BackgroundProperty, "InlineCodeBackgroundBrush");
-                    BindBrushToResource(border, Border.BorderBrushProperty, "CodeBlockBorderBrush");
-                    tb.Inlines!.Add(new InlineUIContainer(border));
+                    BindBrushToResource(codeSpan, Span.BackgroundProperty, "InlineCodeBackgroundBrush");
+                    codeSpan.Inlines!.Add(new Run(" " + inline.Code + " "));
+                    tb.Inlines!.Add(codeSpan);
                     break;
             }
         }
