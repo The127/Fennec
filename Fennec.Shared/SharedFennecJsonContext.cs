@@ -34,6 +34,8 @@ using System.Text.Json.Serialization;
 [JsonSerializable(typeof(ListMessagesResponseDto))]
 [JsonSerializable(typeof(MessageReceivedDto))]
 [JsonSerializable(typeof(ListServerMembersResponseDto))]
+[JsonSerializable(typeof(ServerPresenceEntryDto))]
+[JsonSerializable(typeof(List<ServerPresenceEntryDto>))]
 public partial class SharedFennecJsonContext : JsonSerializerContext
 {
 }

@@ -21,10 +21,15 @@ public interface IMessageHubClient : IAsyncDisposable
     Task SubscribeToServerAsync(Guid serverId);
     Task UnsubscribeFromServerAsync(Guid serverId);
     Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId, string instanceUrl);
+    Task<List<ServerPresenceEntryDto>> GetServerPresenceAsync(Guid serverId);
     Task DisconnectAsync();
     event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
     event Action? Reconnected;
     event Action<HubConnectionStatus>? ConnectionStateChanged;
+
+    // Presence
+    event Action<Guid, Guid, string, string?>? UserOnline;
+    event Action<Guid, Guid>? UserOffline;
 
     // Voice
     Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl);
@@ -49,6 +54,10 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     public event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
     public event Action? Reconnected;
     public event Action<HubConnectionStatus>? ConnectionStateChanged;
+
+    // Presence events
+    public event Action<Guid, Guid, string, string?>? UserOnline;
+    public event Action<Guid, Guid>? UserOffline;
 
     // Voice events
     public event Action<Guid, Guid, VoiceParticipantDto>? VoiceParticipantJoined;
@@ -79,6 +88,16 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
             logger.LogInformation("SignalR: Received message on server={ServerId} channel={ChannelId} messageId={MessageId} from={Author}",
                 serverId, channelId, message.MessageId, message.AuthorName);
             MessageReceived?.Invoke(serverId, channelId, message);
+        });
+
+        _connection.On<Guid, Guid, string, string?>("UserOnline", (serverId, userId, username, instanceUrl) =>
+        {
+            UserOnline?.Invoke(serverId, userId, username, instanceUrl);
+        });
+
+        _connection.On<Guid, Guid>("UserOffline", (serverId, userId) =>
+        {
+            UserOffline?.Invoke(serverId, userId);
         });
 
         _connection.On<Guid, Guid, VoiceParticipantDto>("VoiceParticipantJoined", (serverId, channelId, participant) =>
@@ -214,6 +233,13 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         if (_connection?.State != HubConnectionState.Connected)
             return new();
         return await _connection.InvokeAsync<Dictionary<Guid, List<VoiceParticipantDto>>>("GetServerVoiceState", serverId, instanceUrl);
+    }
+
+    public async Task<List<ServerPresenceEntryDto>> GetServerPresenceAsync(Guid serverId)
+    {
+        if (_connection?.State != HubConnectionState.Connected)
+            return [];
+        return await _connection.InvokeAsync<List<ServerPresenceEntryDto>>("GetServerPresence", serverId);
     }
 
     // Voice methods

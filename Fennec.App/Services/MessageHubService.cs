@@ -12,6 +12,7 @@ public interface IMessageHubService
     Task SubscribeToServerAsync(Guid serverId);
     Task UnsubscribeFromServerAsync(Guid serverId);
     Task<Dictionary<Guid, List<Fennec.Shared.Dtos.Voice.VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId, string instanceUrl);
+    Task<List<Fennec.Shared.Dtos.Server.ServerPresenceEntryDto>> GetServerPresenceAsync(Guid serverId);
     Task DisconnectAsync();
     Guid? CurrentServerId { get; }
     Guid? CurrentChannelId { get; }
@@ -34,6 +35,8 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
         hubClient.MessageReceived += OnMessageReceived;
         hubClient.Reconnected += OnReconnected;
         hubClient.ConnectionStateChanged += OnConnectionStateChanged;
+        hubClient.UserOnline += OnUserOnline;
+        hubClient.UserOffline += OnUserOffline;
         await hubClient.ConnectAsync(baseUrl, token);
     }
 
@@ -67,15 +70,30 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
     public Task<Dictionary<Guid, List<Fennec.Shared.Dtos.Voice.VoiceParticipantDto>>> GetServerVoiceStateAsync(Guid serverId, string instanceUrl)
         => hubClient.GetServerVoiceStateAsync(serverId, instanceUrl);
 
+    public Task<List<Fennec.Shared.Dtos.Server.ServerPresenceEntryDto>> GetServerPresenceAsync(Guid serverId)
+        => hubClient.GetServerPresenceAsync(serverId);
+
     public async Task DisconnectAsync()
     {
         logger.LogInformation("MessageHubService: Disconnecting");
         hubClient.MessageReceived -= OnMessageReceived;
         hubClient.Reconnected -= OnReconnected;
         hubClient.ConnectionStateChanged -= OnConnectionStateChanged;
+        hubClient.UserOnline -= OnUserOnline;
+        hubClient.UserOffline -= OnUserOffline;
         _currentServerId = null;
         _currentChannelId = null;
         await hubClient.DisconnectAsync();
+    }
+
+    private void OnUserOnline(Guid serverId, Guid userId, string username, string? instanceUrl)
+    {
+        messenger.Send(new UserOnlineMessage(serverId, userId, username, instanceUrl));
+    }
+
+    private void OnUserOffline(Guid serverId, Guid userId)
+    {
+        messenger.Send(new UserOfflineMessage(serverId, userId));
     }
 
     private void OnMessageReceived(Guid serverId, Guid channelId, Fennec.Shared.Dtos.Server.MessageReceivedDto message)

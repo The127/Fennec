@@ -61,6 +61,14 @@ public partial class ChannelGroupItem(Guid id, string name, List<ChannelItem> ch
     private string _renamingText = name;
 }
 
+public class MemberItem(string username, string? instanceUrl, bool isOnline)
+{
+    public string Username { get; } = username;
+    public string? InstanceUrl { get; } = instanceUrl;
+    public string Identity => InstanceUrl is not null ? $"{Username}@{InstanceUrl}" : Username;
+    public bool IsOnline { get; } = isOnline;
+}
+
 public class AttachmentItem(string fileName, Uri path)
 {
     public string FileName { get; } = fileName;
@@ -162,7 +170,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<VoiceParticipantJoinedMessage>,
     IRecipient<VoiceParticipantLeftMessage>,
     IRecipient<VoiceStateChangedMessage>,
-    IRecipient<HubConnectionStateChangedMessage>
+    IRecipient<HubConnectionStateChangedMessage>,
+    IRecipient<UserOnlineMessage>,
+    IRecipient<UserOfflineMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
@@ -197,6 +207,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<VoiceParticipantLeftMessage>(this);
         messenger.Register<VoiceStateChangedMessage>(this);
         messenger.Register<HubConnectionStateChangedMessage>(this);
+        messenger.Register<UserOnlineMessage>(this);
+        messenger.Register<UserOfflineMessage>(this);
 
         // Initialize hub status from current state (message may have been sent before registration)
         (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
@@ -234,6 +246,15 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     public Guid ServerId { get; }
 
     public List<string> ServerMembers { get; private set; } = [];
+
+    public ObservableCollection<MemberItem> OnlineMembers { get; } = [];
+    public ObservableCollection<MemberItem> OfflineMembers { get; } = [];
+
+    [ObservableProperty]
+    private int _onlineMemberCount;
+
+    [ObservableProperty]
+    private int _offlineMemberCount;
 
     public ShortcutContext ShortcutContext => ShortcutContext.Server;
 
@@ -587,6 +608,56 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         });
     }
 
+    // --- Presence ---
+
+    private readonly Dictionary<Guid, (string Username, string? InstanceUrl)> _onlineUsers = new();
+    private List<ListServerMembersResponseItemDto> _allMembers = [];
+
+    public void Receive(UserOnlineMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            _onlineUsers[message.UserId] = (message.Username, message.InstanceUrl);
+            RebuildMemberLists();
+        });
+    }
+
+    public void Receive(UserOfflineMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            _onlineUsers.Remove(message.UserId);
+            RebuildMemberLists();
+        });
+    }
+
+    private void RebuildMemberLists()
+    {
+        OnlineMembers.Clear();
+        OfflineMembers.Clear();
+
+        var onlineKeys = new HashSet<string>(_onlineUsers.Values.Select(p => MemberKey(p.Username, p.InstanceUrl)));
+
+        foreach (var member in _allMembers)
+        {
+            var key = MemberKey(member.Name, member.InstanceUrl);
+            if (onlineKeys.Contains(key))
+                OnlineMembers.Add(new MemberItem(member.Name, member.InstanceUrl, true));
+            else
+                OfflineMembers.Add(new MemberItem(member.Name, member.InstanceUrl, false));
+        }
+
+        OnlineMemberCount = OnlineMembers.Count;
+        OfflineMemberCount = OfflineMembers.Count;
+    }
+
+    private static string MemberKey(string name, string? instanceUrl) =>
+        instanceUrl is not null ? $"{name}@{instanceUrl}" : name;
+
     // --- User Profile Actions ---
 
     [RelayCommand]
@@ -890,6 +961,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         try
         {
             var membersResponse = await client.Server.ListMembersAsync(instanceUrl, ServerId);
+            _allMembers = membersResponse.Members;
             ServerMembers = membersResponse.Members.Select(m => m.Name).ToList();
         }
         catch (Exception ex)
@@ -905,6 +977,22 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to subscribe to server group");
+        }
+
+        // Fetch initial presence
+        try
+        {
+            var presence = await _messageHubService.GetServerPresenceAsync(ServerId);
+            _onlineUsers.Clear();
+            foreach (var entry in presence)
+                _onlineUsers[entry.UserId] = (entry.Username, entry.InstanceUrl);
+            RebuildMemberLists();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load server presence");
+            // Show all members as offline
+            RebuildMemberLists();
         }
 
         var groups = await serverStore.GetChannelGroupsAsync(instanceUrl, client, ServerId);

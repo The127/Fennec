@@ -11,6 +11,7 @@ namespace Fennec.Api.Hubs;
 
 public class MessageHub(
     VoiceStateService voiceState,
+    PresenceService presenceService,
     IFederationClient federationClient,
     IOptions<FennecSettings> fennecOptions,
     ILogger<MessageHub> logger
@@ -38,6 +39,22 @@ public class MessageHub(
         var groupName = ServerGroup(serverId);
         logger.LogInformation("SignalR: Connection {ConnectionId} subscribing to server group {Group}", Context.ConnectionId, groupName);
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+
+        try
+        {
+            var (userId, username, callerInstanceUrl) = GetCallerIdentity();
+            var isNew = presenceService.AddUser(serverId, userId, username, callerInstanceUrl, Context.ConnectionId);
+            logger.LogInformation("Presence: AddUser server={ServerId} user={Username} userId={UserId} instanceUrl={InstanceUrl} isNew={IsNew}",
+                serverId, username, userId, callerInstanceUrl, isNew);
+            if (isNew)
+            {
+                await Clients.OthersInGroup(groupName).SendAsync("UserOnline", serverId, userId, username, callerInstanceUrl);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to track presence for connection {ConnectionId}", Context.ConnectionId);
+        }
     }
 
     public async Task UnsubscribeFromServer(Guid serverId)
@@ -45,6 +62,16 @@ public class MessageHub(
         var groupName = ServerGroup(serverId);
         logger.LogInformation("SignalR: Connection {ConnectionId} unsubscribing from server group {Group}", Context.ConnectionId, groupName);
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+    }
+
+    public List<ServerPresenceEntryDto> GetServerPresence(Guid serverId)
+    {
+        var online = presenceService.GetOnlineUsers(serverId);
+        logger.LogInformation("Presence: GetServerPresence server={ServerId} count={Count} users={Users}",
+            serverId, online.Count, string.Join(", ", online.Select(e => $"{e.Username}({e.UserId})")));
+        return online
+            .Select(e => new ServerPresenceEntryDto { UserId = e.UserId, Username = e.Username, InstanceUrl = e.InstanceUrl })
+            .ToList();
     }
 
     public async Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetServerVoiceState(Guid serverId, string instanceUrl)
@@ -187,6 +214,13 @@ public class MessageHub(
     {
         logger.LogInformation("SignalR: Client disconnected {ConnectionId} (exception: {Exception})",
             Context.ConnectionId, exception?.Message ?? "none");
+
+        // Presence cleanup
+        var offlineUsers = presenceService.RemoveAllByConnectionId(Context.ConnectionId);
+        foreach (var (serverId, userId, username, instanceUrl) in offlineUsers)
+        {
+            await Clients.Group(ServerGroup(serverId)).SendAsync("UserOffline", serverId, userId);
+        }
 
         var removed = voiceState.RemoveByConnectionId(Context.ConnectionId);
         if (removed is not null)

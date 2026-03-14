@@ -5,6 +5,7 @@
              xmlns:shadui="using:ShadUI"
              xmlns:mi="using:Material.Icons.Avalonia"
              xmlns:conv="using:Fennec.App.Converters"
+             xmlns:controls="using:Fennec.App.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              xmlns:views="using:Fennec.App.Views"
              xmlns:vm="using:Fennec.App.ViewModels"
@@ -26,7 +27,7 @@
             <Setter Property="Background" Value="{DynamicResource InfoColor20}" />
         </Style>
     </UserControl.Styles>
-    <Grid ColumnDefinitions="240 *">
+    <Grid ColumnDefinitions="240 * 220">
         <!-- Left: Channels -->
         <Border Grid.Column="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0">
             <DockPanel>
@@ -472,10 +473,9 @@
                                         </Border.Styles>
                                         <Grid ColumnDefinitions="*,Auto">
                                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
-                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
-                                                           FontFamily="Inter, fonts:NotoColorEmoji#Noto Color Emoji"
-                                                           FontSize="{Binding IsEmojiOnly, Converter={StaticResource EmojiOnlyFontSizeConverter}}"
-                                                           VerticalAlignment="Center" />
+                                                <controls:MessageContentControl MessageText="{Binding Content}"
+                                                                                     IsEmojiOnly="{Binding IsEmojiOnly}"
+                                                                                     VerticalAlignment="Center" />
                                                 <mi:MaterialIcon Kind="ClockOutline" Width="14" Height="14"
                                                                  Opacity="0.5" VerticalAlignment="Center"
                                                                  IsVisible="{Binding IsPending}" />
@@ -511,5 +511,154 @@
                 </ScrollViewer>
             </Panel>
         </DockPanel>
+
+        <!-- Right: Member list -->
+        <Border Grid.Column="2" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1,0,0,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Classes="H4" Text="Members" Margin="16,16,16,8" />
+                <ScrollViewer>
+                    <StackPanel Margin="8,0">
+                        <!-- Online section -->
+                        <TextBlock Classes="Muted" FontSize="11" Margin="8,8,0,4">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="ONLINE — {0}">
+                                    <Binding Path="OnlineMemberCount" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <ItemsControl ItemsSource="{Binding OnlineMembers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:MemberItem">
+                                    <Button HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            Padding="8,4" Margin="0,1">
+                                        <Button.Styles>
+                                            <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                <Setter Property="Background" Value="{DynamicResource SecondaryColor50}" />
+                                            </Style>
+                                        </Button.Styles>
+                                        <Button.Flyout>
+                                            <Flyout Placement="LeftEdgeAlignedTop"
+                                                    FlyoutPresenterClasses="PopupPanel">
+                                                <Border Classes="PopupPanel" Padding="12" MinWidth="200">
+                                                    <StackPanel Spacing="12">
+                                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                                            <shadui:Avatar Fallback="{Binding Username[0]}" Height="40" Width="40" />
+                                                            <StackPanel VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Username}" FontWeight="SemiBold" FontSize="15" />
+                                                                <TextBlock Text="{Binding Identity}" Classes="Muted" FontSize="12" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <Button Classes="Primary" Padding="8,4"
+                                                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddFriendCommand}">
+                                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                    <mi:MaterialIcon Kind="AccountPlus" Width="14" Height="14" />
+                                                                    <TextBlock Text="Add Friend" FontSize="12" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                            <Button Classes="Primary" Padding="8,4"
+                                                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).SendDirectMessageCommand}">
+                                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                    <mi:MaterialIcon Kind="MessageText" Width="14" Height="14" />
+                                                                    <TextBlock Text="Message" FontSize="12" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Flyout>
+                                        </Button.Flyout>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Panel>
+                                                <shadui:Avatar Fallback="{Binding Username[0]}" Height="28" Width="28" />
+                                                <Border Width="10" Height="10" CornerRadius="5"
+                                                        Background="#4CAF50"
+                                                        BorderBrush="{DynamicResource BackgroundColor}"
+                                                        BorderThickness="2"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                        Margin="0,0,-1,-1" />
+                                            </Panel>
+                                            <TextBlock Text="{Binding Username}" FontSize="13"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Offline section -->
+                        <TextBlock Classes="Muted" FontSize="11" Margin="8,12,0,4">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="OFFLINE — {0}">
+                                    <Binding Path="OfflineMemberCount" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <ItemsControl ItemsSource="{Binding OfflineMembers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:MemberItem">
+                                    <Button HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            Padding="8,4" Margin="0,1"
+                                            Opacity="0.5">
+                                        <Button.Styles>
+                                            <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                <Setter Property="Background" Value="{DynamicResource SecondaryColor50}" />
+                                            </Style>
+                                        </Button.Styles>
+                                        <Button.Flyout>
+                                            <Flyout Placement="LeftEdgeAlignedTop"
+                                                    FlyoutPresenterClasses="PopupPanel">
+                                                <Border Classes="PopupPanel" Padding="12" MinWidth="200">
+                                                    <StackPanel Spacing="12">
+                                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                                            <shadui:Avatar Fallback="{Binding Username[0]}" Height="40" Width="40" />
+                                                            <StackPanel VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Username}" FontWeight="SemiBold" FontSize="15" />
+                                                                <TextBlock Text="{Binding Identity}" Classes="Muted" FontSize="12" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <Button Classes="Primary" Padding="8,4"
+                                                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddFriendCommand}">
+                                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                    <mi:MaterialIcon Kind="AccountPlus" Width="14" Height="14" />
+                                                                    <TextBlock Text="Add Friend" FontSize="12" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                            <Button Classes="Primary" Padding="8,4"
+                                                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).SendDirectMessageCommand}">
+                                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                    <mi:MaterialIcon Kind="MessageText" Width="14" Height="14" />
+                                                                    <TextBlock Text="Message" FontSize="12" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Flyout>
+                                        </Button.Flyout>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Panel>
+                                                <shadui:Avatar Fallback="{Binding Username[0]}" Height="28" Width="28" />
+                                                <Border Width="10" Height="10" CornerRadius="5"
+                                                        Background="#808080"
+                                                        BorderBrush="{DynamicResource BackgroundColor}"
+                                                        BorderThickness="2"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                        Margin="0,0,-1,-1" />
+                                            </Panel>
+                                            <TextBlock Text="{Binding Username}" FontSize="13"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
     </Grid>
 </UserControl>
