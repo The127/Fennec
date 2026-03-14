@@ -336,19 +336,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             _logger.LogWarning(ex, "Failed to subscribe to channel");
         }
 
-        // Auto-join voice when clicking a voice-enabled channel
-        if (!channel.IsTextOnly && (!IsInVoiceChannel || CurrentVoiceChannelId != channel.Id))
-        {
-            try
-            {
-                await _voiceCallService.JoinAsync(ServerId, channel.Id);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to auto-join voice channel");
-            }
-        }
-
         MessageInputFocusRequested?.Invoke();
     }
 

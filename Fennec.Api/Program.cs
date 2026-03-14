@@ -82,5 +82,6 @@ app.UseHttpExceptions();
 app.UseHttpsRedirection();
 app.MapControllers();
 app.MapHub<MessageHub>("/hubs/messages");
+app.MapGet("/health", () => Results.Ok());
 
 app.Run();
