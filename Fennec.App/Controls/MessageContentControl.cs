@@ -237,6 +237,16 @@ public class MessageContentControl : UserControl
             Foreground = new SolidColorBrush(Color.FromRgb(255, 0, 0)),
         });
 
+        var thumbnail = new Avalonia.Controls.Image
+        {
+            MaxWidth = 380,
+            MaxHeight = 214,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            IsVisible = false,
+        };
+        stack.Children.Add(thumbnail);
+
         var body = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         body.Children.Add(new MaterialIcon
         {
@@ -245,16 +255,28 @@ public class MessageContentControl : UserControl
             Height = 32,
             Foreground = new SolidColorBrush(Color.FromRgb(255, 0, 0)),
         });
-        body.Children.Add(new TextBlock
+
+        var titleText = new TextBlock
         {
-            Text = embed.SourceUrl.AbsoluteUri,
+            Text = "Loading...",
             FontSize = 13,
             TextWrapping = TextWrapping.Wrap,
             VerticalAlignment = VerticalAlignment.Center,
             MaxWidth = 340,
-        });
+        };
+        body.Children.Add(titleText);
 
         stack.Children.Add(body);
+
+        var authorText = new TextBlock
+        {
+            FontSize = 11,
+            Opacity = 0.6,
+            TextWrapping = TextWrapping.Wrap,
+            IsVisible = false,
+        };
+        stack.Children.Add(authorText);
+
         border.Child = stack;
 
         border.PointerPressed += (_, _) =>
@@ -267,7 +289,52 @@ public class MessageContentControl : UserControl
             catch { }
         };
 
+        _ = LoadYouTubeOEmbedAsync(embed.SourceUrl, thumbnail, titleText, authorText);
+
         return border;
+    }
+
+    private static async Task LoadYouTubeOEmbedAsync(
+        Uri sourceUrl,
+        Avalonia.Controls.Image thumbnail,
+        TextBlock titleText,
+        TextBlock authorText)
+    {
+        try
+        {
+            using var httpClient = new System.Net.Http.HttpClient();
+            var oEmbedUrl = $"https://www.youtube.com/oembed?url={Uri.EscapeDataString(sourceUrl.AbsoluteUri)}&format=json";
+            var json = await httpClient.GetStringAsync(oEmbedUrl);
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("title", out var titleProp))
+                titleText.Text = titleProp.GetString();
+
+            if (root.TryGetProperty("author_name", out var authorProp))
+            {
+                authorText.Text = authorProp.GetString();
+                authorText.IsVisible = true;
+            }
+
+            if (root.TryGetProperty("thumbnail_url", out var thumbProp))
+            {
+                var thumbUrl = thumbProp.GetString();
+                if (!string.IsNullOrEmpty(thumbUrl))
+                {
+                    var data = await httpClient.GetByteArrayAsync(thumbUrl);
+                    var stream = new System.IO.MemoryStream(data);
+                    var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+                    thumbnail.Source = bitmap;
+                    thumbnail.IsVisible = true;
+                }
+            }
+        }
+        catch
+        {
+            // Fall back to showing the raw URL
+            titleText.Text = sourceUrl.AbsoluteUri;
+        }
     }
 
     private static Control BuildSpotifyEmbed(SpotifyEmbed embed)
