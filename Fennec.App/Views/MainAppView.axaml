@@ -47,6 +47,54 @@
                         <mi:MaterialIcon Kind="Plus" Width="20" Height="20" />
                     </Button>
                 </StackPanel>
+                <!-- Global voice indicator -->
+                <StackPanel DockPanel.Dock="Bottom" Spacing="4"
+                            IsVisible="{Binding IsInVoiceCall}">
+                    <Button Classes="Ghost" Padding="4"
+                            Command="{Binding NavigateToVoiceChannelCommand}"
+                            ToolTip.Tip="Go to voice channel"
+                            HorizontalAlignment="Stretch">
+                        <StackPanel Spacing="2" HorizontalAlignment="Center">
+                            <mi:MaterialIcon Kind="Headphones" Width="16" Height="16"
+                                             Foreground="{DynamicResource SuccessColor}"
+                                             HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding VoiceServerName}"
+                                       FontSize="9" TextAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="36" />
+                        </StackPanel>
+                    </Button>
+                    <UniformGrid Columns="3" HorizontalAlignment="Center">
+                        <Button Classes="Ghost" Padding="2" Width="24" Height="24"
+                                Command="{Binding ToggleVoiceMuteCommand}"
+                                ToolTip.Tip="Toggle Mute">
+                            <Panel>
+                                <mi:MaterialIcon Kind="Microphone" Width="12" Height="12"
+                                                 IsVisible="{Binding !IsVoiceMuted}" />
+                                <mi:MaterialIcon Kind="MicrophoneOff" Width="12" Height="12"
+                                                 Foreground="{DynamicResource ErrorColor}"
+                                                 IsVisible="{Binding IsVoiceMuted}" />
+                            </Panel>
+                        </Button>
+                        <Button Classes="Ghost" Padding="2" Width="24" Height="24"
+                                Command="{Binding ToggleVoiceDeafenCommand}"
+                                ToolTip.Tip="Toggle Deafen">
+                            <Panel>
+                                <mi:MaterialIcon Kind="VolumeHigh" Width="12" Height="12"
+                                                 IsVisible="{Binding !IsVoiceDeafened}" />
+                                <mi:MaterialIcon Kind="VolumeOff" Width="12" Height="12"
+                                                 Foreground="{DynamicResource ErrorColor}"
+                                                 IsVisible="{Binding IsVoiceDeafened}" />
+                            </Panel>
+                        </Button>
+                        <Button Classes="Ghost" Padding="2" Width="24" Height="24"
+                                Command="{Binding LeaveVoiceCallCommand}"
+                                ToolTip.Tip="Disconnect">
+                            <mi:MaterialIcon Kind="PhoneHangup" Width="12" Height="12"
+                                             Foreground="{DynamicResource ErrorColor}" />
+                        </Button>
+                    </UniformGrid>
+                </StackPanel>
                 <Button DockPanel.Dock="Bottom" Height="40" Width="40" Command="{Binding NavigateToCallsCommand}">
                     <mi:MaterialIcon Kind="Phone" Width="20" Height="20" />
                 </Button>

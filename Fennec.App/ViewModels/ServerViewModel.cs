@@ -244,6 +244,15 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             HubStatus.Disconnected => ("Disconnected", "#F44336"),
             _ => ("Unknown", "#808080"),
         };
+
+        // Restore voice state if already in a call on this server
+        if (voiceCallService.IsConnected && voiceCallService.CurrentServerId == serverId)
+        {
+            IsInVoiceChannel = true;
+            CurrentVoiceChannelId = voiceCallService.CurrentChannelId;
+            IsMuted = voiceCallService.IsMuted;
+            IsDeafened = voiceCallService.IsDeafened;
+        }
     }
     [ObservableProperty]
     private string _serverName;
@@ -1311,6 +1320,13 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to fetch voice state");
+            }
+
+            // Restore voice channel name now that channels are loaded
+            if (IsInVoiceChannel && CurrentVoiceChannelId is not null && CurrentVoiceChannelName is null)
+            {
+                var voiceChannel = FindChannel(CurrentVoiceChannelId.Value);
+                CurrentVoiceChannelName = voiceChannel?.Name;
             }
 
             if (SelectedChannel is null)

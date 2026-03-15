@@ -28,7 +28,7 @@ public partial class SidebarServer(Guid id, string name, string instanceUrl) : O
     public string AvatarFallback { get; } = name[..1].ToUpperInvariant();
 }
 
-public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>
+public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>, IRecipient<VoiceStateChangedMessage>, IRecipient<VoiceMuteToggledMessage>, IRecipient<VoiceDeafenToggledMessage>
 {
     private readonly IRouter _routerField;
     private readonly IMessenger _messenger;
@@ -79,6 +79,14 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
+        messenger.Register<VoiceStateChangedMessage>(this);
+        messenger.Register<VoiceMuteToggledMessage>(this);
+        messenger.Register<VoiceDeafenToggledMessage>(this);
+
+        // Initialize voice state from service (handles case where VM is created after call started)
+        IsInVoiceCall = voiceCallService.IsConnected;
+        IsVoiceMuted = voiceCallService.IsMuted;
+        IsVoiceDeafened = voiceCallService.IsDeafened;
 
         _routerField.Navigated += OnRouteNavigated;
     }
@@ -190,10 +198,10 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
                 ZoomResetCommand.Execute(null);
                 return true;
             case "voice.toggleMute":
-                ToggleVoiceMute();
+                ToggleVoiceMuteCommand.Execute(null);
                 return true;
             case "voice.toggleDeafen":
-                ToggleVoiceDeafen();
+                ToggleVoiceDeafenCommand.Execute(null);
                 return true;
             default:
                 return false;
@@ -505,6 +513,60 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             .Show();
     }
 
+    // --- Global voice state ---
+
+    [ObservableProperty]
+    private bool _isInVoiceCall;
+
+    [ObservableProperty]
+    private string? _voiceChannelName;
+
+    [ObservableProperty]
+    private string? _voiceServerName;
+
+    [ObservableProperty]
+    private bool _isVoiceMuted;
+
+    [ObservableProperty]
+    private bool _isVoiceDeafened;
+
+    private Guid? _voiceServerId;
+
+    public void Receive(VoiceStateChangedMessage message)
+    {
+        IsInVoiceCall = message.IsConnected;
+        _voiceServerId = message.ServerId;
+
+        if (message.IsConnected && message.ServerId is not null)
+        {
+            var server = Servers.FirstOrDefault(s => s.Id == message.ServerId);
+            VoiceServerName = server?.Name;
+            // Channel name will be resolved from the server's channel list isn't available here;
+            // We don't have channel data at this level, so leave it as the server name.
+            VoiceChannelName = null;
+        }
+        else
+        {
+            VoiceServerName = null;
+            VoiceChannelName = null;
+            IsVoiceMuted = false;
+            IsVoiceDeafened = false;
+        }
+    }
+
+    public void Receive(VoiceMuteToggledMessage message)
+    {
+        IsVoiceMuted = message.IsMuted;
+    }
+
+    public void Receive(VoiceDeafenToggledMessage message)
+    {
+        IsVoiceDeafened = message.IsDeafened;
+        if (message.IsDeafened)
+            IsVoiceMuted = true;
+    }
+
+    [RelayCommand]
     private void ToggleVoiceMute()
     {
         if (!_voiceCallService.IsConnected) return;
@@ -513,12 +575,28 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         _messenger.Send(new VoiceMuteToggledMessage(newMuted));
     }
 
+    [RelayCommand]
     private void ToggleVoiceDeafen()
     {
         if (!_voiceCallService.IsConnected) return;
         var newDeafened = !_voiceCallService.IsDeafened;
         _voiceCallService.SetDeafened(newDeafened);
         _messenger.Send(new VoiceDeafenToggledMessage(newDeafened));
+    }
+
+    [RelayCommand]
+    private async Task LeaveVoiceCallAsync()
+    {
+        await _voiceCallService.LeaveAsync();
+    }
+
+    [RelayCommand]
+    private async Task NavigateToVoiceChannelAsync()
+    {
+        if (_voiceServerId is null || _client is null || _session is null) return;
+        var server = Servers.FirstOrDefault(s => s.Id == _voiceServerId);
+        if (server is null) return;
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, server.Id, server.Name, server.InstanceUrl, _session.UserId, Username));
     }
 
     private async Task SwitchToAccountAsync(AuthSession session)
