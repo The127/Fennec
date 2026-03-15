@@ -461,26 +461,40 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         {
             // Reuse existing peer connection for renegotiation (e.g. when remote adds video track).
             // Creating a new one would produce mismatched ICE credentials.
+            bool reused;
             if (!_peers.TryGetValue(fromUserId, out var pc))
             {
                 pc = CreatePeerConnection(fromUserId);
                 _peers[fromUserId] = pc;
+                reused = false;
             }
+            else
+            {
+                reused = true;
+            }
+
+            var hasVideo = sdp.Contains("m=video");
+            _logger.LogInformation("ScreenShare: SDP offer from {UserId}, reused={Reused}, hasVideo={HasVideo}, existingVideoTrack={HasTrack}, connState={State}",
+                fromUserId, reused, hasVideo, pc.VideoLocalTrack != null, pc.connectionState);
 
             if (IsScreenSharing)
                 await AddVideoTrackAndCursorChannel(fromUserId, pc);
-            else if (sdp.Contains("m=video") && pc.VideoLocalTrack == null)
+            else if (hasVideo && pc.VideoLocalTrack == null)
             {
                 var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(VideoCodecsEnum.VP8, 96);
                 var videoTrack = new MediaStreamTrack(videoFormat, MediaStreamStatusEnum.RecvOnly);
                 pc.addTrack(videoTrack);
+                _logger.LogInformation("ScreenShare: Added RecvOnly video track for {UserId}", fromUserId);
             }
 
             var offer = new RTCSessionDescriptionInit { type = RTCSdpType.offer, sdp = sdp };
-            pc.setRemoteDescription(offer);
+            var setResult = pc.setRemoteDescription(offer);
+            _logger.LogInformation("ScreenShare: setRemoteDescription result={Result} for {UserId}", setResult, fromUserId);
 
             var answer = pc.createAnswer();
             await pc.setLocalDescription(answer);
+
+            _logger.LogInformation("ScreenShare: Sending SDP answer to {UserId}, answer has video={AnswerHasVideo}", fromUserId, answer.sdp?.Contains("m=video"));
 
             await _voiceHub.SendSdpAnswerAsync(serverId, channelId, fromUserId, answer.sdp);
         }
@@ -520,11 +534,16 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     }
 
     private readonly Dictionary<Guid, LibVpxDecoder> _videoDecoders = new();
+    private int _videoRtpCount;
 
     private void HandleIncomingVideoRtp(Guid fromUserId, SIPSorcery.Net.RTPPacket pkt)
     {
         try
         {
+            _videoRtpCount++;
+            if (_videoRtpCount <= 3 || _videoRtpCount % 500 == 0)
+                _logger.LogInformation("ScreenShare: Video RTP #{Count} from {UserId}, payloadLen={Len}", _videoRtpCount, fromUserId, pkt.Payload.Length);
+
             var payload = pkt.Payload;
             var skip = GetVp8DescriptorLength(payload);
             if (skip >= payload.Length) return;
@@ -537,6 +556,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             if (result != null)
             {
                 var (rgba, width, height) = result.Value;
+                _logger.LogInformation("ScreenShare: Decoded frame {W}x{H} from {UserId}", width, height, fromUserId);
                 _messenger.Send(new ScreenShareFrameMessage(fromUserId, rgba, width, height));
             }
         }
