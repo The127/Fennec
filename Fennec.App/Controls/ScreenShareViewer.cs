@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Fennec.App.Messages;
 
 namespace Fennec.App.Controls;
@@ -23,6 +24,8 @@ public class ScreenShareViewer : Control
 
     public static readonly StyledProperty<CursorType> CursorShapeProperty =
         AvaloniaProperty.Register<ScreenShareViewer, CursorType>(nameof(CursorShape));
+
+    private DispatcherTimer? _renderTimer;
 
     public WriteableBitmap? Source
     {
@@ -51,6 +54,25 @@ public class ScreenShareViewer : Control
     static ScreenShareViewer()
     {
         AffectsRender<ScreenShareViewer>(SourceProperty, CursorXProperty, CursorYProperty, CursorShapeProperty);
+        SourceProperty.Changed.AddClassHandler<ScreenShareViewer>((viewer, _) => viewer.OnSourceChanged());
+    }
+
+    private void OnSourceChanged()
+    {
+        if (Source is not null)
+        {
+            if (_renderTimer is null)
+            {
+                _renderTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+                _renderTimer.Tick += (_, _) => InvalidateVisual();
+                _renderTimer.Start();
+            }
+        }
+        else
+        {
+            _renderTimer?.Stop();
+            _renderTimer = null;
+        }
     }
 
     public override void Render(DrawingContext context)
