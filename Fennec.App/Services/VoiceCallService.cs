@@ -464,6 +464,12 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
             if (IsScreenSharing)
                 await AddVideoTrackAndCursorChannel(fromUserId, pc);
+            else if (sdp.Contains("m=video"))
+            {
+                var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(VideoCodecsEnum.VP8, 96);
+                var videoTrack = new MediaStreamTrack(videoFormat, MediaStreamStatusEnum.RecvOnly);
+                pc.addTrack(videoTrack);
+            }
 
             var offer = new RTCSessionDescriptionInit { type = RTCSdpType.offer, sdp = sdp };
             pc.setRemoteDescription(offer);

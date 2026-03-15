@@ -118,7 +118,14 @@ public partial class App : Application
         // Screen capture + cursor — platform-specific
         if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
         {
-            services.AddSingleton<IScreenCaptureService, LinuxScreenCaptureService>();
+            var isWayland = Environment.GetEnvironmentVariable("XDG_SESSION_TYPE") == "wayland"
+                         || Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") != null;
+
+            if (isWayland)
+                services.AddSingleton<IScreenCaptureService, WaylandScreenCaptureService>();
+            else
+                services.AddSingleton<IScreenCaptureService, LinuxScreenCaptureService>();
+
             services.AddSingleton<ICursorPositionService, LinuxCursorPositionService>();
         }
         else
