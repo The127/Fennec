@@ -36,6 +36,9 @@ public partial class VoiceParticipantItem(Guid userId, string username, string? 
 
     [ObservableProperty]
     private bool _isSpeaking;
+
+    [ObservableProperty]
+    private bool _isScreenSharing;
 }
 
 public partial class ChannelItem(Guid id, string name, ChannelType channelType, Guid channelGroupId) : ObservableObject
@@ -252,6 +255,13 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             CurrentVoiceChannelId = voiceCallService.CurrentChannelId;
             IsMuted = voiceCallService.IsMuted;
             IsDeafened = voiceCallService.IsDeafened;
+            IsScreenSharing = voiceCallService.IsScreenSharing;
+
+            foreach (var sharer in voiceCallService.ActiveScreenSharers)
+            {
+                ActiveScreenShares.Add(new ScreenShareInfo(sharer.UserId, sharer.Username, sharer.InstanceUrl));
+            }
+            FocusedScreenShareUserId = ActiveScreenShares.FirstOrDefault()?.UserId;
         }
     }
     [ObservableProperty]
@@ -828,6 +838,12 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 IsMuted = false;
                 IsDeafened = false;
 
+                // Reset screen share state
+                ActiveScreenShares.Clear();
+                FocusedScreenShareUserId = null;
+                IsScreenSharing = false;
+                ScreenShareFrame = null;
+
                 // Reset all speaking indicators
                 foreach (var group in ChannelGroups)
                     foreach (var ch in group.Channels)
@@ -1023,6 +1039,12 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
             if (message.UserId == _currentUserId)
                 IsScreenSharing = true;
+
+            // Update participant indicator
+            var channel = FindChannel(message.ChannelId);
+            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
+            if (participant is not null)
+                participant.IsScreenSharing = true;
         });
     }
 
@@ -1044,6 +1066,12 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
             if (ActiveScreenShares.Count == 0)
                 ScreenShareFrame = null;
+
+            // Update participant indicator
+            var channel = FindChannel(message.ChannelId);
+            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
+            if (participant is not null)
+                participant.IsScreenSharing = false;
         });
     }
 
@@ -1309,12 +1337,19 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             try
             {
                 var voiceState = await _messageHubService.GetServerVoiceStateAsync(ServerId, instanceUrl);
+                var screenSharerIds = _voiceCallService.ActiveScreenSharers
+                    .Select(s => s.UserId).ToHashSet();
                 foreach (var (channelId, participants) in voiceState)
                 {
                     var channel = FindChannel(channelId);
                     if (channel is null) continue;
                     foreach (var p in participants)
-                        channel.VoiceParticipants.Add(new VoiceParticipantItem(p.UserId, p.Username, p.InstanceUrl));
+                    {
+                        var item = new VoiceParticipantItem(p.UserId, p.Username, p.InstanceUrl);
+                        if (screenSharerIds.Contains(p.UserId))
+                            item.IsScreenSharing = true;
+                        channel.VoiceParticipants.Add(item);
+                    }
                 }
             }
             catch (Exception ex)

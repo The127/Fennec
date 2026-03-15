@@ -6,6 +6,8 @@ using SIPSorceryMedia.Abstractions;
 
 namespace Fennec.App.Services;
 
+public record ActiveScreenSharer(Guid UserId, string Username, string? InstanceUrl);
+
 public interface IVoiceCallService
 {
     Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl, Guid currentUserId);
@@ -21,6 +23,7 @@ public interface IVoiceCallService
     bool IsMuted { get; }
     bool IsDeafened { get; }
     bool IsScreenSharing { get; }
+    IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers { get; }
 }
 
 public class VoiceCallService : IVoiceCallService, IDisposable
@@ -35,7 +38,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
     private readonly Dictionary<Guid, RTCPeerConnection> _peers = new();
     private readonly Dictionary<Guid, RTCDataChannel> _cursorDataChannels = new();
-    private readonly HashSet<Guid> _remoteSharers = new();
+    private readonly List<ActiveScreenSharer> _activeScreenSharers = [];
     private PortAudioEndPoint? _audioEndPoint;
     private ScreenShareVideoSource? _videoSource;
     private Guid _currentUserId;
@@ -49,6 +52,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     public bool IsMuted { get; private set; }
     public bool IsDeafened { get; private set; }
     public bool IsScreenSharing { get; private set; }
+    public IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers => _activeScreenSharers;
 
     private static readonly RTCIceServer[] StunServers =
     [
@@ -68,6 +72,18 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _voiceHub.SdpOfferReceived += OnSdpOfferReceived;
         _voiceHub.SdpAnswerReceived += OnSdpAnswerReceived;
         _voiceHub.IceCandidateReceived += OnIceCandidateReceived;
+
+        _messenger.Register<ScreenShareStartedMessage>(this, (_, msg) =>
+        {
+            if (!IsConnected || msg.ServerId != CurrentServerId) return;
+            if (_activeScreenSharers.Any(s => s.UserId == msg.UserId)) return;
+            _activeScreenSharers.Add(new ActiveScreenSharer(msg.UserId, msg.Username, msg.InstanceUrl));
+        });
+        _messenger.Register<ScreenShareStoppedMessage>(this, (_, msg) =>
+        {
+            if (!IsConnected || msg.ServerId != CurrentServerId) return;
+            _activeScreenSharers.RemoveAll(s => s.UserId == msg.UserId);
+        });
     }
 
     public async Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl, Guid currentUserId)
@@ -199,17 +215,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         };
 
         // Add VP8 video track to each existing peer and renegotiate
-        var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(
-            SIPSorceryMedia.Abstractions.VideoCodecsEnum.VP8, 96);
         foreach (var (remoteUserId, pc) in _peers)
         {
-            var videoTrack = new SIPSorcery.Net.MediaStreamTrack(videoFormat,
-                SIPSorcery.Net.MediaStreamStatusEnum.SendOnly);
-            pc.addTrack(videoTrack);
-
-            // Create cursor data channel
-            var dc = await pc.createDataChannel("cursor");
-            _cursorDataChannels[remoteUserId] = dc;
+            await AddVideoTrackAndCursorChannel(remoteUserId, pc);
 
             // Renegotiate
             var offer = pc.createOffer();
@@ -340,10 +348,25 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
     }
 
+    private async Task AddVideoTrackAndCursorChannel(Guid remoteUserId, RTCPeerConnection pc)
+    {
+        var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(
+            SIPSorceryMedia.Abstractions.VideoCodecsEnum.VP8, 96);
+        var videoTrack = new SIPSorcery.Net.MediaStreamTrack(videoFormat,
+            SIPSorcery.Net.MediaStreamStatusEnum.SendOnly);
+        pc.addTrack(videoTrack);
+
+        var dc = await pc.createDataChannel("cursor");
+        _cursorDataChannels[remoteUserId] = dc;
+    }
+
     private async Task CreatePeerAndOffer(Guid remoteUserId)
     {
         var pc = CreatePeerConnection(remoteUserId);
         _peers[remoteUserId] = pc;
+
+        if (IsScreenSharing)
+            await AddVideoTrackAndCursorChannel(remoteUserId, pc);
 
         var offer = pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -439,6 +462,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             var pc = CreatePeerConnection(fromUserId);
             _peers[fromUserId] = pc;
 
+            if (IsScreenSharing)
+                await AddVideoTrackAndCursorChannel(fromUserId, pc);
+
             var offer = new RTCSessionDescriptionInit { type = RTCSdpType.offer, sdp = sdp };
             pc.setRemoteDescription(offer);
 
@@ -509,7 +535,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
         _peers.Clear();
         _cursorDataChannels.Clear();
-        _remoteSharers.Clear();
+        _activeScreenSharers.Clear();
     }
 
     public void Dispose()

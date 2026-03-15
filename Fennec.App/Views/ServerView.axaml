@@ -245,6 +245,9 @@
                                                                         <mi:MaterialIcon Kind="VolumeOff" Width="12" Height="12"
                                                                                          Opacity="0.5"
                                                                                          IsVisible="{Binding IsDeafened}" />
+                                                                        <mi:MaterialIcon Kind="MonitorShare" Width="12" Height="12"
+                                                                                         Opacity="0.5"
+                                                                                         IsVisible="{Binding IsScreenSharing}" />
                                                                     </StackPanel>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
