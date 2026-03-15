@@ -191,7 +191,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<ScreenShareStartedMessage>,
     IRecipient<ScreenShareStoppedMessage>,
     IRecipient<ScreenShareFrameMessage>,
-    IRecipient<ScreenShareCursorMessage>
+    IRecipient<ScreenShareCursorMessage>,
+    IRecipient<ScreenSharePopOutRequestedMessage>,
+    IRecipient<ScreenSharePopOutClosedMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
@@ -237,6 +239,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<ScreenShareStoppedMessage>(this);
         messenger.Register<ScreenShareFrameMessage>(this);
         messenger.Register<ScreenShareCursorMessage>(this);
+        messenger.Register<ScreenSharePopOutRequestedMessage>(this);
+        messenger.Register<ScreenSharePopOutClosedMessage>(this);
 
         // Initialize hub status from current state (message may have been sent before registration)
         (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
@@ -261,7 +265,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             {
                 ActiveScreenShares.Add(new ScreenShareInfo(sharer.UserId, sharer.Username, sharer.InstanceUrl));
             }
-            FocusedScreenShareUserId = ActiveScreenShares.FirstOrDefault()?.UserId;
         }
     }
     [ObservableProperty]
@@ -840,9 +843,13 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
                 // Reset screen share state
                 ActiveScreenShares.Clear();
+                WatchedScreenShares.Clear();
+                HasWatchedShares = false;
                 FocusedScreenShareUserId = null;
                 IsScreenSharing = false;
+                IsScreenShareMaximized = false;
                 ScreenShareFrame = null;
+                _poppedOutUserIds.Clear();
 
                 // Reset all speaking indicators
                 foreach (var group in ChannelGroups)
@@ -948,9 +955,18 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     }
 
     public ObservableCollection<ScreenShareInfo> ActiveScreenShares { get; } = [];
+    public ObservableCollection<ScreenShareInfo> WatchedScreenShares { get; } = [];
+
+    [ObservableProperty]
+    private bool _hasWatchedShares;
+
+    private readonly HashSet<Guid> _poppedOutUserIds = [];
 
     [ObservableProperty]
     private Guid? _focusedScreenShareUserId;
+
+    [ObservableProperty]
+    private bool _showOwnScreenShare;
 
     [ObservableProperty]
     private bool _isScreenSharing;
@@ -1042,9 +1058,95 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     }
 
     [RelayCommand]
+    private void ToggleShowOwnScreenShare()
+    {
+        ShowOwnScreenShare = !ShowOwnScreenShare;
+
+        if (ShowOwnScreenShare)
+        {
+            // If own share is active and nothing focused, focus it
+            if (FocusedScreenShareUserId is null && WatchedScreenShares.Any(s => s.UserId == _currentUserId))
+                FocusedScreenShareUserId = _currentUserId;
+        }
+        else
+        {
+            // If own share is focused, move to next and clear stale frame
+            if (FocusedScreenShareUserId == _currentUserId)
+            {
+                FocusedScreenShareUserId = FindNextFocusableShare(null);
+                if (FocusedScreenShareUserId is null)
+                    ScreenShareFrame = null;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void WatchScreenShare(Guid userId)
+    {
+        if (WatchedScreenShares.Any(s => s.UserId == userId))
+            return;
+
+        var share = ActiveScreenShares.FirstOrDefault(s => s.UserId == userId);
+        if (share is null) return;
+
+        WatchedScreenShares.Add(share);
+        HasWatchedShares = true;
+        FocusedScreenShareUserId = userId;
+    }
+
+    [RelayCommand]
+    private void UnwatchScreenShare(Guid userId)
+    {
+        var share = WatchedScreenShares.FirstOrDefault(s => s.UserId == userId);
+        if (share is null) return;
+
+        WatchedScreenShares.Remove(share);
+        HasWatchedShares = WatchedScreenShares.Count > 0;
+
+        if (FocusedScreenShareUserId == userId)
+        {
+            FocusedScreenShareUserId = FindNextFocusableShare(null);
+            if (FocusedScreenShareUserId is null)
+                ScreenShareFrame = null;
+        }
+
+        if (WatchedScreenShares.Count == 0)
+            IsScreenShareMaximized = false;
+    }
+
+    [RelayCommand]
     private void FocusScreenShare(Guid userId)
     {
         FocusedScreenShareUserId = userId;
+    }
+
+    private Guid? FindNextFocusableShare(Guid? excludeUserId)
+    {
+        return WatchedScreenShares
+            .Where(s => s.UserId != excludeUserId)
+            .Where(s => !_poppedOutUserIds.Contains(s.UserId))
+            .Where(s => s.UserId != _currentUserId || ShowOwnScreenShare)
+            .FirstOrDefault()?.UserId;
+    }
+
+    public void Receive(ScreenSharePopOutRequestedMessage message)
+    {
+        _poppedOutUserIds.Add(message.UserId);
+
+        if (FocusedScreenShareUserId == message.UserId)
+        {
+            FocusedScreenShareUserId = FindNextFocusableShare(message.UserId);
+            ScreenShareFrame = null;
+        }
+    }
+
+    public void Receive(ScreenSharePopOutClosedMessage message)
+    {
+        _poppedOutUserIds.Remove(message.UserId);
+
+        // Re-focus if nothing is focused and this share is still watched
+        if (FocusedScreenShareUserId is null && WatchedScreenShares.Any(s => s.UserId == message.UserId))
+            FocusedScreenShareUserId = message.UserId;
     }
 
     public void Receive(ScreenShareStartedMessage message)
@@ -1057,9 +1159,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 return;
 
             ActiveScreenShares.Add(new ScreenShareInfo(message.UserId, message.Username, message.InstanceUrl));
-
-            // Auto-focus first share
-            FocusedScreenShareUserId ??= message.UserId;
 
             if (message.UserId == _currentUserId)
                 IsScreenSharing = true;
@@ -1082,14 +1181,26 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             if (share != null)
                 ActiveScreenShares.Remove(share);
 
+            // Clean up watched + popped-out state for stopped share
+            var watched = WatchedScreenShares.FirstOrDefault(s => s.UserId == message.UserId);
+            if (watched != null)
+            {
+                WatchedScreenShares.Remove(watched);
+                HasWatchedShares = WatchedScreenShares.Count > 0;
+            }
+            _poppedOutUserIds.Remove(message.UserId);
+
             if (FocusedScreenShareUserId == message.UserId)
-                FocusedScreenShareUserId = ActiveScreenShares.FirstOrDefault()?.UserId;
+                FocusedScreenShareUserId = FindNextFocusableShare(null);
 
             if (message.UserId == _currentUserId)
                 IsScreenSharing = false;
 
-            if (ActiveScreenShares.Count == 0)
+            if (WatchedScreenShares.Count == 0)
+            {
                 ScreenShareFrame = null;
+                IsScreenShareMaximized = false;
+            }
 
             // Update participant indicator
             var channel = FindChannel(message.ChannelId);
@@ -1103,6 +1214,12 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     {
         // Only render frames from the focused share
         if (FocusedScreenShareUserId != message.UserId)
+            return;
+
+        // Don't render popped-out or own stream (when toggled off)
+        if (_poppedOutUserIds.Contains(message.UserId))
+            return;
+        if (message.UserId == _currentUserId && !ShowOwnScreenShare)
             return;
 
         Dispatcher.UIThread.Post(() =>
@@ -1155,6 +1272,11 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     public void Receive(ScreenShareCursorMessage message)
     {
         if (FocusedScreenShareUserId != message.UserId)
+            return;
+
+        if (_poppedOutUserIds.Contains(message.UserId))
+            return;
+        if (message.UserId == _currentUserId && !ShowOwnScreenShare)
             return;
 
         Dispatcher.UIThread.Post(() =>

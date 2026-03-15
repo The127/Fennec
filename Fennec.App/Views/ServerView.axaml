@@ -220,6 +220,15 @@
                                                                                                         <TextBlock Text="Message" FontSize="12" />
                                                                                                     </StackPanel>
                                                                                                 </Button>
+                                                                                                <Button Classes="Primary" Padding="8,4"
+                                                                                                        IsVisible="{Binding IsScreenSharing}"
+                                                                                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).WatchScreenShareCommand}"
+                                                                                                        CommandParameter="{Binding UserId}">
+                                                                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                                                        <mi:MaterialIcon Kind="MonitorShare" Width="14" Height="14" />
+                                                                                                        <TextBlock Text="Watch Stream" FontSize="12" />
+                                                                                                    </StackPanel>
+                                                                                                </Button>
                                                                                             </StackPanel>
                                                                                         </StackPanel>
                                                                                     </Border>
@@ -247,9 +256,21 @@
                                                                         <mi:MaterialIcon Kind="VolumeOff" Width="12" Height="12"
                                                                                          Opacity="0.5"
                                                                                          IsVisible="{Binding IsDeafened}" />
-                                                                        <mi:MaterialIcon Kind="MonitorShare" Width="12" Height="12"
-                                                                                         Opacity="0.5"
-                                                                                         IsVisible="{Binding IsScreenSharing}" />
+                                                                        <Button Padding="0" MinWidth="0" MinHeight="0"
+                                                                                Cursor="Hand"
+                                                                                Background="Transparent" BorderThickness="0"
+                                                                                IsVisible="{Binding IsScreenSharing}"
+                                                                                Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).WatchScreenShareCommand}"
+                                                                                CommandParameter="{Binding UserId}"
+                                                                                ToolTip.Tip="Watch Stream">
+                                                                            <Button.Styles>
+                                                                                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                                                    <Setter Property="Background" Value="Transparent" />
+                                                                                </Style>
+                                                                            </Button.Styles>
+                                                                            <mi:MaterialIcon Kind="MonitorShare" Width="12" Height="12"
+                                                                                             Opacity="0.5" />
+                                                                        </Button>
                                                                     </StackPanel>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
@@ -408,7 +429,7 @@
                 </Panel>
             </Border>
 
-            <!-- Screen share viewer (shown when active shares exist, hidden when maximized) -->
+            <!-- Screen share viewer (shown when watching shares, hidden when maximized) -->
             <Border DockPanel.Dock="Top"
                     BorderBrush="{DynamicResource BorderColor}"
                     BorderThickness="0,0,0,1"
@@ -416,7 +437,7 @@
                     Height="300">
                 <Border.IsVisible>
                     <MultiBinding Converter="{x:Static BoolConverters.And}">
-                        <Binding Path="ActiveScreenShares.Count" />
+                        <Binding Path="HasWatchedShares" />
                         <Binding Path="!IsScreenShareMaximized" />
                     </MultiBinding>
                 </Border.IsVisible>
@@ -430,6 +451,16 @@
                             Background="#80000000">
                         <DockPanel>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                                <Button Classes="Ghost" Padding="4" Height="24"
+                                        Command="{Binding ToggleShowOwnScreenShareCommand}"
+                                        ToolTip.Tip="Show Own Stream">
+                                    <Panel>
+                                        <mi:MaterialIcon Kind="Eye" Width="14" Height="14"
+                                                         IsVisible="{Binding ShowOwnScreenShare}" />
+                                        <mi:MaterialIcon Kind="EyeOff" Width="14" Height="14"
+                                                         IsVisible="{Binding !ShowOwnScreenShare}" />
+                                    </Panel>
+                                </Button>
                                 <Button Classes="Ghost" Padding="4" Height="24"
                                         Command="{Binding PopOutScreenShareCommand}"
                                         ToolTip.Tip="Pop Out">
@@ -446,7 +477,7 @@
                                     <mi:MaterialIcon Kind="ViewGrid" Width="14" Height="14" />
                                 </Button>
                             </StackPanel>
-                            <ItemsControl ItemsSource="{Binding ActiveScreenShares}">
+                            <ItemsControl ItemsSource="{Binding WatchedScreenShares}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <StackPanel Orientation="Horizontal" Spacing="8" />
@@ -454,14 +485,23 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Button Classes="Ghost" Padding="4,2" Height="22"
-                                                Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).FocusScreenShareCommand}"
-                                                CommandParameter="{Binding UserId}">
-                                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                                <mi:MaterialIcon Kind="Monitor" Width="12" Height="12" />
-                                                <TextBlock Text="{Binding Username}" FontSize="11" />
-                                            </StackPanel>
-                                        </Button>
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <Button Classes="Ghost" Padding="4,2" Height="22"
+                                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).FocusScreenShareCommand}"
+                                                    CommandParameter="{Binding UserId}">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <mi:MaterialIcon Kind="Monitor" Width="12" Height="12" />
+                                                    <TextBlock Text="{Binding Username}" FontSize="11" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Classes="Ghost" Padding="3" Height="22"
+                                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).UnwatchScreenShareCommand}"
+                                                    CommandParameter="{Binding UserId}"
+                                                    ToolTip.Tip="Stop Watching">
+                                                <mi:MaterialIcon Kind="MonitorOff" Width="12" Height="12"
+                                                                 Foreground="{DynamicResource ErrorColor}" />
+                                            </Button>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -768,6 +808,16 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
                     <Button Classes="Ghost" Padding="4" Height="24"
+                            Command="{Binding ToggleShowOwnScreenShareCommand}"
+                            ToolTip.Tip="Show Own Stream">
+                        <Panel>
+                            <mi:MaterialIcon Kind="Eye" Width="14" Height="14"
+                                             IsVisible="{Binding ShowOwnScreenShare}" />
+                            <mi:MaterialIcon Kind="EyeOff" Width="14" Height="14"
+                                             IsVisible="{Binding !ShowOwnScreenShare}" />
+                        </Panel>
+                    </Button>
+                    <Button Classes="Ghost" Padding="4" Height="24"
                             Command="{Binding PopOutScreenShareCommand}"
                             ToolTip.Tip="Pop Out">
                         <mi:MaterialIcon Kind="OpenInNew" Width="14" Height="14" />
@@ -778,7 +828,7 @@
                         <mi:MaterialIcon Kind="ArrowCollapse" Width="14" Height="14" />
                     </Button>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding ActiveScreenShares}">
+                <ItemsControl ItemsSource="{Binding WatchedScreenShares}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="Horizontal" Spacing="8" />
@@ -786,14 +836,23 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Classes="Ghost" Padding="4,2" Height="22"
-                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).FocusScreenShareCommand}"
-                                    CommandParameter="{Binding UserId}">
-                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <mi:MaterialIcon Kind="Monitor" Width="12" Height="12" />
-                                    <TextBlock Text="{Binding Username}" FontSize="11" />
-                                </StackPanel>
-                            </Button>
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Button Classes="Ghost" Padding="4,2" Height="22"
+                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).FocusScreenShareCommand}"
+                                        CommandParameter="{Binding UserId}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <mi:MaterialIcon Kind="Monitor" Width="12" Height="12" />
+                                        <TextBlock Text="{Binding Username}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="Ghost" Padding="3" Height="22"
+                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).UnwatchScreenShareCommand}"
+                                        CommandParameter="{Binding UserId}"
+                                        ToolTip.Tip="Stop Watching">
+                                    <mi:MaterialIcon Kind="MonitorOff" Width="12" Height="12"
+                                                     Foreground="{DynamicResource ErrorColor}" />
+                                </Button>
+                            </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
