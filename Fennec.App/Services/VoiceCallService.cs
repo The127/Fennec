@@ -44,6 +44,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private Guid _currentUserId;
     private bool _isSpeaking;
     private long _speakingLastActiveTicks;
+    private bool _isLeaving;
 
     public bool IsConnected { get; private set; }
     public Guid? CurrentServerId { get; private set; }
@@ -121,6 +122,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         if (!IsConnected)
             return;
 
+        _isLeaving = true;
+
         if (IsScreenSharing)
             await StopScreenShareAsync();
 
@@ -153,6 +156,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         CurrentInstanceUrl = null;
         IsMuted = false;
         IsDeafened = false;
+        _isLeaving = false;
 
         _messenger.Send(new VoiceStateChangedMessage(false, null, null));
     }
@@ -463,10 +467,30 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         pc.onconnectionstatechange += state =>
         {
             _logger.LogDebug("Peer {RemoteUser} connection state: {State}", remoteUserId, state);
-            if (state is RTCPeerConnectionState.failed or RTCPeerConnectionState.disconnected or RTCPeerConnectionState.closed)
+            if (state is RTCPeerConnectionState.failed or RTCPeerConnectionState.closed)
             {
                 if (_peers.Remove(remoteUserId, out var removed))
                     removed.Dispose();
+
+                // Auto-reconnect if the closure was unexpected (not during LeaveAsync)
+                if (!_isLeaving && IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
+                {
+                    _logger.LogInformation("Peer {RemoteUser} closed unexpectedly, re-establishing connection", remoteUserId);
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Task.Delay(1000); // Brief delay before reconnect
+                            if (!IsConnected || _isLeaving || _peers.ContainsKey(remoteUserId))
+                                return;
+                            await CreatePeerAndOffer(remoteUserId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to re-establish peer connection to {RemoteUser}", remoteUserId);
+                        }
+                    });
+                }
             }
         };
 
