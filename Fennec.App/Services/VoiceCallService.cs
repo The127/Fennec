@@ -215,14 +215,26 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         };
 
         // Add VP8 video track to each existing peer and renegotiate
+        _logger.LogInformation("ScreenShare: Renegotiating with {Count} peers", _peers.Count);
         foreach (var (remoteUserId, pc) in _peers)
         {
-            await AddVideoTrackAndCursorChannel(remoteUserId, pc);
+            try
+            {
+                _logger.LogInformation("ScreenShare: Adding video track for peer {UserId}, connState={State}", remoteUserId, pc.connectionState);
+                await AddVideoTrackAndCursorChannel(remoteUserId, pc);
 
-            // Renegotiate
-            var offer = pc.createOffer();
-            await pc.setLocalDescription(offer);
-            await _voiceHub.SendSdpOfferAsync(CurrentServerId.Value, CurrentChannelId.Value, remoteUserId, offer.sdp);
+                // Renegotiate
+                var offer = pc.createOffer();
+                var hasVideo = offer.sdp?.Contains("m=video") ?? false;
+                _logger.LogInformation("ScreenShare: Created renegotiation offer for {UserId}, hasVideo={HasVideo}", remoteUserId, hasVideo);
+                await pc.setLocalDescription(offer);
+                await _voiceHub.SendSdpOfferAsync(CurrentServerId.Value, CurrentChannelId.Value, remoteUserId, offer.sdp);
+                _logger.LogInformation("ScreenShare: Sent renegotiation offer to {UserId}", remoteUserId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ScreenShare: Failed to renegotiate with {UserId}", remoteUserId);
+            }
         }
 
         // Start cursor tracking
@@ -541,7 +553,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     }
 
     private readonly Dictionary<Guid, LibVpxDecoder> _videoDecoders = new();
+    private readonly Dictionary<Guid, List<byte>> _videoFrameBuffers = new();
     private int _videoRtpCount;
+    private int _videoFrameCount;
 
     private void HandleIncomingVideoRtp(Guid fromUserId, SIPSorcery.Net.RTPPacket pkt)
     {
@@ -549,21 +563,37 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         {
             _videoRtpCount++;
             if (_videoRtpCount <= 3 || _videoRtpCount % 500 == 0)
-                _logger.LogInformation("ScreenShare: Video RTP #{Count} from {UserId}, payloadLen={Len}", _videoRtpCount, fromUserId, pkt.Payload.Length);
+                _logger.LogInformation("ScreenShare: Video RTP #{Count} from {UserId}, payloadLen={Len}, marker={Marker}",
+                    _videoRtpCount, fromUserId, pkt.Payload.Length, pkt.Header.MarkerBit);
 
             var payload = pkt.Payload;
             var skip = GetVp8DescriptorLength(payload);
             if (skip >= payload.Length) return;
 
+            // Accumulate VP8 payload data across RTP packets until marker bit signals end of frame
+            if (!_videoFrameBuffers.TryGetValue(fromUserId, out var buffer))
+                _videoFrameBuffers[fromUserId] = buffer = new List<byte>();
+
+            buffer.AddRange(payload.AsSpan(skip).ToArray());
+
+            // Marker bit = 1 means this is the last packet of the VP8 frame
+            if (pkt.Header.MarkerBit != 1)
+                return;
+
+            var frameData = buffer.ToArray();
+            buffer.Clear();
+
             if (!_videoDecoders.TryGetValue(fromUserId, out var decoder))
                 _videoDecoders[fromUserId] = decoder = new LibVpxDecoder();
 
-            var vp8Data = payload.AsSpan(skip).ToArray();
-            var result = decoder.Decode(vp8Data);
+            var result = decoder.Decode(frameData);
             if (result != null)
             {
+                _videoFrameCount++;
+                if (_videoFrameCount <= 3 || _videoFrameCount % 100 == 0)
+                    _logger.LogInformation("ScreenShare: Decoded frame #{Num} {W}x{H} from {UserId} (assembled {Bytes} bytes)",
+                        _videoFrameCount, result.Value.Width, result.Value.Height, fromUserId, frameData.Length);
                 var (rgba, width, height) = result.Value;
-                _logger.LogInformation("ScreenShare: Decoded frame {W}x{H} from {UserId}", width, height, fromUserId);
                 _messenger.Send(new ScreenShareFrameMessage(fromUserId, rgba, width, height));
             }
         }
