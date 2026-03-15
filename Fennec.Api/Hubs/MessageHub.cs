@@ -1,10 +1,12 @@
 using System.IdentityModel.Tokens.Jwt;
 using Fennec.Api.FederationClient;
+using Fennec.Api.Models;
 using Fennec.Api.Services;
 using Fennec.Api.Settings;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Dtos.Voice;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Fennec.Api.Hubs;
@@ -12,9 +14,13 @@ namespace Fennec.Api.Hubs;
 public class MessageHub(
     VoiceStateService voiceState,
     PresenceService presenceService,
+    GlobalPresenceService globalPresenceService,
+    FederatedPresenceCache federatedPresenceCache,
     IFederationClient federationClient,
     IOptions<FennecSettings> fennecOptions,
-    ILogger<MessageHub> logger
+    ILogger<MessageHub> logger,
+    FennecDbContext dbContext,
+    IServiceScopeFactory scopeFactory
 ) : Hub
 {
     private string LocalInstanceUrl => fennecOptions.Value.IssuerUrl;
@@ -64,9 +70,30 @@ public class MessageHub(
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
     }
 
-    public List<ServerPresenceEntryDto> GetServerPresence(Guid serverId)
+    public async Task<List<ServerPresenceEntryDto>> GetServerPresence(Guid serverId)
     {
         var online = presenceService.GetOnlineUsers(serverId);
+
+        // Include remote members whose presence was pushed via federation
+        var remoteMembers = await dbContext.Set<ServerMember>()
+            .Where(sm => sm.ServerId == serverId)
+            .Include(sm => sm.KnownUser)
+            .Where(sm => sm.KnownUser.InstanceUrl != null && sm.KnownUser.InstanceUrl != LocalInstanceUrl)
+            .ToListAsync();
+
+        foreach (var member in remoteMembers)
+        {
+            if (federatedPresenceCache.IsOnline(member.KnownUser.RemoteId, member.KnownUser.InstanceUrl!)
+                && online.All(e => e.UserId != member.KnownUser.RemoteId))
+            {
+                online.Add(new PresenceService.PresenceEntry(
+                    member.KnownUser.RemoteId,
+                    member.KnownUser.Name,
+                    member.KnownUser.InstanceUrl,
+                    ""));
+            }
+        }
+
         logger.LogInformation("Presence: GetServerPresence server={ServerId} count={Count} users={Users}",
             serverId, online.Count, string.Join(", ", online.Select(e => $"{e.Username}({e.UserId})")));
         return online
@@ -237,10 +264,28 @@ public class MessageHub(
             .SendAsync("VoiceSpeakingStateChanged", serverId, channelId, userId, isSpeaking);
     }
 
-    public override Task OnConnectedAsync()
+    public override async Task OnConnectedAsync()
     {
         logger.LogInformation("SignalR: Client connected {ConnectionId}", Context.ConnectionId);
-        return base.OnConnectedAsync();
+
+        try
+        {
+            var (userId, username, instanceUrl) = GetCallerIdentity();
+
+            // Skip remote federated connections — only track local users
+            if (instanceUrl == null || !IsRemote(instanceUrl))
+            {
+                var isFirst = globalPresenceService.AddConnection(userId, username, Context.ConnectionId);
+                if (isFirst)
+                    _ = PushFederatedPresenceAsync(userId, username, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to track global presence for connection {ConnectionId}", Context.ConnectionId);
+        }
+
+        await base.OnConnectedAsync();
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -248,17 +293,22 @@ public class MessageHub(
         logger.LogInformation("SignalR: Client disconnected {ConnectionId} (exception: {Exception})",
             Context.ConnectionId, exception?.Message ?? "none");
 
-        // Presence cleanup
+        // Global presence cleanup + federated push
+        var removed = globalPresenceService.RemoveConnection(Context.ConnectionId);
+        if (removed is { IsLast: true })
+            _ = PushFederatedPresenceAsync(removed.Value.UserId, removed.Value.Username, false);
+
+        // Per-server presence cleanup
         var offlineUsers = presenceService.RemoveAllByConnectionId(Context.ConnectionId);
         foreach (var (serverId, userId, username, instanceUrl) in offlineUsers)
         {
             await Clients.Group(ServerGroup(serverId)).SendAsync("UserOffline", serverId, userId);
         }
 
-        var removed = voiceState.RemoveByConnectionId(Context.ConnectionId);
-        if (removed is not null)
+        var voiceRemoved = voiceState.RemoveByConnectionId(Context.ConnectionId);
+        if (voiceRemoved is not null)
         {
-            var (serverId, channelId, userId) = removed.Value;
+            var (serverId, channelId, userId) = voiceRemoved.Value;
 
             // Broadcast locally
             await Clients.Group(VoiceGroup(serverId, channelId))
@@ -281,6 +331,43 @@ public class MessageHub(
         }
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    private async Task PushFederatedPresenceAsync(Guid userId, string username, bool isOnline)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FennecDbContext>();
+
+            var knownUser = await db.Set<KnownUser>()
+                .FirstOrDefaultAsync(k => k.RemoteId == userId && k.InstanceUrl == LocalInstanceUrl);
+
+            if (knownUser is null) return;
+
+            var instanceUrls = await db.Set<UserJoinedKnownServer>()
+                .Where(u => u.KnownUserId == knownUser.Id)
+                .Include(u => u.KnownServer)
+                .Select(u => u.KnownServer.InstanceUrl)
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var url in instanceUrls)
+            {
+                try
+                {
+                    await federationClient.For(url).Presence.PushPresenceAsync(userId, username, isOnline);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to push presence to {InstanceUrl}", url);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to push federated presence for user {UserId}", userId);
+        }
     }
 
     private async Task NotifyRemoteInstancesParticipantJoined(Guid serverId, Guid channelId, VoiceParticipantDto participant)
