@@ -27,4 +27,10 @@ public class AppSettings
 
     [JsonPropertyName("voiceSensitivity")]
     public double VoiceSensitivity { get; set; } = 0.015;
+
+    [JsonPropertyName("voiceSoundsEnabled")]
+    public bool VoiceSoundsEnabled { get; set; } = true;
+
+    [JsonPropertyName("voiceSoundPack")]
+    public string VoiceSoundPack { get; set; } = "Classic";
 }

@@ -64,6 +64,14 @@ public partial class AudioSettingsViewModel : ObservableObject, IDisposable
 
     public string TestButtonLabel => IsTestingOutput ? "Stop" : "Test";
 
+    [ObservableProperty]
+    private bool _voiceSoundsEnabled;
+
+    [ObservableProperty]
+    private string _selectedSoundPack;
+
+    public List<string> SoundPacks { get; } = ["Classic", "Soft", "Minimal"];
+
     public bool IsAlsaSelected => SelectedHostApi is { Name: "ALSA" };
     public bool IsJackSelected => SelectedHostApi is { Name: "JACK" };
 
@@ -73,6 +81,8 @@ public partial class AudioSettingsViewModel : ObservableObject, IDisposable
         _currentSettings = currentSettings;
 
         _voiceSensitivity = currentSettings.VoiceSensitivity;
+        _voiceSoundsEnabled = currentSettings.VoiceSoundsEnabled;
+        _selectedSoundPack = currentSettings.VoiceSoundPack;
 
         try
         {
@@ -157,6 +167,16 @@ public partial class AudioSettingsViewModel : ObservableObject, IDisposable
     }
 
     partial void OnVoiceSensitivityChanged(double value)
+    {
+        if (_initialized) _ = SaveAsync();
+    }
+
+    partial void OnVoiceSoundsEnabledChanged(bool value)
+    {
+        if (_initialized) _ = SaveAsync();
+    }
+
+    partial void OnSelectedSoundPackChanged(string value)
     {
         if (_initialized) _ = SaveAsync();
     }
@@ -427,6 +447,8 @@ public partial class AudioSettingsViewModel : ObservableObject, IDisposable
         settings.InputDeviceName = SelectedInputDevice is { IsDefault: false } inp ? inp.Name : null;
         settings.OutputDeviceName = SelectedOutputDevice is { IsDefault: false } outp ? outp.Name : null;
         settings.VoiceSensitivity = VoiceSensitivity;
+        settings.VoiceSoundsEnabled = VoiceSoundsEnabled;
+        settings.VoiceSoundPack = SelectedSoundPack;
         await _settingsStore.SaveAsync(settings);
     }
 

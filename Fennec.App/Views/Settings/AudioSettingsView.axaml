@@ -75,5 +75,17 @@
                                       MinWidth="300"
                                       HorizontalAlignment="Left" />
         </StackPanel>
+        <!-- Voice Sounds -->
+        <StackPanel Spacing="8">
+            <TextBlock Text="Voice Sounds" FontWeight="SemiBold" />
+            <CheckBox Content="Enable voice sounds"
+                      IsChecked="{Binding VoiceSoundsEnabled}" />
+            <StackPanel Spacing="4" IsEnabled="{Binding VoiceSoundsEnabled}">
+                <TextBlock Text="Sound Pack" FontSize="12" Opacity="0.7" />
+                <ComboBox ItemsSource="{Binding SoundPacks}"
+                          SelectedItem="{Binding SelectedSoundPack}"
+                          MinWidth="200" />
+            </StackPanel>
+        </StackPanel>
     </StackPanel>
 </UserControl>

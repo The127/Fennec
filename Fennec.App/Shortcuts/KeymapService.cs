@@ -25,6 +25,8 @@ public class KeymapService : IKeymapService
         Register("app.zoomIn",          "Zoom In",             "Ctrl+OemPlus",  ShortcutContext.Global);
         Register("app.zoomOut",         "Zoom Out",            "Ctrl+OemMinus", ShortcutContext.Global);
         Register("app.zoomReset",       "Reset Zoom",          "Ctrl+D0",       ShortcutContext.Global);
+        Register("voice.toggleMute",   "Toggle Mute",         "Ctrl+Shift+M",  ShortcutContext.Global);
+        Register("voice.toggleDeafen", "Toggle Deafen",       "Ctrl+Shift+D",  ShortcutContext.Global);
     }
 
     private void Register(string id, string displayName, string gesture, ShortcutContext context)

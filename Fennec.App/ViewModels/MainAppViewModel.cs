@@ -189,6 +189,12 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             case "app.zoomReset":
                 ZoomResetCommand.Execute(null);
                 return true;
+            case "voice.toggleMute":
+                ToggleVoiceMute();
+                return true;
+            case "voice.toggleDeafen":
+                ToggleVoiceDeafen();
+                return true;
             default:
                 return false;
         }
@@ -497,6 +503,22 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
                 return Task.CompletedTask;
             })
             .Show();
+    }
+
+    private void ToggleVoiceMute()
+    {
+        if (!_voiceCallService.IsConnected) return;
+        var newMuted = !_voiceCallService.IsMuted;
+        _voiceCallService.SetMuted(newMuted);
+        _messenger.Send(new VoiceMuteToggledMessage(newMuted));
+    }
+
+    private void ToggleVoiceDeafen()
+    {
+        if (!_voiceCallService.IsConnected) return;
+        var newDeafened = !_voiceCallService.IsDeafened;
+        _voiceCallService.SetDeafened(newDeafened);
+        _messenger.Send(new VoiceDeafenToggledMessage(newDeafened));
     }
 
     private async Task SwitchToAccountAsync(AuthSession session)

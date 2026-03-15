@@ -109,6 +109,7 @@ public partial class App : Application
         services.AddSingleton<IMessageHubClient, MessageHubClient>();
         services.AddSingleton<IMessageHubService, MessageHubService>();
         services.AddSingleton<IVoiceHubService, VoiceHubService>();
+        services.AddSingleton<ISoundEffectService, SoundEffectService>();
         services.AddSingleton<IVoiceCallService, VoiceCallService>();
     }
 

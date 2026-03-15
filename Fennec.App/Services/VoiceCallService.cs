@@ -25,6 +25,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private readonly IMessenger _messenger;
     private readonly ILogger<VoiceCallService> _logger;
     private readonly ISettingsStore _settingsStore;
+    private readonly ISoundEffectService _soundEffects;
 
     private readonly Dictionary<Guid, RTCPeerConnection> _peers = new();
     private PortAudioEndPoint? _audioEndPoint;
@@ -44,12 +45,13 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         new RTCIceServer { urls = "stun:stun.l.google.com:19302" }
     ];
 
-    public VoiceCallService(IVoiceHubService voiceHub, IMessenger messenger, ILogger<VoiceCallService> logger, ISettingsStore settingsStore)
+    public VoiceCallService(IVoiceHubService voiceHub, IMessenger messenger, ILogger<VoiceCallService> logger, ISettingsStore settingsStore, ISoundEffectService soundEffects)
     {
         _voiceHub = voiceHub;
         _messenger = messenger;
         _logger = logger;
         _settingsStore = settingsStore;
+        _soundEffects = soundEffects;
 
         _voiceHub.SdpOfferReceived += OnSdpOfferReceived;
         _voiceHub.SdpAnswerReceived += OnSdpAnswerReceived;
@@ -70,6 +72,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
         var participants = await _voiceHub.JoinVoiceChannelAsync(serverId, channelId, instanceUrl);
         IsConnected = true;
+        _ = _soundEffects.PlayAsync(SoundEffect.Join);
         _messenger.Send(new VoiceStateChangedMessage(true, serverId, channelId));
 
         // Notify UI about all current participants (including self)
@@ -89,6 +92,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     {
         if (!IsConnected)
             return;
+
+        _ = _soundEffects.PlayAsync(SoundEffect.Leave);
 
         var serverId = CurrentServerId!.Value;
         var channelId = CurrentChannelId!.Value;
@@ -124,6 +129,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     public void SetMuted(bool muted)
     {
         IsMuted = muted;
+        _ = _soundEffects.PlayAsync(muted ? SoundEffect.Mute : SoundEffect.Unmute);
         if (_audioEndPoint is not null)
         {
             if (muted)
@@ -147,6 +153,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     public void SetDeafened(bool deafened)
     {
         IsDeafened = deafened;
+        _ = _soundEffects.PlayAsync(deafened ? SoundEffect.Deafen : SoundEffect.Undeafen);
         // When deafened, also mute
         if (deafened && !IsMuted)
             SetMuted(true);

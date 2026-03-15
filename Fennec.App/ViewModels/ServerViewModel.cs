@@ -181,7 +181,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<UserOfflineMessage>,
     IRecipient<VoiceMuteStateChangedMessage>,
     IRecipient<VoiceDeafenStateChangedMessage>,
-    IRecipient<VoiceSpeakingChangedMessage>
+    IRecipient<VoiceSpeakingChangedMessage>,
+    IRecipient<VoiceMuteToggledMessage>,
+    IRecipient<VoiceDeafenToggledMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
@@ -219,7 +221,10 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<UserOnlineMessage>(this);
         messenger.Register<UserOfflineMessage>(this);
         messenger.Register<VoiceMuteStateChangedMessage>(this);
+        messenger.Register<VoiceDeafenStateChangedMessage>(this);
         messenger.Register<VoiceSpeakingChangedMessage>(this);
+        messenger.Register<VoiceMuteToggledMessage>(this);
+        messenger.Register<VoiceDeafenToggledMessage>(this);
 
         // Initialize hub status from current state (message may have been sent before registration)
         (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
@@ -872,6 +877,30 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
             if (participant is not null)
                 participant.IsSpeaking = message.IsSpeaking;
+        });
+    }
+
+    public void Receive(VoiceMuteToggledMessage message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            IsMuted = message.IsMuted;
+            if (message.IsMuted && IsDeafened)
+            {
+                // Muting while deafened is fine, state is already consistent
+            }
+            UpdateLocalParticipantMuteState();
+        });
+    }
+
+    public void Receive(VoiceDeafenToggledMessage message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            IsDeafened = message.IsDeafened;
+            if (message.IsDeafened)
+                IsMuted = true;
+            UpdateLocalParticipantMuteState();
         });
     }
 
