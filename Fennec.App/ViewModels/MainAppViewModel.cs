@@ -172,6 +172,12 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             case "nav.focusSearch":
                 SearchFocusRequested?.Invoke();
                 return true;
+            case "nav.back":
+                NavigateBackCommand.Execute(null);
+                return true;
+            case "nav.forward":
+                NavigateForwardCommand.Execute(null);
+                return true;
             case "app.zoomIn":
                 ZoomInCommand.Execute(null);
                 return true;
@@ -323,6 +329,18 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
                 Servers.Add(new SidebarServer(server.Id, server.Name, server.InstanceUrl));
             }
         }
+    }
+
+    [RelayCommand]
+    private async Task NavigateBackAsync()
+    {
+        await _routerField.NavigateBackAsync();
+    }
+
+    [RelayCommand]
+    private async Task NavigateForwardAsync()
+    {
+        await _routerField.NavigateForwardAsync();
     }
 
     [RelayCommand]
