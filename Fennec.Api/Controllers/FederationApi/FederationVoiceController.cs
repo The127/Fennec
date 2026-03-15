@@ -53,4 +53,11 @@ public class FederationVoiceController(
         await voiceEventService.NotifyParticipantLeft(request.ServerId, request.ChannelId, request.UserId);
         return Ok();
     }
+
+    [HttpGet("state/{serverId:guid}")]
+    public IActionResult GetState(Guid serverId)
+    {
+        var state = voiceState.GetServerVoiceState(serverId);
+        return Ok(state);
+    }
 }

@@ -82,4 +82,59 @@ public class VoiceStateServiceTests
         Assert.Single(participants);
         Assert.Equal("user1-updated", participants[0].Username);
     }
+
+    [Fact]
+    public void GetServerVoiceState_returns_empty_when_no_participants()
+    {
+        var result = _sut.GetServerVoiceState(_serverId);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void GetServerVoiceState_returns_participants_grouped_by_channel()
+    {
+        var channelId2 = Guid.NewGuid();
+        var userId1 = Guid.NewGuid();
+        var userId2 = Guid.NewGuid();
+        var userId3 = Guid.NewGuid();
+
+        _sut.AddParticipant(_serverId, _channelId, userId1, "alice", null, "conn1");
+        _sut.AddParticipant(_serverId, _channelId, userId2, "bob", null, "conn2");
+        _sut.AddParticipant(_serverId, channelId2, userId3, "carol", null, "conn3");
+
+        var result = _sut.GetServerVoiceState(_serverId);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(2, result[_channelId].Count);
+        Assert.Single(result[channelId2]);
+        Assert.Contains(result[_channelId], p => p.UserId == userId1);
+        Assert.Contains(result[_channelId], p => p.UserId == userId2);
+        Assert.Equal(userId3, result[channelId2][0].UserId);
+    }
+
+    [Fact]
+    public void GetServerVoiceState_does_not_include_other_servers()
+    {
+        var otherServerId = Guid.NewGuid();
+        _sut.AddParticipant(_serverId, _channelId, Guid.NewGuid(), "alice", null, "conn1");
+        _sut.AddParticipant(otherServerId, _channelId, Guid.NewGuid(), "bob", null, "conn2");
+
+        var result = _sut.GetServerVoiceState(_serverId);
+
+        Assert.Single(result);
+        Assert.Single(result[_channelId]);
+    }
+
+    [Fact]
+    public void GetServerVoiceState_excludes_empty_channels_after_all_participants_leave()
+    {
+        var userId = Guid.NewGuid();
+        _sut.AddParticipant(_serverId, _channelId, userId, "alice", null, "conn1");
+        _sut.RemoveParticipant(_serverId, _channelId, userId);
+
+        var result = _sut.GetServerVoiceState(_serverId);
+
+        Assert.Empty(result);
+    }
 }

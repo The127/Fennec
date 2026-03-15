@@ -107,10 +107,7 @@ public class MessageHub(
         {
             try
             {
-                // For remote servers, we don't have the voice state locally.
-                // The client will get voice state when it subscribes via the hosting instance.
-                // For now, return empty — the hosting instance's state is authoritative.
-                return new();
+                return await federationClient.For(instanceUrl).Voice.GetVoiceStateAsync(serverId);
             }
             catch (Exception ex)
             {

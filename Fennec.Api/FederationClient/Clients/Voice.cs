@@ -8,6 +8,7 @@ public interface IVoiceClient
     Task LeaveAsync(FederationVoiceLeaveRequestDto request, CancellationToken cancellationToken = default);
     Task NotifyParticipantJoinedAsync(FederationVoiceParticipantEventDto request, CancellationToken cancellationToken = default);
     Task NotifyParticipantLeftAsync(FederationVoiceParticipantLeftEventDto request, CancellationToken cancellationToken = default);
+    Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetVoiceStateAsync(Guid serverId, CancellationToken cancellationToken = default);
 }
 
 public class VoiceClient(HttpClient httpClient, string instanceUrl) : IVoiceClient
@@ -41,5 +42,12 @@ public class VoiceClient(HttpClient httpClient, string instanceUrl) : IVoiceClie
     {
         var response = await httpClient.PostAsJsonAsync(BuildUri("federation/v1/voice/participant-left"), request, cancellationToken);
         response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetVoiceStateAsync(Guid serverId, CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetAsync(BuildUri($"federation/v1/voice/state/{serverId}"), cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Dictionary<Guid, List<VoiceParticipantDto>>>(cancellationToken) ?? new();
     }
 }
