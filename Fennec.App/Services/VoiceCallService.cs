@@ -356,8 +356,15 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             SIPSorcery.Net.MediaStreamStatusEnum.SendOnly);
         pc.addTrack(videoTrack);
 
-        var dc = await pc.createDataChannel("cursor");
-        _cursorDataChannels[remoteUserId] = dc;
+        try
+        {
+            var dc = await pc.createDataChannel("cursor");
+            _cursorDataChannels[remoteUserId] = dc;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ScreenShare: Could not create cursor data channel for {UserId}, cursor sharing disabled for this peer", remoteUserId);
+        }
     }
 
     private async Task CreatePeerAndOffer(Guid remoteUserId)
