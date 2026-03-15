@@ -16,6 +16,9 @@ public class AppSettings
     [JsonPropertyName("keyBindings")]
     public Dictionary<string, string>? KeyBindings { get; set; }
 
+    [JsonPropertyName("mouseBindings")]
+    public Dictionary<string, string>? MouseBindings { get; set; }
+
     [JsonPropertyName("audioHostApi")]
     public int? AudioHostApi { get; set; }
 

@@ -16,17 +16,27 @@ public partial class KeybindingsSettingsViewModel : ObservableObject
     private string? _conflictMessage;
 
     public ObservableCollection<ShortcutBindingItem> Bindings { get; } = [];
+    public ObservableCollection<MouseBindingItem> MouseBindings { get; } = [];
+    public IReadOnlyList<ShortcutBinding> AllKeyboardBindings { get; }
 
     public KeybindingsSettingsViewModel(IKeymapService keymapService, ISettingsStore settingsStore)
     {
         _keymapService = keymapService;
         _settingsStore = settingsStore;
 
-        foreach (var binding in keymapService.GetBindings())
+        AllKeyboardBindings = keymapService.GetBindings();
+
+        foreach (var binding in AllKeyboardBindings)
         {
             var defaultGesture = keymapService.GetDefaultGesture(binding.Id);
             var isModified = !GesturesMatch(binding.Gesture, defaultGesture);
             Bindings.Add(new ShortcutBindingItem(binding, isModified));
+        }
+
+        foreach (var mouseBinding in keymapService.GetMouseBindings())
+        {
+            var defaultId = keymapService.GetDefaultMouseShortcutId(mouseBinding.Button);
+            MouseBindings.Add(new MouseBindingItem(mouseBinding, AllKeyboardBindings, mouseBinding.ShortcutId != defaultId));
         }
     }
 
@@ -65,6 +75,25 @@ public partial class KeybindingsSettingsViewModel : ObservableObject
         _ = SaveBindingsAsync();
     }
 
+    public void HandleMouseBindingChanged(MouseBindingItem item)
+    {
+        if (item.SelectedBinding is null) return;
+        _keymapService.SetMouseBinding(item.Button, item.SelectedBinding.Id);
+        var defaultId = _keymapService.GetDefaultMouseShortcutId(item.Button);
+        item.IsModified = item.SelectedBinding.Id != defaultId;
+        _ = SaveBindingsAsync();
+    }
+
+    [RelayCommand]
+    private void ResetMouseBinding(MouseBindingItem item)
+    {
+        var defaultId = _keymapService.GetDefaultMouseShortcutId(item.Button);
+        _keymapService.SetMouseBinding(item.Button, defaultId);
+        item.SelectedBinding = AllKeyboardBindings.FirstOrDefault(b => b.Id == defaultId);
+        item.IsModified = false;
+        _ = SaveBindingsAsync();
+    }
+
     [RelayCommand]
     private void ResetBinding(ShortcutBindingItem item)
     {
@@ -93,6 +122,16 @@ public partial class KeybindingsSettingsViewModel : ObservableObject
         }
 
         settings.KeyBindings = overrides.Count > 0 ? overrides : null;
+
+        var mouseOverrides = new Dictionary<string, string>();
+        foreach (var binding in _keymapService.GetMouseBindings())
+        {
+            var defaultId = _keymapService.GetDefaultMouseShortcutId(binding.Button);
+            if (binding.ShortcutId != defaultId)
+                mouseOverrides[binding.Button] = binding.ShortcutId;
+        }
+        settings.MouseBindings = mouseOverrides.Count > 0 ? mouseOverrides : null;
+
         await _settingsStore.SaveAsync(settings);
     }
 

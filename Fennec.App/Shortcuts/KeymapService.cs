@@ -6,9 +6,13 @@ public class KeymapService : IKeymapService
 {
     private readonly Dictionary<string, ShortcutBinding> _bindings = new();
     private readonly Dictionary<string, KeyGesture> _defaults = new();
+    private readonly Dictionary<string, MouseButtonBinding> _mouseBindings = new();
+    private readonly Dictionary<string, string> _mouseDefaults = new();
 
     public KeymapService()
     {
+        RegisterMouse("xbutton1", "Mouse Back Button",    "nav.back");
+        RegisterMouse("xbutton2", "Mouse Forward Button", "nav.forward");
         Register("app.toggleTheme",     "Toggle Theme",       "Ctrl+Shift+T", ShortcutContext.Global);
         Register("app.openSettings",    "Open Settings",      "Ctrl+OemComma", ShortcutContext.Global);
         Register("nav.dashboard",       "Go to Dashboard",    "Ctrl+D1",      ShortcutContext.MainApp);
@@ -27,6 +31,12 @@ public class KeymapService : IKeymapService
         Register("app.zoomReset",       "Reset Zoom",          "Ctrl+D0",       ShortcutContext.Global);
         Register("voice.toggleMute",   "Toggle Mute",         "Ctrl+Shift+M",  ShortcutContext.Global);
         Register("voice.toggleDeafen", "Toggle Deafen",       "Ctrl+Shift+D",  ShortcutContext.Global);
+    }
+
+    private void RegisterMouse(string button, string displayName, string shortcutId)
+    {
+        _mouseDefaults[button] = shortcutId;
+        _mouseBindings[button] = new MouseButtonBinding(button, displayName, shortcutId);
     }
 
     private void Register(string id, string displayName, string gesture, ShortcutContext context)
@@ -102,6 +112,30 @@ public class KeymapService : IKeymapService
             {
                 // Skip invalid gestures
             }
+        }
+    }
+
+    public IReadOnlyList<MouseButtonBinding> GetMouseBindings()
+        => _mouseBindings.Values.ToList().AsReadOnly();
+
+    public string GetDefaultMouseShortcutId(string button)
+        => _mouseDefaults.TryGetValue(button, out var id)
+            ? id
+            : throw new ArgumentException($"Unknown mouse button: {button}");
+
+    public void SetMouseBinding(string button, string shortcutId)
+    {
+        if (!_mouseBindings.TryGetValue(button, out var binding))
+            throw new ArgumentException($"Unknown mouse button: {button}");
+        _mouseBindings[button] = binding with { ShortcutId = shortcutId };
+    }
+
+    public void LoadMouseOverrides(Dictionary<string, string> overrides)
+    {
+        foreach (var (button, shortcutId) in overrides)
+        {
+            if (_mouseBindings.ContainsKey(button) && _bindings.ContainsKey(shortcutId))
+                _mouseBindings[button] = _mouseBindings[button] with { ShortcutId = shortcutId };
         }
     }
 

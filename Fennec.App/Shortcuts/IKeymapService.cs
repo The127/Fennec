@@ -12,6 +12,11 @@ public interface IKeymapService
     BindingConflict? UpdateBinding(string id, KeyGesture newGesture);
     void ResetBinding(string id);
     void LoadOverrides(Dictionary<string, string> overrides);
+
+    IReadOnlyList<MouseButtonBinding> GetMouseBindings();
+    string GetDefaultMouseShortcutId(string button);
+    void SetMouseBinding(string button, string shortcutId);
+    void LoadMouseOverrides(Dictionary<string, string> overrides);
 }
 
 public record BindingConflict(string ConflictingId, string ConflictingDisplayName);

@@ -17,6 +17,29 @@ public class ShortcutDispatcher
     public void Attach(InputElement target)
     {
         target.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+        target.AddHandler(InputElement.PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+    }
+
+    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var props = e.GetCurrentPoint(null).Properties;
+        string? button = null;
+        if (props.IsXButton1Pressed) button = "xbutton1";
+        else if (props.IsXButton2Pressed) button = "xbutton2";
+        if (button is null) return;
+
+        var shortcutId = _keymapService.GetMouseBindings()
+            .FirstOrDefault(b => b.Button == button)?.ShortcutId;
+        if (shortcutId is null) return;
+
+        foreach (var handler in _collectHandlers())
+        {
+            if (handler.HandleShortcut(shortcutId))
+            {
+                e.Handled = true;
+                return;
+            }
+        }
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)

@@ -221,6 +221,9 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         if (settings.KeyBindings is { Count: > 0 })
             _keymapService.LoadOverrides(settings.KeyBindings);
 
+        if (settings.MouseBindings is { Count: > 0 })
+            _keymapService.LoadMouseOverrides(settings.MouseBindings);
+
         if (_session is not null)
         {
             try

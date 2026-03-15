@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Fennec.App.ViewModels.Settings;
+using SelectionChangedEventArgs = Avalonia.Controls.SelectionChangedEventArgs;
 
 namespace Fennec.App.Views.Settings;
 
@@ -67,6 +68,17 @@ public partial class KeybindingsSettingsView : UserControl
 
         if (item.IsCapturing)
             vm.CancelCaptureCommand.Execute(item);
+    }
+
+    private void OnMouseSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ComboBox comboBox || comboBox.DataContext is not MouseBindingItem item)
+            return;
+
+        if (DataContext is not KeybindingsSettingsViewModel vm)
+            return;
+
+        vm.HandleMouseBindingChanged(item);
     }
 
     private static Border? FindCaptureBoxForItem(Border originalBorder)
