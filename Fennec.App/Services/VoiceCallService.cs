@@ -514,13 +514,21 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
     }
 
-    private readonly LibVpxDecoder _vpxDecoder = new();
+    private readonly Dictionary<Guid, LibVpxDecoder> _videoDecoders = new();
 
     private void HandleIncomingVideoRtp(Guid fromUserId, SIPSorcery.Net.RTPPacket pkt)
     {
         try
         {
-            var result = _vpxDecoder.Decode(pkt.Payload);
+            var payload = pkt.Payload;
+            var skip = GetVp8DescriptorLength(payload);
+            if (skip >= payload.Length) return;
+
+            if (!_videoDecoders.TryGetValue(fromUserId, out var decoder))
+                _videoDecoders[fromUserId] = decoder = new LibVpxDecoder();
+
+            var vp8Data = payload.AsSpan(skip).ToArray();
+            var result = decoder.Decode(vp8Data);
             if (result != null)
             {
                 var (rgba, width, height) = result.Value;
@@ -533,15 +541,45 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Returns the byte length of the VP8 RTP payload descriptor (RFC 7741).
+    /// The VP8 bitstream begins at this offset within pkt.Payload.
+    /// </summary>
+    private static int GetVp8DescriptorLength(byte[] payload)
+    {
+        if (payload.Length == 0) return 0;
+        int i = 0;
+        bool x = (payload[i] & 0x80) != 0;  // X — extension present
+        i++;
+        if (!x) return i;
+        // Extension byte: I | L | T | K | RSV
+        bool hasI = (payload[i] & 0x80) != 0;  // PictureID
+        bool hasL = (payload[i] & 0x40) != 0;  // TL0PICIDX
+        bool hasT = (payload[i] & 0x20) != 0;  // TID
+        bool hasK = (payload[i] & 0x10) != 0;  // KEYIDX
+        i++;
+        if (hasI)
+        {
+            bool m = (payload[i] & 0x80) != 0;  // M — 15-bit PictureID
+            i++;
+            if (m) i++;
+        }
+        if (hasL) i++;
+        if (hasT || hasK) i++;
+        return i;
+    }
+
     private void CleanupPeers()
     {
         foreach (var pc in _peers.Values)
-        {
             pc.Dispose();
-        }
         _peers.Clear();
         _cursorDataChannels.Clear();
         _activeScreenSharers.Clear();
+
+        foreach (var dec in _videoDecoders.Values)
+            dec.Dispose();
+        _videoDecoders.Clear();
     }
 
     public void Dispose()
@@ -553,7 +591,6 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _cursorPosition.Stop();
         _ = _screenCapture.StopAsync();
         _videoSource?.Dispose();
-        _vpxDecoder.Dispose();
         CleanupPeers();
         CleanupAudio();
     }
