@@ -95,6 +95,8 @@ public partial class App : Application
             .Register<Views.Settings.SettingsView, ViewModels.Settings.SettingsViewModel>()
             .Register<Views.SwitchAccountView, ViewModels.SwitchAccountViewModel>());
         services.AddSingleton<IRouter, Router>();
+        services.AddSingleton<TokenStore>();
+        services.AddSingleton<ITokenStore>(sp => sp.GetRequiredService<TokenStore>());
         services.AddSingleton<IClientFactory, ClientFactory>();
         services.AddSingleton<IAuthService, AuthService>();
         services.AddSingleton<ServerRepository>();

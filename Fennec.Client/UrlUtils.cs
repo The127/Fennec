@@ -1,6 +1,6 @@
 namespace Fennec.Client;
 
-internal static class UrlUtils
+public static class UrlUtils
 {
     public static string NormalizeBaseUrl(string baseUrl)
     {

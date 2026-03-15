@@ -1,11 +1,9 @@
 namespace Fennec.Client;
 
-public class ClientFactory : IClientFactory
+public class ClientFactory(TokenStore tokenStore) : IClientFactory
 {
     public IFennecClient Create()
     {
-        var tokenStore = new TokenStore();
-
         var authHandler = new AuthHandler(tokenStore)
         {
             InnerHandler = new HttpClientHandler()

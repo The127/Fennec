@@ -7,7 +7,7 @@ public class ClientFactoryTests
     [Fact]
     public void Create_ReturnsClient()
     {
-        var factory = new ClientFactory();
+        var factory = new ClientFactory(new TokenStore());
         var client = factory.Create();
 
         Assert.NotNull(client);

@@ -2,6 +2,8 @@ using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Voice;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.Services;
 
@@ -26,15 +28,22 @@ public class VoiceHubService : IVoiceHubService
 {
     private readonly IMessageHubClient _hubClient;
     private readonly IMessenger _messenger;
+    private readonly ITokenStore _tokenStore;
+    private readonly ILogger<VoiceHubService> _logger;
+
+    private HubConnection? _directConnection;
+    private bool _usingDirect;
 
     public event Action<Guid, Guid, Guid, string>? SdpOfferReceived;
     public event Action<Guid, Guid, Guid, string>? SdpAnswerReceived;
     public event Action<Guid, Guid, Guid, string, string?, int?>? IceCandidateReceived;
 
-    public VoiceHubService(IMessageHubClient hubClient, IMessenger messenger)
+    public VoiceHubService(IMessageHubClient hubClient, IMessenger messenger, ITokenStore tokenStore, ILogger<VoiceHubService> logger)
     {
         _hubClient = hubClient;
         _messenger = messenger;
+        _tokenStore = tokenStore;
+        _logger = logger;
     }
 
     public void Initialize()
@@ -75,24 +84,157 @@ public class VoiceHubService : IVoiceHubService
         };
     }
 
-    public Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl)
-        => _hubClient.JoinVoiceChannelAsync(serverId, channelId, instanceUrl);
+    private bool IsRemoteInstance(string instanceUrl)
+    {
+        var homeUrl = _tokenStore.HomeUrl;
+        if (homeUrl is null) return false;
+        return !string.Equals(
+            UrlUtils.NormalizeBaseUrl(instanceUrl),
+            UrlUtils.NormalizeBaseUrl(homeUrl),
+            StringComparison.OrdinalIgnoreCase);
+    }
 
-    public Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl)
-        => _hubClient.LeaveVoiceChannelAsync(serverId, channelId, instanceUrl);
+    public async Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl)
+    {
+        if (!IsRemoteInstance(instanceUrl))
+        {
+            return await _hubClient.JoinVoiceChannelAsync(serverId, channelId, instanceUrl);
+        }
 
-    public Task SendSdpOfferAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
-        => _hubClient.SendSdpOfferAsync(serverId, channelId, targetUserId, sdp);
+        // Remote instance — open a direct SignalR connection to the hosting server
+        var normalizedUrl = UrlUtils.NormalizeBaseUrl(instanceUrl);
+        var jwt = _tokenStore.GetPublicToken(normalizedUrl);
+        if (jwt is null)
+        {
+            _logger.LogWarning("No public token cached for {InstanceUrl}, falling back to home hub", normalizedUrl);
+            return await _hubClient.JoinVoiceChannelAsync(serverId, channelId, instanceUrl);
+        }
 
-    public Task SendSdpAnswerAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
-        => _hubClient.SendSdpAnswerAsync(serverId, channelId, targetUserId, sdp);
+        _logger.LogInformation("Voice: Opening direct SignalR connection to {InstanceUrl}", normalizedUrl);
 
-    public Task SendIceCandidateAsync(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex)
-        => _hubClient.SendIceCandidateAsync(serverId, channelId, targetUserId, candidate, sdpMid, sdpMLineIndex);
+        _directConnection = new HubConnectionBuilder()
+            .WithUrl($"{normalizedUrl}/hubs/messages", options =>
+            {
+                options.AccessTokenProvider = () => Task.FromResult<string?>(jwt);
+            })
+            .WithAutomaticReconnect(new ForeverRetryPolicy())
+            .Build();
 
-    public Task SetMuteStateAsync(Guid serverId, Guid channelId, bool isMuted)
-        => _hubClient.SetMuteStateAsync(serverId, channelId, isMuted);
+        // Register voice event handlers on the direct connection
+        _directConnection.On<Guid, Guid, VoiceParticipantDto>("VoiceParticipantJoined", (sid, cid, participant) =>
+        {
+            _messenger.Send(new VoiceParticipantJoinedMessage(sid, cid, participant.UserId, participant.Username, participant.InstanceUrl));
+        });
 
-    public Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking)
-        => _hubClient.SetSpeakingStateAsync(serverId, channelId, isSpeaking);
+        _directConnection.On<Guid, Guid, Guid>("VoiceParticipantLeft", (sid, cid, userId) =>
+        {
+            _messenger.Send(new VoiceParticipantLeftMessage(sid, cid, userId));
+        });
+
+        _directConnection.On<Guid, Guid, Guid, string>("ReceiveSdpOffer", (sid, cid, fromUserId, sdp) =>
+        {
+            SdpOfferReceived?.Invoke(sid, cid, fromUserId, sdp);
+        });
+
+        _directConnection.On<Guid, Guid, Guid, string>("ReceiveSdpAnswer", (sid, cid, fromUserId, sdp) =>
+        {
+            SdpAnswerReceived?.Invoke(sid, cid, fromUserId, sdp);
+        });
+
+        _directConnection.On<Guid, Guid, Guid, string, string?, int?>("ReceiveIceCandidate", (sid, cid, fromUserId, candidate, sdpMid, sdpMLineIndex) =>
+        {
+            IceCandidateReceived?.Invoke(sid, cid, fromUserId, candidate, sdpMid, sdpMLineIndex);
+        });
+
+        _directConnection.On<Guid, Guid, Guid, bool>("VoiceMuteStateChanged", (sid, cid, userId, isMuted) =>
+        {
+            _messenger.Send(new VoiceMuteStateChangedMessage(sid, cid, userId, isMuted));
+        });
+
+        _directConnection.On<Guid, Guid, Guid, bool>("VoiceSpeakingStateChanged", (sid, cid, userId, isSpeaking) =>
+        {
+            _messenger.Send(new VoiceSpeakingChangedMessage(sid, cid, userId, isSpeaking));
+        });
+
+        _directConnection.Closed += ex =>
+        {
+            _logger.LogWarning(ex, "Voice: Direct connection to {InstanceUrl} closed", normalizedUrl);
+            return Task.CompletedTask;
+        };
+
+        _directConnection.Reconnecting += ex =>
+        {
+            _logger.LogWarning(ex, "Voice: Direct connection to {InstanceUrl} reconnecting...", normalizedUrl);
+            return Task.CompletedTask;
+        };
+
+        _directConnection.Reconnected += _ =>
+        {
+            _logger.LogInformation("Voice: Direct connection to {InstanceUrl} reconnected", normalizedUrl);
+            return Task.CompletedTask;
+        };
+
+        await _directConnection.StartAsync();
+        _usingDirect = true;
+        _logger.LogInformation("Voice: Direct connection established to {InstanceUrl}", normalizedUrl);
+
+        return await _directConnection.InvokeAsync<List<VoiceParticipantDto>>("JoinVoiceChannel", serverId, channelId, instanceUrl);
+    }
+
+    public async Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl)
+    {
+        if (_usingDirect && _directConnection is not null)
+        {
+            if (_directConnection.State == HubConnectionState.Connected)
+                await _directConnection.InvokeAsync("LeaveVoiceChannel", serverId, channelId, instanceUrl);
+
+            await _directConnection.DisposeAsync();
+            _directConnection = null;
+            _usingDirect = false;
+            _logger.LogInformation("Voice: Direct connection closed");
+            return;
+        }
+
+        await _hubClient.LeaveVoiceChannelAsync(serverId, channelId, instanceUrl);
+    }
+
+    public async Task SendSdpOfferAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("SendSdpOffer", serverId, channelId, targetUserId, sdp);
+        else
+            await _hubClient.SendSdpOfferAsync(serverId, channelId, targetUserId, sdp);
+    }
+
+    public async Task SendSdpAnswerAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("SendSdpAnswer", serverId, channelId, targetUserId, sdp);
+        else
+            await _hubClient.SendSdpAnswerAsync(serverId, channelId, targetUserId, sdp);
+    }
+
+    public async Task SendIceCandidateAsync(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("SendIceCandidate", serverId, channelId, targetUserId, candidate, sdpMid, sdpMLineIndex);
+        else
+            await _hubClient.SendIceCandidateAsync(serverId, channelId, targetUserId, candidate, sdpMid, sdpMLineIndex);
+    }
+
+    public async Task SetMuteStateAsync(Guid serverId, Guid channelId, bool isMuted)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("SetMuteState", serverId, channelId, isMuted);
+        else
+            await _hubClient.SetMuteStateAsync(serverId, channelId, isMuted);
+    }
+
+    public async Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("SetSpeakingState", serverId, channelId, isSpeaking);
+        else
+            await _hubClient.SetSpeakingStateAsync(serverId, channelId, isSpeaking);
+    }
 }

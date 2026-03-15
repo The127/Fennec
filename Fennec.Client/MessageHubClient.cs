@@ -321,7 +321,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     }
 }
 
-internal sealed class ForeverRetryPolicy : IRetryPolicy
+public sealed class ForeverRetryPolicy : IRetryPolicy
 {
     public TimeSpan? NextRetryDelay(RetryContext retryContext)
     {
