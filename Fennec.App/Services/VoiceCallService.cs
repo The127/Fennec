@@ -420,7 +420,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         {
             _audioEndPoint.OnAudioSourceEncodedSample += (durationRtpUnits, sample) =>
             {
-                if (!IsMuted)
+                // Guard: only send if this peer is still the active one for this user
+                if (!IsMuted && _peers.TryGetValue(remoteUserId, out var activePc) && activePc == pc)
                     pc.SendAudio(durationRtpUnits, sample);
             };
         }
@@ -428,6 +429,10 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         // Handle incoming audio and video
         pc.OnRtpPacketReceived += (ep, media, pkt) =>
         {
+            // Only process RTP if this is still the active peer
+            if (!_peers.TryGetValue(remoteUserId, out var activePc) || activePc != pc)
+                return;
+
             if (media == SDPMediaTypesEnum.audio && !IsDeafened && _audioEndPoint is not null)
             {
                 _audioEndPoint.GotAudioRtp(ep, pkt.Header.SyncSource, pkt.Header.SequenceNumber,
