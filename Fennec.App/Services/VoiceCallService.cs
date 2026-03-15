@@ -221,8 +221,12 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _cursorPosition.OnCursorChanged += OnCursorChanged;
         _cursorPosition.Start(target);
 
-        // Start capture
-        await _screenCapture.StartAsync(target, _videoSource.OnFrame);
+        // Start capture (also send frames locally for preview)
+        await _screenCapture.StartAsync(target, (rgba, w, h) =>
+        {
+            _videoSource.OnFrame(rgba, w, h);
+            _messenger.Send(new ScreenShareFrameMessage(_currentUserId, rgba, w, h));
+        });
 
         IsScreenSharing = true;
         await _voiceHub.StartScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);
@@ -259,6 +263,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
     private void OnCursorChanged(float x, float y, Messages.CursorType type)
     {
+        // Send cursor locally for preview
+        _messenger.Send(new ScreenShareCursorMessage(_currentUserId, x, y, type));
+
         // Serialize cursor data: 2x float32 + 1 byte enum = 9 bytes
         var data = new byte[9];
         BitConverter.TryWriteBytes(data.AsSpan(0, 4), x);
