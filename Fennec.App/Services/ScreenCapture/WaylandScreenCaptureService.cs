@@ -30,7 +30,8 @@ public class WaylandScreenCaptureService : IScreenCaptureService
     public Task<List<CaptureTarget>> GetAvailableTargetsAsync() =>
         Task.FromResult(new List<CaptureTarget>
         {
-            new CaptureTarget(CaptureTargetKind.Screen, "wayland:portal", "Screen (system picker)"),
+            new CaptureTarget(CaptureTargetKind.Screen,  "wayland:monitor", "Entire Screen (system picker)"),
+            new CaptureTarget(CaptureTargetKind.Window,  "wayland:window",  "Application Window (system picker)"),
         });
 
     public async Task StartAsync(CaptureTarget target, Action<byte[], int, int> onFrame)
@@ -42,7 +43,8 @@ public class WaylandScreenCaptureService : IScreenCaptureService
 
         try
         {
-            var nodeId = await _portal.StartSessionAsync();
+            var types = target.Id == "wayland:window" ? 2 : 1;
+            var nodeId = await _portal.StartSessionAsync(types);
             await _capture.StartAsync(nodeId, onFrame, _portal.Process!);
             IsCapturing = true;
             _logger.LogInformation("Wayland screen capture started (node {NodeId})", nodeId);

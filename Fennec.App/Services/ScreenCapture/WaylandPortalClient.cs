@@ -61,7 +61,7 @@ def step2(r):
     wait(t, step3)
     sc.SelectSources(session_handle[0], {
         'handle_token': dbus.String(t),
-        'types': dbus.UInt32(1),
+        'types': dbus.UInt32(int(sys.argv[1]) if len(sys.argv) > 1 else 3),
         'multiple': dbus.Boolean(False),
         'cursor_mode': dbus.UInt32(2),
     })
@@ -137,9 +137,10 @@ loop.run()
     /// and GStreamer starts, then returns the node_id.  The process keeps running after this
     /// call — it must stay alive to stream frames and hold the portal session open.
     /// </summary>
-    public async Task<uint> StartSessionAsync(CancellationToken ct = default)
+    /// <param name="types">Portal ScreenCast source types bitmask: 1=monitor, 2=window, 3=both.</param>
+    public async Task<uint> StartSessionAsync(int types = 3, CancellationToken ct = default)
     {
-        var psi = new ProcessStartInfo("python3", "-")
+        var psi = new ProcessStartInfo("python3", $"- {types}")
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
