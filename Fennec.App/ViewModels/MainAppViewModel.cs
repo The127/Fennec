@@ -14,6 +14,8 @@ using Fennec.App.Shortcuts;
 using Fennec.App.Themes;
 using Fennec.App.ViewModels.Settings;
 using Fennec.Client;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Fennec.Shared.Dtos.Auth;
 using Fennec.Shared.Dtos.Server;
 using ShadUI;
@@ -28,7 +30,7 @@ public partial class SidebarServer(Guid id, string name, string instanceUrl) : O
     public string AvatarFallback { get; } = name[..1].ToUpperInvariant();
 }
 
-public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>, IRecipient<VoiceStateChangedMessage>, IRecipient<VoiceMuteToggledMessage>, IRecipient<VoiceDeafenToggledMessage>
+public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>, IRecipient<VoiceStateChangedMessage>, IRecipient<VoiceMuteToggledMessage>, IRecipient<VoiceDeafenToggledMessage>, IRecipient<ScreenShareStartedMessage>, IRecipient<ScreenShareStoppedMessage>, IRecipient<ScreenShareFrameMessage>, IRecipient<ScreenShareCursorMessage>
 {
     private readonly IRouter _routerField;
     private readonly IMessenger _messenger;
@@ -82,6 +84,10 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         messenger.Register<VoiceStateChangedMessage>(this);
         messenger.Register<VoiceMuteToggledMessage>(this);
         messenger.Register<VoiceDeafenToggledMessage>(this);
+        messenger.Register<ScreenShareStartedMessage>(this);
+        messenger.Register<ScreenShareStoppedMessage>(this);
+        messenger.Register<ScreenShareFrameMessage>(this);
+        messenger.Register<ScreenShareCursorMessage>(this);
 
         // Initialize voice state from service (handles case where VM is created after call started)
         IsInVoiceCall = voiceCallService.IsConnected;
@@ -115,6 +121,8 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             SearchWatermark = "Search...";
             IsSearchable = false;
         }
+
+        UpdateFloatingScreenShareVisibility();
     }
 
     [ObservableProperty]
@@ -554,6 +562,13 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             VoiceChannelName = null;
             IsVoiceMuted = false;
             IsVoiceDeafened = false;
+
+            // Reset floating screen share
+            _activeScreenShareCount = 0;
+            _focusedScreenShareUserId = null;
+            FloatingScreenShareFrame = null;
+            FloatingSharerUsername = null;
+            UpdateFloatingScreenShareVisibility();
         }
     }
 
@@ -600,6 +615,145 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         var server = Servers.FirstOrDefault(s => s.Id == _voiceServerId);
         if (server is null) return;
         await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, server.Id, server.Name, server.InstanceUrl, _session.UserId, Username));
+    }
+
+    // --- Floating screen share ---
+
+    private int _activeScreenShareCount;
+
+    [ObservableProperty]
+    private bool _showFloatingScreenShare;
+
+    [ObservableProperty]
+    private WriteableBitmap? _floatingScreenShareFrame;
+
+    [ObservableProperty]
+    private double _floatingCursorX;
+
+    [ObservableProperty]
+    private double _floatingCursorY;
+
+    [ObservableProperty]
+    private CursorType _floatingCursorShape;
+
+    [ObservableProperty]
+    private string? _floatingSharerUsername;
+
+    private Guid? _focusedScreenShareUserId;
+
+    private void UpdateFloatingScreenShareVisibility()
+    {
+        var isOnVoiceServer = _routerField.CurrentViewModel is ServerViewModel svm
+                              && svm.ServerId == _voiceServerId;
+        ShowFloatingScreenShare = _activeScreenShareCount > 0 && !isOnVoiceServer;
+    }
+
+    public void Receive(ScreenShareStartedMessage message)
+    {
+        if (message.ServerId != _voiceServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            _activeScreenShareCount++;
+            _focusedScreenShareUserId ??= message.UserId;
+            if (_focusedScreenShareUserId == message.UserId)
+                FloatingSharerUsername = message.Username;
+            UpdateFloatingScreenShareVisibility();
+        });
+    }
+
+    public void Receive(ScreenShareStoppedMessage message)
+    {
+        if (message.ServerId != _voiceServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            _activeScreenShareCount = Math.Max(0, _activeScreenShareCount - 1);
+
+            if (_focusedScreenShareUserId == message.UserId)
+            {
+                _focusedScreenShareUserId = null;
+                FloatingSharerUsername = null;
+                FloatingScreenShareFrame = null;
+            }
+
+            if (_activeScreenShareCount == 0)
+            {
+                FloatingScreenShareFrame = null;
+                FloatingSharerUsername = null;
+            }
+
+            UpdateFloatingScreenShareVisibility();
+        });
+    }
+
+    public void Receive(ScreenShareFrameMessage message)
+    {
+        if (_focusedScreenShareUserId != message.UserId) return;
+        if (!ShowFloatingScreenShare) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                if (FloatingScreenShareFrame is null
+                    || FloatingScreenShareFrame.PixelSize.Width != message.Width
+                    || FloatingScreenShareFrame.PixelSize.Height != message.Height)
+                {
+                    FloatingScreenShareFrame = new WriteableBitmap(
+                        new Avalonia.PixelSize(message.Width, message.Height),
+                        new Avalonia.Vector(96, 96),
+                        Avalonia.Platform.PixelFormat.Rgba8888,
+                        Avalonia.Platform.AlphaFormat.Unpremul);
+                }
+
+                using (var frameBuffer = FloatingScreenShareFrame.Lock())
+                {
+                    var srcStride = message.Width * 4;
+                    var dstStride = frameBuffer.RowBytes;
+
+                    if (srcStride == dstStride)
+                    {
+                        System.Runtime.InteropServices.Marshal.Copy(
+                            message.RgbaData, 0, frameBuffer.Address, message.RgbaData.Length);
+                    }
+                    else
+                    {
+                        for (int y = 0; y < message.Height; y++)
+                        {
+                            System.Runtime.InteropServices.Marshal.Copy(
+                                message.RgbaData, y * srcStride,
+                                frameBuffer.Address + y * dstStride, srcStride);
+                        }
+                    }
+                }
+
+                OnPropertyChanged(nameof(FloatingScreenShareFrame));
+            }
+            catch
+            {
+                // Ignore render failures
+            }
+        });
+    }
+
+    public void Receive(ScreenShareCursorMessage message)
+    {
+        if (_focusedScreenShareUserId != message.UserId) return;
+        if (!ShowFloatingScreenShare) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            FloatingCursorX = message.X;
+            FloatingCursorY = message.Y;
+            FloatingCursorShape = message.Type;
+        });
+    }
+
+    [RelayCommand]
+    private async Task NavigateToFloatingScreenShareAsync()
+    {
+        await NavigateToVoiceChannelAsync();
     }
 
     private async Task SwitchToAccountAsync(AuthSession session)
