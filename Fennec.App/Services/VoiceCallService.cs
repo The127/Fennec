@@ -547,6 +547,16 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             _logger.LogInformation("ScreenShare: Sending SDP answer to {UserId}, answer has video={AnswerHasVideo}", fromUserId, answer.sdp?.Contains("m=video"));
 
             await _voiceHub.SendSdpAnswerAsync(serverId, channelId, fromUserId, answer.sdp);
+
+            // If we're screen sharing but the peer's offer didn't include video,
+            // send a counter-offer so the remote side can receive our video track
+            if (IsScreenSharing && !hasVideo)
+            {
+                _logger.LogInformation("ScreenShare: Sending counter-offer with video to {UserId}", fromUserId);
+                var counterOffer = pc.createOffer();
+                await pc.setLocalDescription(counterOffer);
+                await _voiceHub.SendSdpOfferAsync(serverId, channelId, fromUserId, counterOffer.sdp);
+            }
         }
         catch (Exception ex)
         {
