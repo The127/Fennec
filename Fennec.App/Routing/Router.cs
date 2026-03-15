@@ -8,6 +8,8 @@ public class Router(IServiceProvider serviceProvider) : IRouter
     private readonly IRouteStore _routeStore = serviceProvider.GetRequiredService<IRouteStore>();
 
     public ObservableObject? CurrentViewModel { get; private set; }
+    public bool CanGoBack => _routeStore.CanGoBack;
+    public bool CanGoForward => _routeStore.CanGoForward;
     public event EventHandler<ObservableObject>? Navigated;
 
     public async Task NavigateAsync(IRoute route, CancellationToken cancellationToken = default)

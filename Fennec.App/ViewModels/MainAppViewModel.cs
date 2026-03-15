@@ -85,6 +85,8 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
     private void OnRouteNavigated(object? sender, ObservableObject viewModel)
     {
+        NavigateBackCommand.NotifyCanExecuteChanged();
+        NavigateForwardCommand.NotifyCanExecuteChanged();
         // Clear search on the previous route
         if (_currentSearchableRoute is not null)
         {
@@ -331,13 +333,16 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         }
     }
 
-    [RelayCommand]
+    private bool CanNavigateBack => _routerField.CanGoBack;
+    private bool CanNavigateForward => _routerField.CanGoForward;
+
+    [RelayCommand(CanExecute = nameof(CanNavigateBack))]
     private async Task NavigateBackAsync()
     {
         await _routerField.NavigateBackAsync();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanNavigateForward))]
     private async Task NavigateForwardAsync()
     {
         await _routerField.NavigateForwardAsync();

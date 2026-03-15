@@ -54,10 +54,22 @@
         </Border>
         <StackPanel DockPanel.Dock="Top">
             <Border Padding="8">
-                <Grid ColumnDefinitions="Auto * Auto *">
+                <Grid ColumnDefinitions="* Auto *">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="2">
+                        <Button Height="32" Width="32"
+                                Command="{Binding NavigateBackCommand}"
+                                ToolTip.Tip="Back (Alt+Left)">
+                            <mi:MaterialIcon Kind="ArrowLeft" Width="16" Height="16" />
+                        </Button>
+                        <Button Height="32" Width="32"
+                                Command="{Binding NavigateForwardCommand}"
+                                ToolTip.Tip="Forward (Alt+Right)">
+                            <mi:MaterialIcon Kind="ArrowRight" Width="16" Height="16" />
+                        </Button>
+                    </StackPanel>
                     <TextBox
+                        Grid.Column="1"
                         x:Name="SearchBox"
-                        Grid.Column="2"
                         Classes="Clearable"
                         Text="{Binding SearchText}"
                         Watermark="{Binding SearchWatermark}"
@@ -72,8 +84,8 @@
                         </TextBox.InnerRightContent>
                     </TextBox>
                     <shadui:SimpleDropdown
+                        Grid.Column="2"
                         x:Name="ProfileDropdown"
-                        Grid.Column="3"
                         Cursor="Hand"
                         HorizontalAlignment="Right"
                         PopupPlacement="BottomEdgeAlignedRight"

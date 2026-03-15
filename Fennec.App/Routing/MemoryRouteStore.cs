@@ -16,6 +16,9 @@ public class MemoryRouteStore : IRouteStore
     private readonly LinkedList<HistoryEntry> _forwardsStack = new();
     private readonly LinkedList<HistoryEntry> _farFuture = new();
 
+    public bool CanGoBack => _backwardsStack.Count > 0 || _ancientHistory.Count > 0;
+    public bool CanGoForward => _forwardsStack.Count > 0 || _farFuture.Count > 0;
+
     public MemoryRouteStore(int maxCached, int maxHistory)
     {
         if (maxCached < 0) throw new ArgumentOutOfRangeException(nameof(maxCached), "maxCached must be non-negative");
