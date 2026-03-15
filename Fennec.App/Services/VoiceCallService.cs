@@ -8,7 +8,7 @@ namespace Fennec.App.Services;
 
 public interface IVoiceCallService
 {
-    Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl);
+    Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl, Guid currentUserId);
     Task LeaveAsync();
     void SetMuted(bool muted);
     void SetDeafened(bool deafened);
@@ -53,7 +53,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _voiceHub.IceCandidateReceived += OnIceCandidateReceived;
     }
 
-    public async Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl)
+    public async Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl, Guid currentUserId)
     {
         if (IsConnected)
             await LeaveAsync();
@@ -75,7 +75,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
 
         // Create peer connections to all existing participants except self (joiner offers)
-        foreach (var participant in participants)
+        foreach (var participant in participants.Where(p => p.UserId != currentUserId))
         {
             await CreatePeerAndOffer(participant.UserId);
         }
@@ -121,6 +121,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             else
                 _ = _audioEndPoint.ResumeAudio();
         }
+
+        if (IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
+            _ = _voiceHub.SetMuteStateAsync(CurrentServerId.Value, CurrentChannelId.Value, muted);
     }
 
     public void SetDeafened(bool deafened)

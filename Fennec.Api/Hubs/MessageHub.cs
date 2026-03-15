@@ -186,22 +186,37 @@ public class MessageHub(
     public async Task SendSdpOffer(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
     {
         var (userId, _, _) = GetCallerIdentity();
-        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+        var connectionId = voiceState.GetConnectionId(serverId, channelId, targetUserId);
+        if (connectionId is null) return;
+        await Clients.Client(connectionId)
             .SendAsync("ReceiveSdpOffer", serverId, channelId, userId, sdp);
     }
 
     public async Task SendSdpAnswer(Guid serverId, Guid channelId, Guid targetUserId, string sdp)
     {
         var (userId, _, _) = GetCallerIdentity();
-        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+        var connectionId = voiceState.GetConnectionId(serverId, channelId, targetUserId);
+        if (connectionId is null) return;
+        await Clients.Client(connectionId)
             .SendAsync("ReceiveSdpAnswer", serverId, channelId, userId, sdp);
     }
 
     public async Task SendIceCandidate(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex)
     {
         var (userId, _, _) = GetCallerIdentity();
-        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+        var connectionId = voiceState.GetConnectionId(serverId, channelId, targetUserId);
+        if (connectionId is null) return;
+        await Clients.Client(connectionId)
             .SendAsync("ReceiveIceCandidate", serverId, channelId, userId, candidate, sdpMid, sdpMLineIndex);
+    }
+
+    public async Task SetMuteState(Guid serverId, Guid channelId, bool isMuted)
+    {
+        var (userId, _, _) = GetCallerIdentity();
+        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+            .SendAsync("VoiceMuteStateChanged", serverId, channelId, userId, isMuted);
+        await Clients.OthersInGroup(ServerGroup(serverId))
+            .SendAsync("VoiceMuteStateChanged", serverId, channelId, userId, isMuted);
     }
 
     public override Task OnConnectedAsync()

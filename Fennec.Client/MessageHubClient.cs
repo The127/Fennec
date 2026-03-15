@@ -37,12 +37,14 @@ public interface IMessageHubClient : IAsyncDisposable
     Task SendSdpOfferAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp);
     Task SendSdpAnswerAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp);
     Task SendIceCandidateAsync(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex);
+    Task SetMuteStateAsync(Guid serverId, Guid channelId, bool isMuted);
 
     event Action<Guid, Guid, VoiceParticipantDto>? VoiceParticipantJoined;
     event Action<Guid, Guid, Guid>? VoiceParticipantLeft;
     event Action<Guid, Guid, Guid, string>? SdpOfferReceived;
     event Action<Guid, Guid, Guid, string>? SdpAnswerReceived;
     event Action<Guid, Guid, Guid, string, string?, int?>? IceCandidateReceived;
+    event Action<Guid, Guid, Guid, bool>? VoiceMuteStateChanged;
 }
 
 public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubClient
@@ -65,6 +67,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     public event Action<Guid, Guid, Guid, string>? SdpOfferReceived;
     public event Action<Guid, Guid, Guid, string>? SdpAnswerReceived;
     public event Action<Guid, Guid, Guid, string, string?, int?>? IceCandidateReceived;
+    public event Action<Guid, Guid, Guid, bool>? VoiceMuteStateChanged;
 
     public async Task ConnectAsync(string baseUrl, string token)
     {
@@ -123,6 +126,11 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         _connection.On<Guid, Guid, Guid, string, string?, int?>("ReceiveIceCandidate", (serverId, channelId, fromUserId, candidate, sdpMid, sdpMLineIndex) =>
         {
             IceCandidateReceived?.Invoke(serverId, channelId, fromUserId, candidate, sdpMid, sdpMLineIndex);
+        });
+
+        _connection.On<Guid, Guid, Guid, bool>("VoiceMuteStateChanged", (serverId, channelId, userId, isMuted) =>
+        {
+            VoiceMuteStateChanged?.Invoke(serverId, channelId, userId, isMuted);
         });
 
         _connection.Reconnected += _ =>
@@ -273,6 +281,12 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     {
         if (_connection?.State == HubConnectionState.Connected)
             await _connection.InvokeAsync("SendIceCandidate", serverId, channelId, targetUserId, candidate, sdpMid, sdpMLineIndex);
+    }
+
+    public async Task SetMuteStateAsync(Guid serverId, Guid channelId, bool isMuted)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+            await _connection.InvokeAsync("SetMuteState", serverId, channelId, isMuted);
     }
 
     public async Task DisconnectAsync()

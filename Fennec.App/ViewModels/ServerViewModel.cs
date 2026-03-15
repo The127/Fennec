@@ -172,7 +172,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<VoiceStateChangedMessage>,
     IRecipient<HubConnectionStateChangedMessage>,
     IRecipient<UserOnlineMessage>,
-    IRecipient<UserOfflineMessage>
+    IRecipient<UserOfflineMessage>,
+    IRecipient<VoiceMuteStateChangedMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
@@ -209,6 +210,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<HubConnectionStateChangedMessage>(this);
         messenger.Register<UserOnlineMessage>(this);
         messenger.Register<UserOfflineMessage>(this);
+        messenger.Register<VoiceMuteStateChangedMessage>(this);
 
         // Initialize hub status from current state (message may have been sent before registration)
         (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
@@ -705,7 +707,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
         try
         {
-            await _voiceCallService.JoinAsync(ServerId, channel.Id, instanceUrl);
+            await _voiceCallService.JoinAsync(ServerId, channel.Id, instanceUrl, _currentUserId);
         }
         catch (Exception ex)
         {
@@ -814,6 +816,19 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == _currentUserId);
         if (participant is not null)
             participant.IsMuted = IsMuted;
+    }
+
+    public void Receive(VoiceMuteStateChangedMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var channel = FindChannel(message.ChannelId);
+            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
+            if (participant is not null)
+                participant.IsMuted = message.IsMuted;
+        });
     }
 
     // --- End Voice ---

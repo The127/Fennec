@@ -63,6 +63,17 @@ public class VoiceStateService
         }
     }
 
+    public string? GetConnectionId(Guid serverId, Guid channelId, Guid userId)
+    {
+        lock (_lock)
+        {
+            var key = (serverId, channelId);
+            if (_channels.TryGetValue(key, out var list))
+                return list.FirstOrDefault(p => p.UserId == userId).ConnectionId;
+            return null;
+        }
+    }
+
     public List<VoiceParticipantDto> GetParticipants(Guid serverId, Guid channelId)
     {
         lock (_lock)
