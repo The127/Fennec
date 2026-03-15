@@ -131,6 +131,7 @@ public partial class App : Application
 
         services.AddSingleton<IEmbedProvider, YouTubeEmbedProvider>();
         services.AddSingleton<IEmbedProvider, SpotifyEmbedProvider>();
+        services.AddSingleton<IEmbedProvider, TwitchEmbedProvider>();
         services.AddSingleton<IEmbedProvider, ImageEmbedProvider>();
         services.AddSingleton<EmbedProviderFactory>();
     }

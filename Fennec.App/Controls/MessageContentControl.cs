@@ -8,6 +8,7 @@ using Fennec.App.Embeds;
 using Fennec.App.Embeds.Providers;
 using Fennec.App.Helpers;
 using Fennec.App.Services;
+using System.Text.RegularExpressions;
 using Material.Icons;
 using Material.Icons.Avalonia;
 
@@ -26,6 +27,7 @@ public class MessageContentControl : UserControl
     [
         new YouTubeEmbedProvider(),
         new SpotifyEmbedProvider(),
+        new TwitchEmbedProvider(),
         new ImageEmbedProvider(),
     ]));
 
@@ -208,6 +210,7 @@ public class MessageContentControl : UserControl
         {
             YouTubeEmbed yt => BuildYouTubeEmbed(yt),
             SpotifyEmbed sp => BuildSpotifyEmbed(sp),
+            TwitchEmbed tw => BuildTwitchEmbed(tw),
             ImageEmbed img => BuildImageEmbed(img),
             _ => new Panel(),
         };
@@ -404,6 +407,149 @@ public class MessageContentControl : UserControl
         };
 
         return border;
+    }
+
+    private static Control BuildTwitchEmbed(TwitchEmbed embed)
+    {
+        var border = new Border
+        {
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 4),
+            BorderThickness = new Thickness(1),
+            MaxWidth = 400,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Cursor = new Cursor(StandardCursorType.Hand),
+        };
+        BindBrushToResource(border, Border.BackgroundProperty, "CodeBlockBackgroundBrush");
+        BindBrushToResource(border, Border.BorderBrushProperty, "CodeBlockBorderBrush");
+
+        var stack = new StackPanel { Spacing = 4 };
+        stack.Children.Add(new TextBlock
+        {
+            Text = "Twitch",
+            FontSize = 11,
+            Opacity = 0.6,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(145, 70, 255)),
+        });
+
+        var thumbnail = new Avalonia.Controls.Image
+        {
+            MaxWidth = 380,
+            MaxHeight = 214,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            IsVisible = false,
+        };
+        stack.Children.Add(thumbnail);
+
+        var icon = embed.ContentType switch
+        {
+            TwitchContentType.Channel => MaterialIconKind.Account,
+            TwitchContentType.Video => MaterialIconKind.PlayCircleOutline,
+            TwitchContentType.Clip => MaterialIconKind.MovieOpenPlay,
+            _ => MaterialIconKind.PlayCircleOutline,
+        };
+
+        var body = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        body.Children.Add(new MaterialIcon
+        {
+            Kind = icon,
+            Width = 32,
+            Height = 32,
+            Foreground = new SolidColorBrush(Color.FromRgb(145, 70, 255)),
+        });
+
+        var titleText = new TextBlock
+        {
+            Text = "Loading...",
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            VerticalAlignment = VerticalAlignment.Center,
+            MaxWidth = 340,
+        };
+        body.Children.Add(titleText);
+
+        stack.Children.Add(body);
+
+        var descriptionText = new TextBlock
+        {
+            FontSize = 11,
+            Opacity = 0.6,
+            TextWrapping = TextWrapping.Wrap,
+            IsVisible = false,
+            MaxWidth = 380,
+        };
+        stack.Children.Add(descriptionText);
+
+        border.Child = stack;
+
+        border.PointerPressed += (_, _) =>
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(embed.SourceUrl.AbsoluteUri)
+                    { UseShellExecute = true });
+            }
+            catch { }
+        };
+
+        _ = LoadTwitchMetadataAsync(embed, thumbnail, titleText, descriptionText);
+
+        return border;
+    }
+
+    private static readonly Regex OgPropertyRegex = new(
+        @"<meta\s+(?:property|name)=""og:(\w+)""\s+content=""([^""]*)""|<meta\s+content=""([^""]*)""\s+(?:property|name)=""og:(\w+)""",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static async Task LoadTwitchMetadataAsync(
+        TwitchEmbed embed,
+        Avalonia.Controls.Image thumbnail,
+        TextBlock titleText,
+        TextBlock descriptionText)
+    {
+        try
+        {
+            using var httpClient = new System.Net.Http.HttpClient();
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0");
+            var html = await httpClient.GetStringAsync(embed.SourceUrl);
+
+            var ogTags = new Dictionary<string, string>();
+            foreach (Match match in OgPropertyRegex.Matches(html))
+            {
+                var key = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[4].Value;
+                var value = match.Groups[1].Success ? match.Groups[2].Value : match.Groups[3].Value;
+                ogTags.TryAdd(key, System.Net.WebUtility.HtmlDecode(value));
+            }
+
+            if (ogTags.TryGetValue("title", out var title) && !string.IsNullOrWhiteSpace(title))
+                titleText.Text = title;
+            else
+                titleText.Text = embed.ContentId;
+
+            if (ogTags.TryGetValue("description", out var description) && !string.IsNullOrWhiteSpace(description))
+            {
+                descriptionText.Text = description.Length > 200
+                    ? description[..200] + "..."
+                    : description;
+                descriptionText.IsVisible = true;
+            }
+
+            if (ogTags.TryGetValue("image", out var imageUrl) && !string.IsNullOrEmpty(imageUrl))
+            {
+                var data = await httpClient.GetByteArrayAsync(imageUrl);
+                var stream = new System.IO.MemoryStream(data);
+                var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+                thumbnail.Source = bitmap;
+                thumbnail.IsVisible = true;
+            }
+        }
+        catch
+        {
+            titleText.Text = embed.ContentId;
+        }
     }
 
     private static Control BuildImageEmbed(ImageEmbed embed)
