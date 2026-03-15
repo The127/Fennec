@@ -12,11 +12,15 @@ public interface IVoiceCallService
     Task LeaveAsync();
     void SetMuted(bool muted);
     void SetDeafened(bool deafened);
+    Task<List<CaptureTarget>> GetScreenShareTargetsAsync();
+    Task StartScreenShareAsync(CaptureTarget target);
+    Task StopScreenShareAsync();
     bool IsConnected { get; }
     Guid? CurrentServerId { get; }
     Guid? CurrentChannelId { get; }
     bool IsMuted { get; }
     bool IsDeafened { get; }
+    bool IsScreenSharing { get; }
 }
 
 public class VoiceCallService : IVoiceCallService, IDisposable
@@ -26,9 +30,14 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private readonly ILogger<VoiceCallService> _logger;
     private readonly ISettingsStore _settingsStore;
     private readonly ISoundEffectService _soundEffects;
+    private readonly IScreenCaptureService _screenCapture;
+    private readonly ICursorPositionService _cursorPosition;
 
     private readonly Dictionary<Guid, RTCPeerConnection> _peers = new();
+    private readonly Dictionary<Guid, RTCDataChannel> _cursorDataChannels = new();
+    private readonly HashSet<Guid> _remoteSharers = new();
     private PortAudioEndPoint? _audioEndPoint;
+    private ScreenShareVideoSource? _videoSource;
     private Guid _currentUserId;
     private bool _isSpeaking;
     private long _speakingLastActiveTicks;
@@ -39,19 +48,22 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     public string? CurrentInstanceUrl { get; private set; }
     public bool IsMuted { get; private set; }
     public bool IsDeafened { get; private set; }
+    public bool IsScreenSharing { get; private set; }
 
     private static readonly RTCIceServer[] StunServers =
     [
         new RTCIceServer { urls = "stun:stun.l.google.com:19302" }
     ];
 
-    public VoiceCallService(IVoiceHubService voiceHub, IMessenger messenger, ILogger<VoiceCallService> logger, ISettingsStore settingsStore, ISoundEffectService soundEffects)
+    public VoiceCallService(IVoiceHubService voiceHub, IMessenger messenger, ILogger<VoiceCallService> logger, ISettingsStore settingsStore, ISoundEffectService soundEffects, IScreenCaptureService screenCapture, ICursorPositionService cursorPosition)
     {
         _voiceHub = voiceHub;
         _messenger = messenger;
         _logger = logger;
         _settingsStore = settingsStore;
         _soundEffects = soundEffects;
+        _screenCapture = screenCapture;
+        _cursorPosition = cursorPosition;
 
         _voiceHub.SdpOfferReceived += OnSdpOfferReceived;
         _voiceHub.SdpAnswerReceived += OnSdpAnswerReceived;
@@ -92,6 +104,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     {
         if (!IsConnected)
             return;
+
+        if (IsScreenSharing)
+            await StopScreenShareAsync();
 
         _ = _soundEffects.PlayAsync(SoundEffect.Leave);
 
@@ -160,6 +175,105 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
         if (IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
             _ = _voiceHub.SetDeafenStateAsync(CurrentServerId.Value, CurrentChannelId.Value, deafened);
+    }
+
+    public Task<List<CaptureTarget>> GetScreenShareTargetsAsync()
+    {
+        return _screenCapture.GetAvailableTargetsAsync();
+    }
+
+    public async Task StartScreenShareAsync(CaptureTarget target)
+    {
+        if (!IsConnected || IsScreenSharing || CurrentServerId is null || CurrentChannelId is null)
+            return;
+
+        _videoSource = new ScreenShareVideoSource(_logger);
+
+        // Wire video source encoded samples to all peers
+        _videoSource.OnVideoSourceEncodedSample += (durationRtpUnits, sample) =>
+        {
+            foreach (var (_, pc) in _peers)
+            {
+                pc.SendVideo(durationRtpUnits, sample);
+            }
+        };
+
+        // Add VP8 video track to each existing peer and renegotiate
+        var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(
+            SIPSorceryMedia.Abstractions.VideoCodecsEnum.VP8, 96);
+        foreach (var (remoteUserId, pc) in _peers)
+        {
+            var videoTrack = new SIPSorcery.Net.MediaStreamTrack(videoFormat,
+                SIPSorcery.Net.MediaStreamStatusEnum.SendOnly);
+            pc.addTrack(videoTrack);
+
+            // Create cursor data channel
+            var dc = await pc.createDataChannel("cursor");
+            _cursorDataChannels[remoteUserId] = dc;
+
+            // Renegotiate
+            var offer = pc.createOffer();
+            await pc.setLocalDescription(offer);
+            await _voiceHub.SendSdpOfferAsync(CurrentServerId.Value, CurrentChannelId.Value, remoteUserId, offer.sdp);
+        }
+
+        // Start cursor tracking
+        _cursorPosition.OnCursorChanged += OnCursorChanged;
+        _cursorPosition.Start(target);
+
+        // Start capture
+        await _screenCapture.StartAsync(target, _videoSource.OnFrame);
+
+        IsScreenSharing = true;
+        await _voiceHub.StartScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);
+        _logger.LogInformation("ScreenShare: Started sharing");
+    }
+
+    public async Task StopScreenShareAsync()
+    {
+        if (!IsScreenSharing)
+            return;
+
+        _cursorPosition.OnCursorChanged -= OnCursorChanged;
+        _cursorPosition.Stop();
+
+        await _screenCapture.StopAsync();
+
+        // Close cursor data channels
+        foreach (var dc in _cursorDataChannels.Values)
+        {
+            try { dc.close(); } catch { }
+        }
+        _cursorDataChannels.Clear();
+
+        _videoSource?.Dispose();
+        _videoSource = null;
+
+        IsScreenSharing = false;
+
+        if (IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
+            await _voiceHub.StopScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);
+
+        _logger.LogInformation("ScreenShare: Stopped sharing");
+    }
+
+    private void OnCursorChanged(float x, float y, Messages.CursorType type)
+    {
+        // Serialize cursor data: 2x float32 + 1 byte enum = 9 bytes
+        var data = new byte[9];
+        BitConverter.TryWriteBytes(data.AsSpan(0, 4), x);
+        BitConverter.TryWriteBytes(data.AsSpan(4, 4), y);
+        data[8] = (byte)type;
+
+        foreach (var dc in _cursorDataChannels.Values)
+        {
+            try
+            {
+                if (dc.readyState == SIPSorcery.Net.RTCDataChannelState.open)
+                    dc.send(data);
+            }
+            catch { }
+        }
     }
 
     private async Task TryInitAudioEndPointAsync()
@@ -256,13 +370,35 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             };
         }
 
-        // Handle incoming audio
+        // Handle incoming audio and video
         pc.OnRtpPacketReceived += (ep, media, pkt) =>
         {
             if (media == SDPMediaTypesEnum.audio && !IsDeafened && _audioEndPoint is not null)
             {
                 _audioEndPoint.GotAudioRtp(ep, pkt.Header.SyncSource, pkt.Header.SequenceNumber,
                     pkt.Header.Timestamp, pkt.Header.PayloadType, pkt.Header.MarkerBit == 1, pkt.Payload);
+            }
+            else if (media == SDPMediaTypesEnum.video)
+            {
+                HandleIncomingVideoRtp(remoteUserId, pkt);
+            }
+        };
+
+        // Handle incoming data channels (cursor data from sharers)
+        pc.ondatachannel += dc =>
+        {
+            if (dc.label == "cursor")
+            {
+                dc.onmessage += (_, _, data) =>
+                {
+                    if (data.Length == 9)
+                    {
+                        var x = BitConverter.ToSingle(data, 0);
+                        var y = BitConverter.ToSingle(data, 4);
+                        var cursorType = (Messages.CursorType)data[8];
+                        _messenger.Send(new ScreenShareCursorMessage(remoteUserId, x, y, cursorType));
+                    }
+                };
             }
         };
 
@@ -339,6 +475,25 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
     }
 
+    private readonly LibVpxDecoder _vpxDecoder = new();
+
+    private void HandleIncomingVideoRtp(Guid fromUserId, SIPSorcery.Net.RTPPacket pkt)
+    {
+        try
+        {
+            var result = _vpxDecoder.Decode(pkt.Payload);
+            if (result != null)
+            {
+                var (rgba, width, height) = result.Value;
+                _messenger.Send(new ScreenShareFrameMessage(fromUserId, rgba, width, height));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "ScreenShare: Failed to decode video from {UserId}", fromUserId);
+        }
+    }
+
     private void CleanupPeers()
     {
         foreach (var pc in _peers.Values)
@@ -346,6 +501,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             pc.Dispose();
         }
         _peers.Clear();
+        _cursorDataChannels.Clear();
+        _remoteSharers.Clear();
     }
 
     public void Dispose()
@@ -353,6 +510,11 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _voiceHub.SdpOfferReceived -= OnSdpOfferReceived;
         _voiceHub.SdpAnswerReceived -= OnSdpAnswerReceived;
         _voiceHub.IceCandidateReceived -= OnIceCandidateReceived;
+        _cursorPosition.OnCursorChanged -= OnCursorChanged;
+        _cursorPosition.Stop();
+        _ = _screenCapture.StopAsync();
+        _videoSource?.Dispose();
+        _vpxDecoder.Dispose();
         CleanupPeers();
         CleanupAudio();
     }

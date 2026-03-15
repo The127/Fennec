@@ -14,6 +14,7 @@ using HubStatus = Fennec.Client.HubConnectionStatus;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
 using Microsoft.Extensions.Logging;
+using Avalonia.Media.Imaging;
 using NodaTime;
 using NodaTime.Text;
 using ShadUI;
@@ -183,7 +184,11 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<VoiceDeafenStateChangedMessage>,
     IRecipient<VoiceSpeakingChangedMessage>,
     IRecipient<VoiceMuteToggledMessage>,
-    IRecipient<VoiceDeafenToggledMessage>
+    IRecipient<VoiceDeafenToggledMessage>,
+    IRecipient<ScreenShareStartedMessage>,
+    IRecipient<ScreenShareStoppedMessage>,
+    IRecipient<ScreenShareFrameMessage>,
+    IRecipient<ScreenShareCursorMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
@@ -225,6 +230,10 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<VoiceSpeakingChangedMessage>(this);
         messenger.Register<VoiceMuteToggledMessage>(this);
         messenger.Register<VoiceDeafenToggledMessage>(this);
+        messenger.Register<ScreenShareStartedMessage>(this);
+        messenger.Register<ScreenShareStoppedMessage>(this);
+        messenger.Register<ScreenShareFrameMessage>(this);
+        messenger.Register<ScreenShareCursorMessage>(this);
 
         // Initialize hub status from current state (message may have been sent before registration)
         (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
@@ -901,6 +910,197 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             if (message.IsDeafened)
                 IsMuted = true;
             UpdateLocalParticipantMuteState();
+        });
+    }
+
+    // --- Screen Share ---
+
+    public class ScreenShareInfo(Guid userId, string username, string? instanceUrl)
+    {
+        public Guid UserId { get; } = userId;
+        public string Username { get; } = username;
+        public string? InstanceUrl { get; } = instanceUrl;
+    }
+
+    public ObservableCollection<ScreenShareInfo> ActiveScreenShares { get; } = [];
+
+    [ObservableProperty]
+    private Guid? _focusedScreenShareUserId;
+
+    [ObservableProperty]
+    private bool _isScreenSharing;
+
+    [ObservableProperty]
+    private bool _showTileView;
+
+    [ObservableProperty]
+    private WriteableBitmap? _screenShareFrame;
+
+    [ObservableProperty]
+    private double _cursorX;
+
+    [ObservableProperty]
+    private double _cursorY;
+
+    [ObservableProperty]
+    private CursorType _cursorShape;
+
+    [RelayCommand]
+    private async Task StartScreenShare()
+    {
+        try
+        {
+            var targets = await _voiceCallService.GetScreenShareTargetsAsync();
+            if (targets.Count == 0)
+            {
+                _logger.LogWarning("No screen share targets available");
+                return;
+            }
+
+            var vm = new ScreenSharePickerViewModel(dialogManager, targets);
+            dialogManager.CreateDialog(vm)
+                .Dismissible()
+                .WithSuccessCallback<ScreenSharePickerViewModel>(async ctx =>
+                {
+                    if (ctx.Result is not null)
+                        await _voiceCallService.StartScreenShareAsync(ctx.Result);
+                })
+                .Show();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to start screen share");
+        }
+    }
+
+    [RelayCommand]
+    private async Task StopScreenShare()
+    {
+        try
+        {
+            await _voiceCallService.StopScreenShareAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to stop screen share");
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleTileView()
+    {
+        ShowTileView = !ShowTileView;
+    }
+
+    [RelayCommand]
+    private void FocusScreenShare(Guid userId)
+    {
+        FocusedScreenShareUserId = userId;
+    }
+
+    public void Receive(ScreenShareStartedMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (ActiveScreenShares.Any(s => s.UserId == message.UserId))
+                return;
+
+            ActiveScreenShares.Add(new ScreenShareInfo(message.UserId, message.Username, message.InstanceUrl));
+
+            // Auto-focus first share
+            FocusedScreenShareUserId ??= message.UserId;
+
+            if (message.UserId == _currentUserId)
+                IsScreenSharing = true;
+        });
+    }
+
+    public void Receive(ScreenShareStoppedMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var share = ActiveScreenShares.FirstOrDefault(s => s.UserId == message.UserId);
+            if (share != null)
+                ActiveScreenShares.Remove(share);
+
+            if (FocusedScreenShareUserId == message.UserId)
+                FocusedScreenShareUserId = ActiveScreenShares.FirstOrDefault()?.UserId;
+
+            if (message.UserId == _currentUserId)
+                IsScreenSharing = false;
+
+            if (ActiveScreenShares.Count == 0)
+                ScreenShareFrame = null;
+        });
+    }
+
+    public void Receive(ScreenShareFrameMessage message)
+    {
+        // Only render frames from the focused share
+        if (FocusedScreenShareUserId != message.UserId)
+            return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                if (ScreenShareFrame is null
+                    || ScreenShareFrame.PixelSize.Width != message.Width
+                    || ScreenShareFrame.PixelSize.Height != message.Height)
+                {
+                    ScreenShareFrame = new WriteableBitmap(
+                        new Avalonia.PixelSize(message.Width, message.Height),
+                        new Avalonia.Vector(96, 96),
+                        Avalonia.Platform.PixelFormat.Rgba8888,
+                        Avalonia.Platform.AlphaFormat.Unpremul);
+                }
+
+                using (var frameBuffer = ScreenShareFrame.Lock())
+                {
+                    var srcStride = message.Width * 4;
+                    var dstStride = frameBuffer.RowBytes;
+
+                    if (srcStride == dstStride)
+                    {
+                        System.Runtime.InteropServices.Marshal.Copy(
+                            message.RgbaData, 0, frameBuffer.Address, message.RgbaData.Length);
+                    }
+                    else
+                    {
+                        // Copy row-by-row to handle stride padding
+                        for (int y = 0; y < message.Height; y++)
+                        {
+                            System.Runtime.InteropServices.Marshal.Copy(
+                                message.RgbaData, y * srcStride,
+                                frameBuffer.Address + y * dstStride, srcStride);
+                        }
+                    }
+                }
+
+                // Force re-render — writing pixels doesn't change the property reference
+                OnPropertyChanged(nameof(ScreenShareFrame));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to render screen share frame");
+            }
+        });
+    }
+
+    public void Receive(ScreenShareCursorMessage message)
+    {
+        if (FocusedScreenShareUserId != message.UserId)
+            return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            CursorX = message.X;
+            CursorY = message.Y;
+            CursorShape = message.Type;
         });
     }
 

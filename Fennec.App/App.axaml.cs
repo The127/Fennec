@@ -11,6 +11,7 @@ using Fennec.App.Logger;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
+using Fennec.App.Services.ScreenCapture;
 using Fennec.App.Shortcuts;
 using Fennec.Client;
 using Fennec.App.Services.Storage;
@@ -95,7 +96,8 @@ public partial class App : Application
             .Register<Views.CreateChannelDialogView, ViewModels.CreateChannelDialogViewModel>()
             .Register<Views.QuickNavDialogView, ViewModels.QuickNavDialogViewModel>()
             .Register<Views.Settings.SettingsView, ViewModels.Settings.SettingsViewModel>()
-            .Register<Views.SwitchAccountView, ViewModels.SwitchAccountViewModel>());
+            .Register<Views.SwitchAccountView, ViewModels.SwitchAccountViewModel>()
+            .Register<Views.ScreenSharePickerView, ViewModels.ScreenSharePickerViewModel>());
         services.AddSingleton<IRouter, Router>();
         services.AddSingleton<TokenStore>();
         services.AddSingleton<ITokenStore>(sp => sp.GetRequiredService<TokenStore>());
@@ -112,6 +114,19 @@ public partial class App : Application
         services.AddSingleton<IMessageHubService, MessageHubService>();
         services.AddSingleton<IVoiceHubService, VoiceHubService>();
         services.AddSingleton<ISoundEffectService, SoundEffectService>();
+
+        // Screen capture + cursor — platform-specific
+        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
+        {
+            services.AddSingleton<IScreenCaptureService, LinuxScreenCaptureService>();
+            services.AddSingleton<ICursorPositionService, LinuxCursorPositionService>();
+        }
+        else
+        {
+            services.AddSingleton<IScreenCaptureService, StubScreenCaptureService>();
+            services.AddSingleton<ICursorPositionService, StubCursorPositionService>();
+        }
+
         services.AddSingleton<IVoiceCallService, VoiceCallService>();
 
         services.AddSingleton<IEmbedProvider, YouTubeEmbedProvider>();

@@ -9,6 +9,7 @@ public interface IVoiceClient
     Task NotifyParticipantJoinedAsync(FederationVoiceParticipantEventDto request, CancellationToken cancellationToken = default);
     Task NotifyParticipantLeftAsync(FederationVoiceParticipantLeftEventDto request, CancellationToken cancellationToken = default);
     Task<Dictionary<Guid, List<VoiceParticipantDto>>> GetVoiceStateAsync(Guid serverId, CancellationToken cancellationToken = default);
+    Task NotifyScreenShareAsync(FederationScreenShareEventDto request, CancellationToken cancellationToken = default);
 }
 
 public class VoiceClient(HttpClient httpClient, string instanceUrl) : IVoiceClient
@@ -49,5 +50,11 @@ public class VoiceClient(HttpClient httpClient, string instanceUrl) : IVoiceClie
         var response = await httpClient.GetAsync(BuildUri($"federation/v1/voice/state/{serverId}"), cancellationToken);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Dictionary<Guid, List<VoiceParticipantDto>>>(cancellationToken) ?? new();
+    }
+
+    public async Task NotifyScreenShareAsync(FederationScreenShareEventDto request, CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PostAsJsonAsync(BuildUri("federation/v1/voice/screen-share"), request, cancellationToken);
+        response.EnsureSuccessStatusCode();
     }
 }

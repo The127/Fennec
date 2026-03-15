@@ -7,6 +7,7 @@ public class VoiceStateService
 {
     private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), List<(Guid UserId, string Username, string? InstanceUrl, string? ConnectionId)>> _channels = new();
     private readonly ConcurrentDictionary<string, (Guid ServerId, Guid ChannelId, Guid UserId)> _connectionMap = new();
+    private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), HashSet<Guid>> _screenSharers = new();
     private readonly object _lock = new();
 
     public List<VoiceParticipantDto> AddParticipant(Guid serverId, Guid channelId, Guid userId, string username, string? instanceUrl, string? connectionId)
@@ -41,6 +42,13 @@ public class VoiceStateService
                 if (list.Count == 0)
                     _channels.TryRemove(key, out _);
             }
+
+            if (_screenSharers.TryGetValue(key, out var sharers))
+            {
+                sharers.Remove(userId);
+                if (sharers.Count == 0)
+                    _screenSharers.TryRemove(key, out _);
+            }
         }
     }
 
@@ -57,6 +65,13 @@ public class VoiceStateService
                 list.RemoveAll(p => p.ConnectionId == connectionId);
                 if (list.Count == 0)
                     _channels.TryRemove(key, out _);
+            }
+
+            if (_screenSharers.TryGetValue(key, out var sharers))
+            {
+                sharers.Remove(info.UserId);
+                if (sharers.Count == 0)
+                    _screenSharers.TryRemove(key, out _);
             }
 
             return info;
@@ -116,6 +131,55 @@ public class VoiceStateService
                 }
             }
             return result;
+        }
+    }
+
+    public bool SetScreenSharing(Guid serverId, Guid channelId, Guid userId, bool isSharing)
+    {
+        lock (_lock)
+        {
+            var key = (serverId, channelId);
+
+            // Must be a participant to share
+            if (!_channels.TryGetValue(key, out var list) || list.All(p => p.UserId != userId))
+                return false;
+
+            if (isSharing)
+            {
+                var sharers = _screenSharers.GetOrAdd(key, _ => []);
+                sharers.Add(userId);
+            }
+            else
+            {
+                if (_screenSharers.TryGetValue(key, out var sharers))
+                {
+                    sharers.Remove(userId);
+                    if (sharers.Count == 0)
+                        _screenSharers.TryRemove(key, out _);
+                }
+            }
+
+            return true;
+        }
+    }
+
+    public List<Guid> GetScreenSharers(Guid serverId, Guid channelId)
+    {
+        lock (_lock)
+        {
+            var key = (serverId, channelId);
+            if (_screenSharers.TryGetValue(key, out var sharers))
+                return [.. sharers];
+            return [];
+        }
+    }
+
+    public bool IsScreenSharing(Guid serverId, Guid channelId, Guid userId)
+    {
+        lock (_lock)
+        {
+            var key = (serverId, channelId);
+            return _screenSharers.TryGetValue(key, out var sharers) && sharers.Contains(userId);
         }
     }
 }

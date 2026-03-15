@@ -60,4 +60,14 @@ public class FederationVoiceController(
         var state = voiceState.GetServerVoiceState(serverId);
         return Ok(state);
     }
+
+    [HttpPost("screen-share")]
+    public async Task<IActionResult> ScreenShare([FromBody] FederationScreenShareEventDto request)
+    {
+        if (request.IsSharing)
+            await voiceEventService.NotifyScreenShareStarted(request.ServerId, request.ChannelId, request.UserId, request.Username, request.InstanceUrl);
+        else
+            await voiceEventService.NotifyScreenShareStopped(request.ServerId, request.ChannelId, request.UserId);
+        return Ok();
+    }
 }

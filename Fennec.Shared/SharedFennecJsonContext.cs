@@ -2,6 +2,7 @@ using Fennec.Shared.Dtos.Auth;
 using Fennec.Shared.Dtos.Federation;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Dtos.User;
+using Fennec.Shared.Dtos.Voice;
 
 namespace Fennec.Shared;
 
@@ -38,6 +39,8 @@ using System.Text.Json.Serialization;
 [JsonSerializable(typeof(ServerPresenceEntryDto))]
 [JsonSerializable(typeof(List<ServerPresenceEntryDto>))]
 [JsonSerializable(typeof(FederationPresencePushRequestDto))]
+[JsonSerializable(typeof(ScreenShareInfoDto))]
+[JsonSerializable(typeof(FederationScreenShareEventDto))]
 public partial class SharedFennecJsonContext : JsonSerializerContext
 {
 }

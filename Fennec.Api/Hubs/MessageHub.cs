@@ -261,6 +261,74 @@ public class MessageHub(
             .SendAsync("VoiceSpeakingStateChanged", serverId, channelId, userId, isSpeaking);
     }
 
+    // --- Screen Share ---
+
+    public async Task StartScreenShare(Guid serverId, Guid channelId)
+    {
+        var (userId, username, callerInstanceUrl) = GetCallerIdentity();
+        if (!voiceState.SetScreenSharing(serverId, channelId, userId, true))
+            return;
+
+        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+            .SendAsync("ScreenShareStarted", serverId, channelId, userId, username, callerInstanceUrl);
+        await Clients.Group(ServerGroup(serverId))
+            .SendAsync("ScreenShareStarted", serverId, channelId, userId, username, callerInstanceUrl);
+
+        // Notify remote instances
+        var remoteUrls = voiceState.GetRemoteInstanceUrls(serverId, channelId, LocalInstanceUrl);
+        foreach (var url in remoteUrls)
+        {
+            try
+            {
+                await federationClient.For(url).Voice.NotifyScreenShareAsync(new Fennec.Shared.Dtos.Voice.FederationScreenShareEventDto
+                {
+                    ServerId = serverId,
+                    ChannelId = channelId,
+                    UserId = userId,
+                    Username = username,
+                    InstanceUrl = callerInstanceUrl,
+                    IsSharing = true,
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify remote instance {InstanceUrl} of screen share start", url);
+            }
+        }
+    }
+
+    public async Task StopScreenShare(Guid serverId, Guid channelId)
+    {
+        var (userId, _, _) = GetCallerIdentity();
+        voiceState.SetScreenSharing(serverId, channelId, userId, false);
+
+        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+            .SendAsync("ScreenShareStopped", serverId, channelId, userId);
+        await Clients.Group(ServerGroup(serverId))
+            .SendAsync("ScreenShareStopped", serverId, channelId, userId);
+
+        // Notify remote instances
+        var remoteUrls = voiceState.GetRemoteInstanceUrls(serverId, channelId, LocalInstanceUrl);
+        foreach (var url in remoteUrls)
+        {
+            try
+            {
+                await federationClient.For(url).Voice.NotifyScreenShareAsync(new Fennec.Shared.Dtos.Voice.FederationScreenShareEventDto
+                {
+                    ServerId = serverId,
+                    ChannelId = channelId,
+                    UserId = userId,
+                    Username = "",
+                    IsSharing = false,
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify remote instance {InstanceUrl} of screen share stop", url);
+            }
+        }
+    }
+
     public override async Task OnConnectedAsync()
     {
         logger.LogInformation("SignalR: Client connected {ConnectionId}", Context.ConnectionId);
@@ -306,6 +374,13 @@ public class MessageHub(
         if (voiceRemoved is not null)
         {
             var (serverId, channelId, userId) = voiceRemoved.Value;
+
+            // If participant was screen sharing, broadcast stop
+            // (RemoveByConnectionId already cleared the sharing state)
+            await Clients.Group(VoiceGroup(serverId, channelId))
+                .SendAsync("ScreenShareStopped", serverId, channelId, userId);
+            await Clients.Group(ServerGroup(serverId))
+                .SendAsync("ScreenShareStopped", serverId, channelId, userId);
 
             // Broadcast locally
             await Clients.Group(VoiceGroup(serverId, channelId))

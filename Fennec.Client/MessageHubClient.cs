@@ -49,6 +49,12 @@ public interface IMessageHubClient : IAsyncDisposable
     event Action<Guid, Guid, Guid, bool>? VoiceDeafenStateChanged;
     event Action<Guid, Guid, Guid, bool>? VoiceSpeakingStateChanged;
     Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking);
+
+    // Screen share
+    Task StartScreenShareAsync(Guid serverId, Guid channelId);
+    Task StopScreenShareAsync(Guid serverId, Guid channelId);
+    event Action<Guid, Guid, Guid, string, string?>? ScreenShareStarted;
+    event Action<Guid, Guid, Guid>? ScreenShareStopped;
 }
 
 public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubClient
@@ -74,6 +80,10 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     public event Action<Guid, Guid, Guid, bool>? VoiceMuteStateChanged;
     public event Action<Guid, Guid, Guid, bool>? VoiceDeafenStateChanged;
     public event Action<Guid, Guid, Guid, bool>? VoiceSpeakingStateChanged;
+
+    // Screen share events
+    public event Action<Guid, Guid, Guid, string, string?>? ScreenShareStarted;
+    public event Action<Guid, Guid, Guid>? ScreenShareStopped;
 
     public async Task ConnectAsync(string baseUrl, string token)
     {
@@ -147,6 +157,16 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         _connection.On<Guid, Guid, Guid, bool>("VoiceSpeakingStateChanged", (serverId, channelId, userId, isSpeaking) =>
         {
             VoiceSpeakingStateChanged?.Invoke(serverId, channelId, userId, isSpeaking);
+        });
+
+        _connection.On<Guid, Guid, Guid, string, string?>("ScreenShareStarted", (serverId, channelId, userId, username, instanceUrl) =>
+        {
+            ScreenShareStarted?.Invoke(serverId, channelId, userId, username, instanceUrl);
+        });
+
+        _connection.On<Guid, Guid, Guid>("ScreenShareStopped", (serverId, channelId, userId) =>
+        {
+            ScreenShareStopped?.Invoke(serverId, channelId, userId);
         });
 
         _connection.Reconnected += _ =>
@@ -315,6 +335,18 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     {
         if (_connection?.State == HubConnectionState.Connected)
             await _connection.InvokeAsync("SetSpeakingState", serverId, channelId, isSpeaking);
+    }
+
+    public async Task StartScreenShareAsync(Guid serverId, Guid channelId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+            await _connection.InvokeAsync("StartScreenShare", serverId, channelId);
+    }
+
+    public async Task StopScreenShareAsync(Guid serverId, Guid channelId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+            await _connection.InvokeAsync("StopScreenShare", serverId, channelId);
     }
 
     public async Task DisconnectAsync()

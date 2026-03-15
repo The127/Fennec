@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Fennec.App.ViewModels"
+             xmlns:svc="using:Fennec.App.Services"
+             x:DataType="vm:ScreenSharePickerViewModel"
+             x:Class="Fennec.App.Views.ScreenSharePickerView"
+             MinWidth="400" MaxWidth="500">
+    <StackPanel Spacing="16" Margin="24">
+        <TextBlock Classes="H4" Text="Share Screen" />
+        <TextBlock Text="Select a screen or window to share:" Classes="Muted" FontSize="12" />
+
+        <ListBox ItemsSource="{Binding Targets}"
+                 SelectedItem="{Binding SelectedTarget}"
+                 MaxHeight="300"
+                 DoubleTapped="OnDoubleTapped">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="svc:CaptureTarget">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="4">
+                        <TextBlock Text="{Binding Kind}" FontWeight="Bold" VerticalAlignment="Center" Width="60" />
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+            <Button Content="Share" Command="{Binding ConfirmCommand}" Classes="Primary" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

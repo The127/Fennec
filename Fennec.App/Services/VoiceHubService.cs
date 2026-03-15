@@ -17,6 +17,8 @@ public interface IVoiceHubService
     Task SetMuteStateAsync(Guid serverId, Guid channelId, bool isMuted);
     Task SetDeafenStateAsync(Guid serverId, Guid channelId, bool isDeafened);
     Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking);
+    Task StartScreenShareAsync(Guid serverId, Guid channelId);
+    Task StopScreenShareAsync(Guid serverId, Guid channelId);
 
     event Action<Guid, Guid, Guid, string>? SdpOfferReceived;
     event Action<Guid, Guid, Guid, string>? SdpAnswerReceived;
@@ -87,6 +89,16 @@ public class VoiceHubService : IVoiceHubService
         _hubClient.VoiceSpeakingStateChanged += (serverId, channelId, userId, isSpeaking) =>
         {
             _messenger.Send(new VoiceSpeakingChangedMessage(serverId, channelId, userId, isSpeaking));
+        };
+
+        _hubClient.ScreenShareStarted += (serverId, channelId, userId, username, instanceUrl) =>
+        {
+            _messenger.Send(new ScreenShareStartedMessage(serverId, channelId, userId, username, instanceUrl));
+        };
+
+        _hubClient.ScreenShareStopped += (serverId, channelId, userId) =>
+        {
+            _messenger.Send(new ScreenShareStoppedMessage(serverId, channelId, userId));
         };
     }
 
@@ -165,6 +177,16 @@ public class VoiceHubService : IVoiceHubService
         _directConnection.On<Guid, Guid, Guid, bool>("VoiceSpeakingStateChanged", (sid, cid, userId, isSpeaking) =>
         {
             _messenger.Send(new VoiceSpeakingChangedMessage(sid, cid, userId, isSpeaking));
+        });
+
+        _directConnection.On<Guid, Guid, Guid, string, string?>("ScreenShareStarted", (sid, cid, userId, username, instanceUrl) =>
+        {
+            _messenger.Send(new ScreenShareStartedMessage(sid, cid, userId, username, instanceUrl));
+        });
+
+        _directConnection.On<Guid, Guid, Guid>("ScreenShareStopped", (sid, cid, userId) =>
+        {
+            _messenger.Send(new ScreenShareStoppedMessage(sid, cid, userId));
         });
 
         _directConnection.Closed += ex =>
@@ -255,5 +277,21 @@ public class VoiceHubService : IVoiceHubService
             await _directConnection.InvokeAsync("SetSpeakingState", serverId, channelId, isSpeaking);
         else
             await _hubClient.SetSpeakingStateAsync(serverId, channelId, isSpeaking);
+    }
+
+    public async Task StartScreenShareAsync(Guid serverId, Guid channelId)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("StartScreenShare", serverId, channelId);
+        else
+            await _hubClient.StartScreenShareAsync(serverId, channelId);
+    }
+
+    public async Task StopScreenShareAsync(Guid serverId, Guid channelId)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("StopScreenShare", serverId, channelId);
+        else
+            await _hubClient.StopScreenShareAsync(serverId, channelId);
     }
 }

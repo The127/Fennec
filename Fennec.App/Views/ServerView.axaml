@@ -66,7 +66,7 @@
                         BorderThickness="0,1,0,0"
                         Padding="8,6"
                         IsVisible="{Binding IsInVoiceChannel}">
-                    <Grid ColumnDefinitions="* Auto Auto Auto">
+                    <Grid ColumnDefinitions="* Auto Auto Auto Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
                             <TextBlock Text="Voice Connected" FontSize="11" FontWeight="SemiBold"
                                        Foreground="{DynamicResource SuccessColor}" />
@@ -96,6 +96,19 @@
                             </Panel>
                         </Button>
                         <Button Grid.Column="3" Classes="Ghost" Padding="6" Width="32" Height="32"
+                                Command="{Binding StartScreenShareCommand}"
+                                IsVisible="{Binding !IsScreenSharing}"
+                                ToolTip.Tip="Share Screen">
+                            <mi:MaterialIcon Kind="MonitorShare" Width="16" Height="16" />
+                        </Button>
+                        <Button Grid.Column="3" Classes="Ghost" Padding="6" Width="32" Height="32"
+                                Command="{Binding StopScreenShareCommand}"
+                                IsVisible="{Binding IsScreenSharing}"
+                                ToolTip.Tip="Stop Sharing">
+                            <mi:MaterialIcon Kind="MonitorOff" Width="16" Height="16"
+                                             Foreground="{DynamicResource ErrorColor}" />
+                        </Button>
+                        <Button Grid.Column="4" Classes="Ghost" Padding="6" Width="32" Height="32"
                                 Command="{Binding LeaveVoiceChannelCommand}"
                                 ToolTip.Tip="Disconnect">
                             <mi:MaterialIcon Kind="PhoneHangup" Width="16" Height="16"
@@ -387,6 +400,53 @@
                         </Grid>
                     </Border>
                 </Panel>
+            </Border>
+
+            <!-- Screen share viewer (shown when active shares exist) -->
+            <Border DockPanel.Dock="Top"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="0,0,0,1"
+                    Background="#1A000000"
+                    Height="300"
+                    IsVisible="{Binding ActiveScreenShares.Count}">
+                <Grid>
+                    <!-- Screen share content -->
+                    <controls:ScreenShareViewer Source="{Binding ScreenShareFrame}"
+                                                CursorX="{Binding CursorX}"
+                                                CursorY="{Binding CursorY}" />
+                    <!-- Share info bar at top -->
+                    <Border VerticalAlignment="Top" Padding="8,4"
+                            Background="#80000000">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                                <Button Classes="Ghost" Padding="4" Height="24"
+                                        Command="{Binding ToggleTileViewCommand}"
+                                        ToolTip.Tip="Toggle Tile View">
+                                    <mi:MaterialIcon Kind="ViewGrid" Width="14" Height="14" />
+                                </Button>
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding ActiveScreenShares}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Classes="Ghost" Padding="4,2" Height="22"
+                                                Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).FocusScreenShareCommand}"
+                                                CommandParameter="{Binding UserId}">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <mi:MaterialIcon Kind="Monitor" Width="12" Height="12" />
+                                                <TextBlock Text="{Binding Username}" FontSize="11" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DockPanel>
+                    </Border>
+                </Grid>
             </Border>
 
             <!-- Messages or placeholder -->

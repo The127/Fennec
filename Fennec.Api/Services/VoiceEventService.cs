@@ -8,6 +8,8 @@ public interface IVoiceEventService
 {
     Task NotifyParticipantJoined(Guid serverId, Guid channelId, VoiceParticipantDto participant);
     Task NotifyParticipantLeft(Guid serverId, Guid channelId, Guid userId);
+    Task NotifyScreenShareStarted(Guid serverId, Guid channelId, Guid userId, string username, string? instanceUrl);
+    Task NotifyScreenShareStopped(Guid serverId, Guid channelId, Guid userId);
 }
 
 public class VoiceEventService(IHubContext<MessageHub> hubContext) : IVoiceEventService
@@ -26,5 +28,21 @@ public class VoiceEventService(IHubContext<MessageHub> hubContext) : IVoiceEvent
         var voiceGroup = $"voice-{serverId}-{channelId}";
         await hubContext.Clients.Group(voiceGroup).SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
         await hubContext.Clients.Group(serverGroup).SendAsync("VoiceParticipantLeft", serverId, channelId, userId);
+    }
+
+    public async Task NotifyScreenShareStarted(Guid serverId, Guid channelId, Guid userId, string username, string? instanceUrl)
+    {
+        var serverGroup = $"server-{serverId}";
+        var voiceGroup = $"voice-{serverId}-{channelId}";
+        await hubContext.Clients.Group(voiceGroup).SendAsync("ScreenShareStarted", serverId, channelId, userId, username, instanceUrl);
+        await hubContext.Clients.Group(serverGroup).SendAsync("ScreenShareStarted", serverId, channelId, userId, username, instanceUrl);
+    }
+
+    public async Task NotifyScreenShareStopped(Guid serverId, Guid channelId, Guid userId)
+    {
+        var serverGroup = $"server-{serverId}";
+        var voiceGroup = $"voice-{serverId}-{channelId}";
+        await hubContext.Clients.Group(voiceGroup).SendAsync("ScreenShareStopped", serverId, channelId, userId);
+        await hubContext.Clients.Group(serverGroup).SendAsync("ScreenShareStopped", serverId, channelId, userId);
     }
 }
