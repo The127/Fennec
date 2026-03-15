@@ -4,6 +4,8 @@ using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Embeds;
+using Fennec.App.Embeds.Providers;
 using Fennec.App.Exceptions;
 using Fennec.App.Logger;
 using Fennec.App.Routing;
@@ -111,6 +113,11 @@ public partial class App : Application
         services.AddSingleton<IVoiceHubService, VoiceHubService>();
         services.AddSingleton<ISoundEffectService, SoundEffectService>();
         services.AddSingleton<IVoiceCallService, VoiceCallService>();
+
+        services.AddSingleton<IEmbedProvider, YouTubeEmbedProvider>();
+        services.AddSingleton<IEmbedProvider, SpotifyEmbedProvider>();
+        services.AddSingleton<IEmbedProvider, ImageEmbedProvider>();
+        services.AddSingleton<EmbedProviderFactory>();
     }
 
     public override void OnFrameworkInitializationCompleted()

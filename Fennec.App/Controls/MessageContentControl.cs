@@ -4,6 +4,8 @@ using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Fennec.App.Embeds;
+using Fennec.App.Embeds.Providers;
 using Fennec.App.Helpers;
 using Fennec.App.Services;
 using Material.Icons;
@@ -20,6 +22,12 @@ public class MessageContentControl : UserControl
         AvaloniaProperty.Register<MessageContentControl, bool>(nameof(IsEmojiOnly));
 
     private static readonly Lazy<SyntaxHighlightService> Highlighter = new();
+    private static readonly Lazy<EmbedProviderFactory> EmbedFactory = new(() => new EmbedProviderFactory(
+    [
+        new YouTubeEmbedProvider(),
+        new SpotifyEmbedProvider(),
+        new ImageEmbedProvider(),
+    ]));
 
     private static readonly FontFamily MonoFont = new("Cascadia Code, Consolas, Menlo, Monaco, monospace");
     private static readonly FontFamily ContentFont = new("Inter, fonts:NotoColorEmoji#Noto Color Emoji");
@@ -89,6 +97,7 @@ public class MessageContentControl : UserControl
 
         // Group consecutive inline segments into TextBlocks
         var inlineBuffer = new List<MessageSegment>();
+        var embedUrls = new List<Uri>();
 
         foreach (var segment in segments)
         {
@@ -100,10 +109,23 @@ public class MessageContentControl : UserControl
             else
             {
                 inlineBuffer.Add(segment);
+
+                // Collect URLs from LinkSegments (not suppressed) for embeds
+                if (segment is LinkSegment link)
+                    embedUrls.Add(link.Url);
             }
         }
 
         FlushInlines(inlineBuffer, panel);
+
+        // Add embeds for detected links
+        foreach (var url in embedUrls)
+        {
+            var embed = EmbedFactory.Value.TryCreateEmbed(url);
+            if (embed is not null)
+                panel.Children.Add(BuildEmbed(embed));
+        }
+
         base.Content = panel;
     }
 
@@ -136,11 +158,229 @@ public class MessageContentControl : UserControl
                     codeSpan.Inlines!.Add(new Run(" " + inline.Code + " "));
                     tb.Inlines!.Add(codeSpan);
                     break;
+                case LinkSegment link:
+                    tb.Inlines!.Add(BuildLinkRun(link.Text, link.Url));
+                    break;
+                case SuppressedLinkSegment suppressed:
+                    tb.Inlines!.Add(BuildLinkRun(suppressed.Text, suppressed.Url));
+                    break;
             }
         }
 
         panel.Children.Add(tb);
         buffer.Clear();
+    }
+
+    private static Inline BuildLinkRun(string text, Uri url)
+    {
+        var linkText = new TextBlock
+        {
+            FontSize = 15,
+            FontFamily = ContentFont,
+            Foreground = new SolidColorBrush(Color.FromRgb(88, 166, 255)),
+            TextDecorations = TextDecorations.Underline,
+            Cursor = new Cursor(StandardCursorType.Hand),
+            Text = text,
+        };
+        linkText.PointerPressed += (_, _) =>
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(url.AbsoluteUri)
+                {
+                    UseShellExecute = true,
+                };
+                System.Diagnostics.Process.Start(psi);
+            }
+            catch
+            {
+                // Ignore if browser fails to open
+            }
+        };
+
+        return new InlineUIContainer(linkText);
+    }
+
+    private static Control BuildEmbed(EmbedInfo embed)
+    {
+        return embed switch
+        {
+            YouTubeEmbed yt => BuildYouTubeEmbed(yt),
+            SpotifyEmbed sp => BuildSpotifyEmbed(sp),
+            ImageEmbed img => BuildImageEmbed(img),
+            _ => new Panel(),
+        };
+    }
+
+    private static Control BuildYouTubeEmbed(YouTubeEmbed embed)
+    {
+        var border = new Border
+        {
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 4),
+            BorderThickness = new Thickness(1),
+            MaxWidth = 400,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Cursor = new Cursor(StandardCursorType.Hand),
+        };
+        BindBrushToResource(border, Border.BackgroundProperty, "CodeBlockBackgroundBrush");
+        BindBrushToResource(border, Border.BorderBrushProperty, "CodeBlockBorderBrush");
+
+        var stack = new StackPanel { Spacing = 4 };
+        stack.Children.Add(new TextBlock
+        {
+            Text = "YouTube",
+            FontSize = 11,
+            Opacity = 0.6,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(255, 0, 0)),
+        });
+
+        var body = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        body.Children.Add(new MaterialIcon
+        {
+            Kind = MaterialIconKind.PlayCircleOutline,
+            Width = 32,
+            Height = 32,
+            Foreground = new SolidColorBrush(Color.FromRgb(255, 0, 0)),
+        });
+        body.Children.Add(new TextBlock
+        {
+            Text = embed.SourceUrl.AbsoluteUri,
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            VerticalAlignment = VerticalAlignment.Center,
+            MaxWidth = 340,
+        });
+
+        stack.Children.Add(body);
+        border.Child = stack;
+
+        border.PointerPressed += (_, _) =>
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(embed.SourceUrl.AbsoluteUri)
+                    { UseShellExecute = true });
+            }
+            catch { }
+        };
+
+        return border;
+    }
+
+    private static Control BuildSpotifyEmbed(SpotifyEmbed embed)
+    {
+        var border = new Border
+        {
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 4),
+            BorderThickness = new Thickness(1),
+            MaxWidth = 400,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Cursor = new Cursor(StandardCursorType.Hand),
+        };
+        BindBrushToResource(border, Border.BackgroundProperty, "CodeBlockBackgroundBrush");
+        BindBrushToResource(border, Border.BorderBrushProperty, "CodeBlockBorderBrush");
+
+        var stack = new StackPanel { Spacing = 4 };
+        stack.Children.Add(new TextBlock
+        {
+            Text = "Spotify",
+            FontSize = 11,
+            Opacity = 0.6,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(30, 215, 96)),
+        });
+
+        var body = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        body.Children.Add(new MaterialIcon
+        {
+            Kind = MaterialIconKind.Music,
+            Width = 32,
+            Height = 32,
+            Foreground = new SolidColorBrush(Color.FromRgb(30, 215, 96)),
+        });
+
+        var info = new StackPanel { Spacing = 2 };
+        info.Children.Add(new TextBlock
+        {
+            Text = char.ToUpper(embed.ResourceType[0]) + embed.ResourceType[1..],
+            FontSize = 13,
+            FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        info.Children.Add(new TextBlock
+        {
+            Text = embed.SourceUrl.AbsoluteUri,
+            FontSize = 11,
+            Opacity = 0.6,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 320,
+        });
+        body.Children.Add(info);
+
+        stack.Children.Add(body);
+        border.Child = stack;
+
+        border.PointerPressed += (_, _) =>
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(embed.SourceUrl.AbsoluteUri)
+                    { UseShellExecute = true });
+            }
+            catch { }
+        };
+
+        return border;
+    }
+
+    private static Control BuildImageEmbed(ImageEmbed embed)
+    {
+        var image = new Avalonia.Controls.Image
+        {
+            MaxWidth = 400,
+            MaxHeight = 300,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 4),
+        };
+
+        // Load image asynchronously from URL
+        try
+        {
+            var bitmap = new Avalonia.Media.Imaging.Bitmap(
+                new System.IO.MemoryStream()); // placeholder — actual async load below
+            image.Source = bitmap;
+        }
+        catch
+        {
+            // Fall back to a link-style display
+        }
+
+        // Use an async task to load the image
+        _ = LoadImageAsync(image, embed.SourceUrl);
+
+        return image;
+    }
+
+    private static async Task LoadImageAsync(Avalonia.Controls.Image imageControl, Uri url)
+    {
+        try
+        {
+            using var httpClient = new System.Net.Http.HttpClient();
+            var data = await httpClient.GetByteArrayAsync(url);
+            var stream = new System.IO.MemoryStream(data);
+            var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+            imageControl.Source = bitmap;
+        }
+        catch
+        {
+            // If image load fails, leave empty
+        }
     }
 
     private Control BuildCodeBlock(CodeBlockSegment segment)

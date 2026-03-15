@@ -6,6 +6,8 @@ public abstract partial record MessageSegment;
 public record PlainTextSegment(string Text) : MessageSegment;
 public record InlineCodeSegment(string Code) : MessageSegment;
 public record CodeBlockSegment(string? Language, string Code) : MessageSegment;
+public record LinkSegment(string Text, Uri Url) : MessageSegment;
+public record SuppressedLinkSegment(string Text, Uri Url) : MessageSegment;
 
 public static partial class MessageContentParser
 {
@@ -16,6 +18,14 @@ public static partial class MessageContentParser
     // Match inline code: `code` (no newlines inside)
     [GeneratedRegex(@"`([^`\n]+)`", RegexOptions.Compiled)]
     private static partial Regex InlineCodeRegex();
+
+    // Match suppressed links: <https://...>
+    [GeneratedRegex(@"<(https?://[^\s<>]+)>", RegexOptions.Compiled)]
+    private static partial Regex SuppressedLinkRegex();
+
+    // Match bare URLs
+    [GeneratedRegex(@"https?://[^\s<>\)\]]+", RegexOptions.Compiled)]
+    private static partial Regex UrlRegex();
 
     public static List<MessageSegment> Parse(string content)
     {
@@ -48,9 +58,48 @@ public static partial class MessageContentParser
         foreach (Match m in inlineMatches)
         {
             if (m.Index > pos)
-                segments.Add(new PlainTextSegment(text[pos..m.Index]));
+                ParseLinkSegments(text[pos..m.Index], segments);
 
             segments.Add(new InlineCodeSegment(m.Groups[1].Value));
+            pos = m.Index + m.Length;
+        }
+
+        if (pos < text.Length)
+            ParseLinkSegments(text[pos..], segments);
+    }
+
+    private static void ParseLinkSegments(string text, List<MessageSegment> segments)
+    {
+        // First pass: find suppressed links <url>
+        var suppressedMatches = SuppressedLinkRegex().Matches(text);
+        var pos = 0;
+
+        foreach (Match m in suppressedMatches)
+        {
+            if (m.Index > pos)
+                ParseBareUrls(text[pos..m.Index], segments);
+
+            var urlText = m.Groups[1].Value;
+            segments.Add(new SuppressedLinkSegment(urlText, new Uri(urlText)));
+            pos = m.Index + m.Length;
+        }
+
+        if (pos < text.Length)
+            ParseBareUrls(text[pos..], segments);
+    }
+
+    private static void ParseBareUrls(string text, List<MessageSegment> segments)
+    {
+        var urlMatches = UrlRegex().Matches(text);
+        var pos = 0;
+
+        foreach (Match m in urlMatches)
+        {
+            if (m.Index > pos)
+                segments.Add(new PlainTextSegment(text[pos..m.Index]));
+
+            var urlText = m.Value;
+            segments.Add(new LinkSegment(urlText, new Uri(urlText)));
             pos = m.Index + m.Length;
         }
 
