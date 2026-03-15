@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
 using Fennec.App.Services.Storage;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ShadUI;
 

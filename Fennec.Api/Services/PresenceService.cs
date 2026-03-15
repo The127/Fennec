@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using Fennec.Shared.Dtos.Server;
 
 namespace Fennec.Api.Services;
 

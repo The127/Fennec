@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using Fennec.Api.Controllers.FederationApi;
 
 namespace Fennec.Api.FederationClient.Clients;

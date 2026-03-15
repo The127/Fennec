@@ -6,7 +6,6 @@ using Fennec.App.Browser.Services.Storage;
 using Fennec.App.Routing;
 using Fennec.App.Services.Auth;
 using Fennec.App.Services.Storage;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 internal sealed partial class Program

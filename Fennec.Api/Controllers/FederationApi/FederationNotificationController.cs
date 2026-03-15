@@ -1,4 +1,3 @@
-using Fennec.Api.Controllers.FederationApi;
 using Fennec.Api.Models;
 using Fennec.Api.Security;
 using Fennec.Api.Services;

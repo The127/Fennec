@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using Fennec.Shared.Dtos.Voice;
 
 namespace Fennec.Api.FederationClient.Clients;
