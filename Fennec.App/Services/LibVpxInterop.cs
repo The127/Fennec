@@ -8,7 +8,7 @@ namespace Fennec.App.Services;
 /// </summary>
 internal static class LibVpxNative
 {
-    private const string Lib = "libvpx.so";
+    private const string Lib = "libvpx";
 
     // Constants from vpx headers (for libvpx 1.15.x on linux-x64)
     public const int VPX_ENCODER_ABI_VERSION = 37;
