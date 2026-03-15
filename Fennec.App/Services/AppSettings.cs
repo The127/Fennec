@@ -24,4 +24,7 @@ public class AppSettings
 
     [JsonPropertyName("outputDeviceName")]
     public string? OutputDeviceName { get; set; }
+
+    [JsonPropertyName("voiceSensitivity")]
+    public double VoiceSensitivity { get; set; } = 0.015;
 }

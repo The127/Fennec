@@ -45,6 +45,8 @@ public interface IMessageHubClient : IAsyncDisposable
     event Action<Guid, Guid, Guid, string>? SdpAnswerReceived;
     event Action<Guid, Guid, Guid, string, string?, int?>? IceCandidateReceived;
     event Action<Guid, Guid, Guid, bool>? VoiceMuteStateChanged;
+    event Action<Guid, Guid, Guid, bool>? VoiceSpeakingStateChanged;
+    Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking);
 }
 
 public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubClient
@@ -68,6 +70,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     public event Action<Guid, Guid, Guid, string>? SdpAnswerReceived;
     public event Action<Guid, Guid, Guid, string, string?, int?>? IceCandidateReceived;
     public event Action<Guid, Guid, Guid, bool>? VoiceMuteStateChanged;
+    public event Action<Guid, Guid, Guid, bool>? VoiceSpeakingStateChanged;
 
     public async Task ConnectAsync(string baseUrl, string token)
     {
@@ -131,6 +134,11 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         _connection.On<Guid, Guid, Guid, bool>("VoiceMuteStateChanged", (serverId, channelId, userId, isMuted) =>
         {
             VoiceMuteStateChanged?.Invoke(serverId, channelId, userId, isMuted);
+        });
+
+        _connection.On<Guid, Guid, Guid, bool>("VoiceSpeakingStateChanged", (serverId, channelId, userId, isSpeaking) =>
+        {
+            VoiceSpeakingStateChanged?.Invoke(serverId, channelId, userId, isSpeaking);
         });
 
         _connection.Reconnected += _ =>
@@ -287,6 +295,12 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     {
         if (_connection?.State == HubConnectionState.Connected)
             await _connection.InvokeAsync("SetMuteState", serverId, channelId, isMuted);
+    }
+
+    public async Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+            await _connection.InvokeAsync("SetSpeakingState", serverId, channelId, isSpeaking);
     }
 
     public async Task DisconnectAsync()

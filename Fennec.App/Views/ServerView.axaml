@@ -210,8 +210,19 @@
                                                                                     </Border>
                                                                                 </Flyout>
                                                                             </Button.Flyout>
-                                                                            <mi:MaterialIcon Kind="AccountCircle" Width="14" Height="14"
-                                                                                             Opacity="0.5" />
+                                                                            <Border BorderThickness="2" CornerRadius="9" Width="18" Height="18"
+                                                                                    Classes.Speaking="{Binding IsSpeaking}">
+                                                                                <Border.Styles>
+                                                                                    <Style Selector="Border">
+                                                                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                                                                    </Style>
+                                                                                    <Style Selector="Border.Speaking">
+                                                                                        <Setter Property="BorderBrush" Value="#4CAF50" />
+                                                                                    </Style>
+                                                                                </Border.Styles>
+                                                                                <mi:MaterialIcon Kind="AccountCircle" Width="14" Height="14"
+                                                                                                 Opacity="0.5" />
+                                                                            </Border>
                                                                         </Button>
                                                                         <TextBlock Text="{Binding Username}" FontSize="12"
                                                                                    Opacity="0.7" />

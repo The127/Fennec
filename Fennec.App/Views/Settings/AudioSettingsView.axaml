@@ -47,6 +47,11 @@
                                       Height="6"
                                       MinWidth="300"
                                       HorizontalAlignment="Left" />
+            <TextBlock Text="Voice Sensitivity" FontSize="12" Opacity="0.7" Margin="0,4,0,0" />
+            <Slider Minimum="0.005" Maximum="0.1"
+                    Value="{Binding VoiceSensitivity}"
+                    MinWidth="300"
+                    HorizontalAlignment="Left" />
         </StackPanel>
 
         <StackPanel Spacing="8">

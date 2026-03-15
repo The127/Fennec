@@ -219,6 +219,15 @@ public class MessageHub(
             .SendAsync("VoiceMuteStateChanged", serverId, channelId, userId, isMuted);
     }
 
+    public async Task SetSpeakingState(Guid serverId, Guid channelId, bool isSpeaking)
+    {
+        var (userId, _, _) = GetCallerIdentity();
+        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+            .SendAsync("VoiceSpeakingStateChanged", serverId, channelId, userId, isSpeaking);
+        await Clients.OthersInGroup(ServerGroup(serverId))
+            .SendAsync("VoiceSpeakingStateChanged", serverId, channelId, userId, isSpeaking);
+    }
+
     public override Task OnConnectedAsync()
     {
         logger.LogInformation("SignalR: Client connected {ConnectionId}", Context.ConnectionId);

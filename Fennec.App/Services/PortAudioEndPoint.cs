@@ -52,6 +52,7 @@ public sealed class PortAudioEndPoint : IAudioSource, IAudioSink, IDisposable
     public event RawAudioSampleDelegate? OnAudioSourceRawSample;
     public event SourceErrorDelegate? OnAudioSourceError;
     public event SourceErrorDelegate? OnAudioSinkError;
+    public event Action<double>? OnCaptureLevel;
 
     private readonly int? _inputDeviceIndex;
     private readonly int? _outputDeviceIndex;
@@ -202,6 +203,16 @@ public sealed class PortAudioEndPoint : IAudioSource, IAudioSink, IDisposable
     {
         try
         {
+            // Compute RMS for VAD
+            long sumSquares = 0;
+            for (int i = 0; i < FrameSamples; i++)
+            {
+                long s = _captureBuffer[i];
+                sumSquares += s * s;
+            }
+            double rms = Math.Sqrt((double)sumSquares / FrameSamples) / short.MaxValue;
+            OnCaptureLevel?.Invoke(rms);
+
             var encoded = new byte[MaxEncodedBytes];
             int encodedLength = _encoder.Encode(_captureBuffer, 0, FrameSamples, encoded, 0, MaxEncodedBytes);
 

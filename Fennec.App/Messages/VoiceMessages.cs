@@ -4,3 +4,4 @@ public record VoiceParticipantJoinedMessage(Guid ServerId, Guid ChannelId, Guid 
 public record VoiceParticipantLeftMessage(Guid ServerId, Guid ChannelId, Guid UserId);
 public record VoiceStateChangedMessage(bool IsConnected, Guid? ServerId, Guid? ChannelId);
 public record VoiceMuteStateChangedMessage(Guid ServerId, Guid ChannelId, Guid UserId, bool IsMuted);
+public record VoiceSpeakingChangedMessage(Guid ServerId, Guid ChannelId, Guid UserId, bool IsSpeaking);

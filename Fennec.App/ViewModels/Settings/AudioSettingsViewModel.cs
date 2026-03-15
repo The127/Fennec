@@ -50,6 +50,9 @@ public partial class AudioSettingsViewModel : ObservableObject, IDisposable
     private AudioDeviceItem? _selectedOutputDevice;
 
     [ObservableProperty]
+    private double _voiceSensitivity;
+
+    [ObservableProperty]
     private double _inputLevel;
 
     [ObservableProperty]
@@ -68,6 +71,8 @@ public partial class AudioSettingsViewModel : ObservableObject, IDisposable
     {
         _settingsStore = settingsStore;
         _currentSettings = currentSettings;
+
+        _voiceSensitivity = currentSettings.VoiceSensitivity;
 
         try
         {
@@ -149,6 +154,11 @@ public partial class AudioSettingsViewModel : ObservableObject, IDisposable
         SelectedOutputDevice = matchedOutput ?? defaultOutput;
 
         _initialized = true;
+    }
+
+    partial void OnVoiceSensitivityChanged(double value)
+    {
+        if (_initialized) _ = SaveAsync();
     }
 
     partial void OnSelectedInputDeviceChanged(AudioDeviceItem? value)
@@ -416,6 +426,7 @@ public partial class AudioSettingsViewModel : ObservableObject, IDisposable
         settings.AudioHostApi = SelectedHostApi?.Index;
         settings.InputDeviceName = SelectedInputDevice is { IsDefault: false } inp ? inp.Name : null;
         settings.OutputDeviceName = SelectedOutputDevice is { IsDefault: false } outp ? outp.Name : null;
+        settings.VoiceSensitivity = VoiceSensitivity;
         await _settingsStore.SaveAsync(settings);
     }
 

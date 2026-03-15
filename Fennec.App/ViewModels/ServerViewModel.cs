@@ -29,6 +29,9 @@ public partial class VoiceParticipantItem(Guid userId, string username, string? 
 
     [ObservableProperty]
     private bool _isMuted;
+
+    [ObservableProperty]
+    private bool _isSpeaking;
 }
 
 public partial class ChannelItem(Guid id, string name, ChannelType channelType, Guid channelGroupId) : ObservableObject
@@ -173,7 +176,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<HubConnectionStateChangedMessage>,
     IRecipient<UserOnlineMessage>,
     IRecipient<UserOfflineMessage>,
-    IRecipient<VoiceMuteStateChangedMessage>
+    IRecipient<VoiceMuteStateChangedMessage>,
+    IRecipient<VoiceSpeakingChangedMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
@@ -211,6 +215,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<UserOnlineMessage>(this);
         messenger.Register<UserOfflineMessage>(this);
         messenger.Register<VoiceMuteStateChangedMessage>(this);
+        messenger.Register<VoiceSpeakingChangedMessage>(this);
 
         // Initialize hub status from current state (message may have been sent before registration)
         (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
@@ -795,6 +800,12 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 CurrentVoiceChannelName = null;
                 IsMuted = false;
                 IsDeafened = false;
+
+                // Reset all speaking indicators
+                foreach (var group in ChannelGroups)
+                    foreach (var ch in group.Channels)
+                        foreach (var p in ch.VoiceParticipants)
+                            p.IsSpeaking = false;
             }
         });
     }
@@ -828,6 +839,19 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
             if (participant is not null)
                 participant.IsMuted = message.IsMuted;
+        });
+    }
+
+    public void Receive(VoiceSpeakingChangedMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var channel = FindChannel(message.ChannelId);
+            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
+            if (participant is not null)
+                participant.IsSpeaking = message.IsSpeaking;
         });
     }
 

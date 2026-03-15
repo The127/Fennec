@@ -28,6 +28,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
     private readonly Dictionary<Guid, RTCPeerConnection> _peers = new();
     private PortAudioEndPoint? _audioEndPoint;
+    private Guid _currentUserId;
+    private bool _isSpeaking;
+    private long _speakingLastActiveTicks;
 
     public bool IsConnected { get; private set; }
     public Guid? CurrentServerId { get; private set; }
@@ -61,6 +64,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         CurrentServerId = serverId;
         CurrentChannelId = channelId;
         CurrentInstanceUrl = instanceUrl;
+        _currentUserId = currentUserId;
 
         await TryInitAudioEndPointAsync();
 
@@ -101,6 +105,12 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         CleanupPeers();
         CleanupAudio();
 
+        if (_isSpeaking)
+        {
+            _isSpeaking = false;
+            _messenger.Send(new VoiceSpeakingChangedMessage(serverId, channelId, _currentUserId, false));
+        }
+
         IsConnected = false;
         CurrentServerId = null;
         CurrentChannelId = null;
@@ -120,6 +130,14 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _ = _audioEndPoint.PauseAudio();
             else
                 _ = _audioEndPoint.ResumeAudio();
+        }
+
+        // Muted → never speaking
+        if (muted && _isSpeaking && IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
+        {
+            _isSpeaking = false;
+            _ = _voiceHub.SetSpeakingStateAsync(CurrentServerId.Value, CurrentChannelId.Value, false);
+            _messenger.Send(new VoiceSpeakingChangedMessage(CurrentServerId.Value, CurrentChannelId.Value, _currentUserId, false));
         }
 
         if (IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
@@ -143,6 +161,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             var outputIndex = PortAudioEndPoint.FindDeviceByName(settings.OutputDeviceName, settings.AudioHostApi);
 
             _audioEndPoint = new PortAudioEndPoint(_logger, inputIndex, outputIndex);
+            _audioEndPoint.OnCaptureLevel += OnCaptureLevel;
             _audioEndPoint.StartAudio();
             _audioEndPoint.StartAudioSink();
         }
@@ -153,10 +172,38 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
     }
 
+    private void OnCaptureLevel(double rms)
+    {
+        if (!IsConnected || IsMuted || CurrentServerId is null || CurrentChannelId is null)
+            return;
+
+        var settings = _settingsStore.LoadAsync().GetAwaiter().GetResult();
+        var threshold = settings.VoiceSensitivity;
+        var now = Environment.TickCount64;
+
+        if (rms > threshold)
+        {
+            _speakingLastActiveTicks = now;
+            if (!_isSpeaking)
+            {
+                _isSpeaking = true;
+                _ = _voiceHub.SetSpeakingStateAsync(CurrentServerId.Value, CurrentChannelId.Value, true);
+                _messenger.Send(new VoiceSpeakingChangedMessage(CurrentServerId.Value, CurrentChannelId.Value, _currentUserId, true));
+            }
+        }
+        else if (_isSpeaking && now - _speakingLastActiveTicks > 300)
+        {
+            _isSpeaking = false;
+            _ = _voiceHub.SetSpeakingStateAsync(CurrentServerId.Value, CurrentChannelId.Value, false);
+            _messenger.Send(new VoiceSpeakingChangedMessage(CurrentServerId.Value, CurrentChannelId.Value, _currentUserId, false));
+        }
+    }
+
     private void CleanupAudio()
     {
         if (_audioEndPoint is not null)
         {
+            _audioEndPoint.OnCaptureLevel -= OnCaptureLevel;
             _audioEndPoint.Dispose();
             _audioEndPoint = null;
         }

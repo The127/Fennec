@@ -13,6 +13,7 @@ public interface IVoiceHubService
     Task SendSdpAnswerAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp);
     Task SendIceCandidateAsync(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex);
     Task SetMuteStateAsync(Guid serverId, Guid channelId, bool isMuted);
+    Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking);
 
     event Action<Guid, Guid, Guid, string>? SdpOfferReceived;
     event Action<Guid, Guid, Guid, string>? SdpAnswerReceived;
@@ -67,6 +68,11 @@ public class VoiceHubService : IVoiceHubService
         {
             _messenger.Send(new VoiceMuteStateChangedMessage(serverId, channelId, userId, isMuted));
         };
+
+        _hubClient.VoiceSpeakingStateChanged += (serverId, channelId, userId, isSpeaking) =>
+        {
+            _messenger.Send(new VoiceSpeakingChangedMessage(serverId, channelId, userId, isSpeaking));
+        };
     }
 
     public Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl)
@@ -86,4 +92,7 @@ public class VoiceHubService : IVoiceHubService
 
     public Task SetMuteStateAsync(Guid serverId, Guid channelId, bool isMuted)
         => _hubClient.SetMuteStateAsync(serverId, channelId, isMuted);
+
+    public Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking)
+        => _hubClient.SetSpeakingStateAsync(serverId, channelId, isSpeaking);
 }
