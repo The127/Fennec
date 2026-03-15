@@ -134,6 +134,7 @@ public class VoiceHubService : IVoiceHubService
             .WithUrl($"{normalizedUrl}/hubs/messages", options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(jwt);
+                options.HttpMessageHandlerFactory = _ => Ipv4HttpHandler.Create();
             })
             .WithAutomaticReconnect(new ForeverRetryPolicy())
             .Build();

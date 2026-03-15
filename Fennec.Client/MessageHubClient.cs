@@ -98,6 +98,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
             .WithUrl($"{baseUrl}/hubs/messages", options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(token);
+                options.HttpMessageHandlerFactory = _ => Ipv4HttpHandler.Create();
             })
             .WithAutomaticReconnect(new ForeverRetryPolicy())
             .Build();

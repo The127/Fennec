@@ -6,7 +6,7 @@ public class ClientFactory(TokenStore tokenStore) : IClientFactory
     {
         var authHandler = new AuthHandler(tokenStore)
         {
-            InnerHandler = new HttpClientHandler()
+            InnerHandler = Ipv4HttpHandler.Create()
         };
 
         var httpClient = new HttpClient(authHandler);
