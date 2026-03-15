@@ -31,6 +31,7 @@ public class MessageContentControl : UserControl
 
     private static readonly FontFamily MonoFont = new("Cascadia Code, Consolas, Menlo, Monaco, monospace");
     private static readonly FontFamily ContentFont = new("Inter, fonts:NotoColorEmoji#Noto Color Emoji");
+    private static readonly FontFamily TextOnlyFont = new("Inter");
 
     public string? MessageText
     {
@@ -176,7 +177,7 @@ public class MessageContentControl : UserControl
         var linkText = new TextBlock
         {
             FontSize = 15,
-            FontFamily = ContentFont,
+            FontFamily = TextOnlyFont,
             Foreground = new SolidColorBrush(Color.FromRgb(88, 166, 255)),
             TextDecorations = TextDecorations.Underline,
             Cursor = new Cursor(StandardCursorType.Hand),

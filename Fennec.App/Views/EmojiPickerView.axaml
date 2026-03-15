@@ -27,6 +27,7 @@
                         <DataTemplate x:DataType="models:EmojiCategory">
                             <Button Padding="5,3" MinWidth="0" MinHeight="0"
                                     FontSize="16"
+                                    FontFamily="{StaticResource EmojiFont}"
                                     Content="{Binding Icon}"
                                     ToolTip.Tip="{Binding Name}"
                                     Command="{Binding $parent[UserControl].((vm:EmojiPickerViewModel)DataContext).SelectCategoryCommand}"
@@ -53,6 +54,7 @@
                             <Button Padding="0" MinWidth="0" MinHeight="0"
                                     Width="38" Height="38"
                                     FontSize="22"
+                                    FontFamily="{StaticResource EmojiFont}"
                                     HorizontalContentAlignment="Center"
                                     VerticalContentAlignment="Center"
                                     Content="{Binding Unicode}"

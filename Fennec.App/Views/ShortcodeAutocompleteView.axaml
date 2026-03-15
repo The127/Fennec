@@ -15,7 +15,7 @@
                             PointerPressed="Row_PointerPressed"
                             PointerEntered="Row_PointerEntered">
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <TextBlock Text="{Binding Unicode}" FontSize="18" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Unicode}" FontSize="18" VerticalAlignment="Center" FontFamily="{StaticResource EmojiFont}" />
                             <TextBlock Text="{Binding Shortcode, StringFormat=':{0}:'}"
                                        VerticalAlignment="Center" Opacity="0.7" />
                         </StackPanel>

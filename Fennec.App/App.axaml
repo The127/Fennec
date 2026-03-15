@@ -9,6 +9,8 @@
 
     <Application.Resources>
         <ResourceDictionary>
+            <FontFamily x:Key="EmojiFont">Inter, fonts:NotoColorEmoji#Noto Color Emoji</FontFamily>
+
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceInclude x:Key="{x:Static local:ThemeKeys.DraculaDark}" Source="avares://Fennec.App/Themes/Dracula.Dark.axaml" />
                 <ResourceInclude x:Key="{x:Static local:ThemeKeys.DraculaLight}" Source="avares://Fennec.App/Themes/Dracula.Light.axaml" />
