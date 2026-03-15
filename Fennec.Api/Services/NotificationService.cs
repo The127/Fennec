@@ -41,6 +41,7 @@ public class NotificationService(
         var mentionedMembers = await dbContext.Set<ServerMember>()
             .Include(m => m.KnownUser)
             .Where(m => m.ServerId == channel.ServerId && mentions.Contains(m.KnownUser.Name))
+            .Where(m => !m.KnownUser.IsDeleted)
             .ToListAsync(cancellationToken);
 
         var myInstanceUrl = fennecSettings.Value.IssuerUrl;

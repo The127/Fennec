@@ -27,7 +27,9 @@
             <Setter Property="Background" Value="{DynamicResource InfoColor20}" />
         </Style>
     </UserControl.Styles>
-    <Grid ColumnDefinitions="240 * 220">
+    <Panel>
+    <Grid ColumnDefinitions="240 * 220"
+          IsVisible="{Binding !IsScreenShareMaximized}">
         <!-- Left: Channels -->
         <Border Grid.Column="0" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0">
             <DockPanel>
@@ -406,13 +408,18 @@
                 </Panel>
             </Border>
 
-            <!-- Screen share viewer (shown when active shares exist) -->
+            <!-- Screen share viewer (shown when active shares exist, hidden when maximized) -->
             <Border DockPanel.Dock="Top"
                     BorderBrush="{DynamicResource BorderColor}"
                     BorderThickness="0,0,0,1"
                     Background="#1A000000"
-                    Height="300"
-                    IsVisible="{Binding ActiveScreenShares.Count}">
+                    Height="300">
+                <Border.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="ActiveScreenShares.Count" />
+                        <Binding Path="!IsScreenShareMaximized" />
+                    </MultiBinding>
+                </Border.IsVisible>
                 <Grid>
                     <!-- Screen share content -->
                     <controls:ScreenShareViewer Source="{Binding ScreenShareFrame}"
@@ -423,6 +430,16 @@
                             Background="#80000000">
                         <DockPanel>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                                <Button Classes="Ghost" Padding="4" Height="24"
+                                        Command="{Binding PopOutScreenShareCommand}"
+                                        ToolTip.Tip="Pop Out">
+                                    <mi:MaterialIcon Kind="OpenInNew" Width="14" Height="14" />
+                                </Button>
+                                <Button Classes="Ghost" Padding="4" Height="24"
+                                        Command="{Binding ToggleScreenShareMaximizeCommand}"
+                                        ToolTip.Tip="Maximize">
+                                    <mi:MaterialIcon Kind="ArrowExpand" Width="14" Height="14" />
+                                </Button>
                                 <Button Classes="Ghost" Padding="4" Height="24"
                                         Command="{Binding ToggleTileViewCommand}"
                                         ToolTip.Tip="Toggle Tile View">
@@ -739,4 +756,49 @@
             </DockPanel>
         </Border>
     </Grid>
+
+    <!-- Maximized screen share overlay -->
+    <Grid IsVisible="{Binding IsScreenShareMaximized}" Background="{DynamicResource BackgroundColor}">
+        <controls:ScreenShareViewer Source="{Binding ScreenShareFrame}"
+                                    CursorX="{Binding CursorX}"
+                                    CursorY="{Binding CursorY}" />
+        <!-- Top info bar -->
+        <Border VerticalAlignment="Top" Padding="8,4"
+                Background="#80000000">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                    <Button Classes="Ghost" Padding="4" Height="24"
+                            Command="{Binding PopOutScreenShareCommand}"
+                            ToolTip.Tip="Pop Out">
+                        <mi:MaterialIcon Kind="OpenInNew" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="Ghost" Padding="4" Height="24"
+                            Command="{Binding ExitScreenShareMaximizeCommand}"
+                            ToolTip.Tip="Exit Maximize (Esc)">
+                        <mi:MaterialIcon Kind="ArrowCollapse" Width="14" Height="14" />
+                    </Button>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding ActiveScreenShares}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Classes="Ghost" Padding="4,2" Height="22"
+                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).FocusScreenShareCommand}"
+                                    CommandParameter="{Binding UserId}">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <mi:MaterialIcon Kind="Monitor" Width="12" Height="12" />
+                                    <TextBlock Text="{Binding Username}" FontSize="11" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </Border>
+    </Grid>
+    </Panel>
 </UserControl>

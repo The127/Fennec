@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Fennec.App.ViewModels"
+        xmlns:controls="using:Fennec.App.Controls"
+        x:Class="Fennec.App.Views.ScreenShareWindow"
+        x:DataType="vm:ScreenShareWindowViewModel"
+        Title="{Binding Username, StringFormat='Screen Share — {0}'}"
+        Width="800" Height="600"
+        MinWidth="320" MinHeight="200"
+        Background="#FF1A1A1A">
+    <controls:ScreenShareViewer Source="{Binding ScreenShareFrame}"
+                                CursorX="{Binding CursorX}"
+                                CursorY="{Binding CursorY}"
+                                CursorShape="{Binding CursorShape}" />
+</Window>

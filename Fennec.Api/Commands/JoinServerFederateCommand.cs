@@ -61,6 +61,19 @@ public class JoinServerFederateCommandHandler(
                 Name = request.UserInfo.Name,
             };
             dbContext.Add(knownUser);
+
+            // Mark any existing KnownUsers with the same name and instance but different RemoteId as deleted
+            // This handles the case where a user was deleted on their home instance and a new user registered with the same name
+            var staleUsers = await dbContext.Set<KnownUser>()
+                .Where(x => x.Name == request.UserInfo.Name)
+                .Where(x => x.InstanceUrl == request.InstanceUrl)
+                .Where(x => x.RemoteId != request.UserInfo.UserId)
+                .ToListAsync(cancellationToken);
+
+            foreach (var staleUser in staleUsers)
+            {
+                staleUser.IsDeleted = true;
+            }
         }
 
         var alreadyMember = await dbContext.Set<ServerMember>()

@@ -9,7 +9,8 @@ public class KnownUser : EntityBase
     public required string? InstanceUrl { get; init; }
     
     public required string Name { get; set; }
-    
+    public bool IsDeleted { get; set; }
+
     public List<ServerMember> ServerMembers { get; set; } = [];
 }
 

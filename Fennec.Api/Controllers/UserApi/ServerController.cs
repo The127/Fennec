@@ -60,6 +60,7 @@ public class ServerController : UserControllerBase
     {
         var members = await dbContext.Set<ServerMember>()
             .Where(m => m.ServerId == serverId)
+            .Where(m => !m.KnownUser.IsDeleted)
             .Select(m => new ListServerMembersResponseItemDto { Name = m.KnownUser.Name, InstanceUrl = m.KnownUser.InstanceUrl })
             .ToListAsync(cancellationToken);
 

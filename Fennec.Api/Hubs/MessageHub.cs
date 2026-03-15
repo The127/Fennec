@@ -78,6 +78,7 @@ public class MessageHub(
         var remoteMembers = await dbContext.Set<ServerMember>()
             .Where(sm => sm.ServerId == serverId)
             .Include(sm => sm.KnownUser)
+            .Where(sm => !sm.KnownUser.IsDeleted)
             .Where(sm => sm.KnownUser.InstanceUrl != null && sm.KnownUser.InstanceUrl != LocalInstanceUrl)
             .ToListAsync();
 

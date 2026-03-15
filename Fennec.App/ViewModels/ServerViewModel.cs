@@ -1011,10 +1011,34 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         }
     }
 
+    [ObservableProperty]
+    private bool _isScreenShareMaximized;
+
     [RelayCommand]
     private void ToggleTileView()
     {
         ShowTileView = !ShowTileView;
+    }
+
+    [RelayCommand]
+    private void ToggleScreenShareMaximize()
+    {
+        IsScreenShareMaximized = !IsScreenShareMaximized;
+    }
+
+    [RelayCommand]
+    private void ExitScreenShareMaximize()
+    {
+        IsScreenShareMaximized = false;
+    }
+
+    [RelayCommand]
+    private void PopOutScreenShare()
+    {
+        if (FocusedScreenShareUserId is null) return;
+        var share = ActiveScreenShares.FirstOrDefault(s => s.UserId == FocusedScreenShareUserId);
+        if (share is null) return;
+        _messenger.Send(new ScreenSharePopOutRequestedMessage(share.UserId, share.Username));
     }
 
     [RelayCommand]

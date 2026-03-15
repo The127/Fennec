@@ -30,7 +30,7 @@ public partial class SidebarServer(Guid id, string name, string instanceUrl) : O
     public string AvatarFallback { get; } = name[..1].ToUpperInvariant();
 }
 
-public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>, IRecipient<VoiceStateChangedMessage>, IRecipient<VoiceMuteToggledMessage>, IRecipient<VoiceDeafenToggledMessage>, IRecipient<ScreenShareStartedMessage>, IRecipient<ScreenShareStoppedMessage>, IRecipient<ScreenShareFrameMessage>, IRecipient<ScreenShareCursorMessage>
+public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>, IRecipient<VoiceStateChangedMessage>, IRecipient<VoiceMuteToggledMessage>, IRecipient<VoiceDeafenToggledMessage>, IRecipient<ScreenShareStartedMessage>, IRecipient<ScreenShareStoppedMessage>, IRecipient<ScreenShareFrameMessage>, IRecipient<ScreenShareCursorMessage>, IRecipient<ScreenSharePopOutRequestedMessage>, IRecipient<ScreenSharePopOutClosedMessage>
 {
     private readonly IRouter _routerField;
     private readonly IMessenger _messenger;
@@ -88,6 +88,8 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         messenger.Register<ScreenShareStoppedMessage>(this);
         messenger.Register<ScreenShareFrameMessage>(this);
         messenger.Register<ScreenShareCursorMessage>(this);
+        messenger.Register<ScreenSharePopOutRequestedMessage>(this);
+        messenger.Register<ScreenSharePopOutClosedMessage>(this);
 
         // Initialize voice state from service (handles case where VM is created after call started)
         IsInVoiceCall = voiceCallService.IsConnected;
@@ -568,6 +570,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             _focusedScreenShareUserId = null;
             FloatingScreenShareFrame = null;
             FloatingSharerUsername = null;
+            CloseAllPopOutWindows();
             UpdateFloatingScreenShareVisibility();
         }
     }
@@ -645,7 +648,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     {
         var isOnVoiceServer = _routerField.CurrentViewModel is ServerViewModel svm
                               && svm.ServerId == _voiceServerId;
-        ShowFloatingScreenShare = _activeScreenShareCount > 0 && !isOnVoiceServer;
+        ShowFloatingScreenShare = _activeScreenShareCount > 0 && !isOnVoiceServer && !IsScreenSharePoppedOut;
     }
 
     public void Receive(ScreenShareStartedMessage message)
@@ -748,6 +751,62 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             FloatingCursorY = message.Y;
             FloatingCursorShape = message.Type;
         });
+    }
+
+    // --- Screen share pop-out ---
+
+    private readonly Dictionary<Guid, Views.ScreenShareWindow> _popOutWindows = new();
+
+    [ObservableProperty]
+    private bool _isScreenSharePoppedOut;
+
+    public void Receive(ScreenSharePopOutRequestedMessage message)
+    {
+        Dispatcher.UIThread.Post(() => OpenPopOutWindow(message.UserId, message.Username));
+    }
+
+    public void Receive(ScreenSharePopOutClosedMessage message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            _popOutWindows.Remove(message.UserId);
+            if (_popOutWindows.Count == 0)
+                IsScreenSharePoppedOut = false;
+            UpdateFloatingScreenShareVisibility();
+        });
+    }
+
+    [RelayCommand]
+    private void PopOutFloatingScreenShare()
+    {
+        if (_focusedScreenShareUserId is null || FloatingSharerUsername is null) return;
+        OpenPopOutWindow(_focusedScreenShareUserId.Value, FloatingSharerUsername);
+    }
+
+    private void OpenPopOutWindow(Guid userId, string username)
+    {
+        if (_popOutWindows.ContainsKey(userId))
+        {
+            _popOutWindows[userId].Activate();
+            return;
+        }
+
+        if (_voiceServerId is null) return;
+
+        var vm = new ScreenShareWindowViewModel(_messenger, userId, username, _voiceServerId.Value);
+        var window = new Views.ScreenShareWindow { DataContext = vm };
+        _popOutWindows[userId] = window;
+        IsScreenSharePoppedOut = true;
+        UpdateFloatingScreenShareVisibility();
+        window.Show();
+    }
+
+    private void CloseAllPopOutWindows()
+    {
+        foreach (var window in _popOutWindows.Values.ToList())
+            window.Close();
+        _popOutWindows.Clear();
+        IsScreenSharePoppedOut = false;
     }
 
     [RelayCommand]

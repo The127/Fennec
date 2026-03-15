@@ -221,11 +221,18 @@
             <Border VerticalAlignment="Top" Padding="8,4"
                     Background="#80000000">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Classes="Ghost" Padding="4" Width="24" Height="24"
-                            Command="{Binding NavigateToFloatingScreenShareCommand}"
-                            ToolTip.Tip="Go to channel">
-                        <mi:MaterialIcon Kind="ArrowExpand" Width="12" Height="12" />
-                    </Button>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2">
+                        <Button Classes="Ghost" Padding="4" Width="24" Height="24"
+                                Command="{Binding PopOutFloatingScreenShareCommand}"
+                                ToolTip.Tip="Pop Out">
+                            <mi:MaterialIcon Kind="OpenInNew" Width="12" Height="12" />
+                        </Button>
+                        <Button Classes="Ghost" Padding="4" Width="24" Height="24"
+                                Command="{Binding NavigateToFloatingScreenShareCommand}"
+                                ToolTip.Tip="Go to channel">
+                            <mi:MaterialIcon Kind="ArrowExpand" Width="12" Height="12" />
+                        </Button>
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                         <mi:MaterialIcon Kind="Monitor" Width="12" Height="12" />
                         <TextBlock Text="{Binding FloatingSharerUsername}" FontSize="11"
