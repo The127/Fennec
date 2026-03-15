@@ -459,12 +459,17 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
         try
         {
-            var pc = CreatePeerConnection(fromUserId);
-            _peers[fromUserId] = pc;
+            // Reuse existing peer connection for renegotiation (e.g. when remote adds video track).
+            // Creating a new one would produce mismatched ICE credentials.
+            if (!_peers.TryGetValue(fromUserId, out var pc))
+            {
+                pc = CreatePeerConnection(fromUserId);
+                _peers[fromUserId] = pc;
+            }
 
             if (IsScreenSharing)
                 await AddVideoTrackAndCursorChannel(fromUserId, pc);
-            else if (sdp.Contains("m=video"))
+            else if (sdp.Contains("m=video") && pc.VideoLocalTrack == null)
             {
                 var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(VideoCodecsEnum.VP8, 96);
                 var videoTrack = new MediaStreamTrack(videoFormat, MediaStreamStatusEnum.RecvOnly);
