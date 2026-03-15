@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Fennec.App.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
+             x:Class="Fennec.App.Views.Settings.VideoSettingsView"
+             x:DataType="vm:VideoSettingsViewModel">
+    <StackPanel Spacing="16" Margin="0,8">
+        <!-- Sharing Settings -->
+        <TextBlock Text="Sharing" FontWeight="SemiBold" FontSize="16" />
+
+        <StackPanel Spacing="8">
+            <TextBlock Text="Resolution" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding ResolutionOptions}"
+                      SelectedItem="{Binding SelectedResolution}"
+                      MinWidth="200" />
+        </StackPanel>
+
+        <StackPanel Spacing="8">
+            <TextBlock FontWeight="SemiBold">
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="Bitrate ({0} Kbps)">
+                        <Binding Path="BitrateKbps" />
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+            <Slider Minimum="500" Maximum="5000"
+                    Value="{Binding BitrateKbps}"
+                    TickFrequency="100"
+                    IsSnapToTickEnabled="True"
+                    MinWidth="300"
+                    HorizontalAlignment="Left" />
+        </StackPanel>
+
+        <StackPanel Spacing="8">
+            <TextBlock Text="Frame Rate" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding FrameRateOptions}"
+                      SelectedItem="{Binding SelectedFrameRate}"
+                      MinWidth="200" />
+        </StackPanel>
+
+        <!-- Viewing Settings -->
+        <TextBlock Text="Viewing" FontWeight="SemiBold" FontSize="16" Margin="0,8,0,0" />
+
+        <StackPanel Spacing="8">
+            <TextBlock Text="Resolution Scale" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding ViewerScaleOptions}"
+                      SelectedItem="{Binding SelectedViewerScale}"
+                      MinWidth="200">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding StringFormat='{}{0}%'}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

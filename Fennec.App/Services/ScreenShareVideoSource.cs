@@ -9,8 +9,9 @@ namespace Fennec.App.Services;
 /// </summary>
 public class ScreenShareVideoSource : IDisposable
 {
-    private const int MaxWidth = 1920;
-    private const int MaxHeight = 1080;
+    private readonly int _maxWidth;
+    private readonly int _maxHeight;
+    private readonly int _bitrateKbps;
 
     private readonly ILogger _logger;
     private readonly uint _frameRate;
@@ -24,9 +25,12 @@ public class ScreenShareVideoSource : IDisposable
     /// </summary>
     public event Action<uint, byte[]>? OnVideoSourceEncodedSample;
 
-    public ScreenShareVideoSource(ILogger logger, uint frameRate = 30)
+    public ScreenShareVideoSource(ILogger logger, int maxWidth = 1920, int maxHeight = 1080, int bitrateKbps = 1500, uint frameRate = 30)
     {
         _logger = logger;
+        _maxWidth = maxWidth;
+        _maxHeight = maxHeight;
+        _bitrateKbps = bitrateKbps;
         _frameRate = frameRate;
     }
 
@@ -37,8 +41,8 @@ public class ScreenShareVideoSource : IDisposable
     {
         try
         {
-            // Compute target resolution (fit within MaxWidth x MaxHeight, preserve aspect ratio)
-            ComputeScaledSize(width, height, out var targetW, out var targetH);
+            // Compute target resolution (fit within max dimensions, preserve aspect ratio)
+            ComputeScaledSize(width, height, _maxWidth, _maxHeight, out var targetW, out var targetH);
 
             // Ensure even dimensions for I420
             targetW &= ~1;
@@ -49,7 +53,7 @@ public class ScreenShareVideoSource : IDisposable
 
             if (targetW < width || targetH < height)
             {
-                frameData = DownscaleRgba(rgbaData, width, height, targetW, targetH);
+                frameData = BilinearDownscaleRgba(rgbaData, width, height, targetW, targetH);
                 frameW = targetW;
                 frameH = targetH;
             }
@@ -66,11 +70,11 @@ public class ScreenShareVideoSource : IDisposable
                 _encoder = null;
                 _encWidth = frameW;
                 _encHeight = frameH;
-                _logger.LogInformation("ScreenShareVideo: Resolution {SrcW}x{SrcH} -> encode at {W}x{H}",
-                    width, height, frameW, frameH);
+                _logger.LogInformation("ScreenShareVideo: Resolution {SrcW}x{SrcH} -> encode at {W}x{H}, bitrate={Bitrate}Kbps, fps={Fps}",
+                    width, height, frameW, frameH, _bitrateKbps, _frameRate);
             }
 
-            _encoder ??= new LibVpxEncoder(frameW, frameH);
+            _encoder ??= new LibVpxEncoder(frameW, frameH, _bitrateKbps);
 
             var i420 = RgbaToI420(frameData, frameW, frameH);
 
@@ -90,26 +94,41 @@ public class ScreenShareVideoSource : IDisposable
         }
     }
 
-    private static void ComputeScaledSize(int srcW, int srcH, out int dstW, out int dstH)
+    /// <summary>
+    /// Maps a resolution preset string to max width/height dimensions.
+    /// </summary>
+    public static (int Width, int Height) ResolutionPresetToDimensions(string preset) => preset switch
     {
-        if (srcW <= MaxWidth && srcH <= MaxHeight)
+        "720p" => (1280, 720),
+        "1080p" => (1920, 1080),
+        "1440p" => (2560, 1440),
+        "Native" => (int.MaxValue, int.MaxValue),
+        _ => (1920, 1080),
+    };
+
+    internal static void ComputeScaledSize(int srcW, int srcH, int maxWidth, int maxHeight, out int dstW, out int dstH)
+    {
+        if (srcW <= maxWidth && srcH <= maxHeight)
         {
             dstW = srcW;
             dstH = srcH;
             return;
         }
 
-        var scaleX = (double)MaxWidth / srcW;
-        var scaleY = (double)MaxHeight / srcH;
+        var scaleX = (double)maxWidth / srcW;
+        var scaleY = (double)maxHeight / srcH;
         var scale = Math.Min(scaleX, scaleY);
         dstW = (int)(srcW * scale);
         dstH = (int)(srcH * scale);
     }
 
-    private static unsafe byte[] DownscaleRgba(byte[] src, int srcW, int srcH, int dstW, int dstH)
+    /// <summary>
+    /// Bilinear downscale of an RGBA buffer. Averages a 2x2 block of source pixels per destination pixel.
+    /// </summary>
+    internal static unsafe byte[] BilinearDownscaleRgba(byte[] src, int srcW, int srcH, int dstW, int dstH)
     {
         var dst = new byte[dstW * dstH * 4];
-        // Use fixed-point arithmetic for the inner loop (16.16 format)
+        // Fixed-point 16.16 arithmetic for the inner loop
         var xStep = (srcW << 16) / dstW;
         var yStep = (srcH << 16) / dstH;
 
@@ -118,14 +137,27 @@ public class ScreenShareVideoSource : IDisposable
             var srcYFp = 0;
             for (int y = 0; y < dstH; y++, srcYFp += yStep)
             {
-                var srcRow = pSrc + (srcYFp >> 16) * srcW * 4;
+                var sy = srcYFp >> 16;
+                var sy1 = Math.Min(sy + 1, srcH - 1);
+                var srcRow0 = pSrc + sy * srcW * 4;
+                var srcRow1 = pSrc + sy1 * srcW * 4;
                 var dstRow = pDst + y * dstW * 4;
                 var srcXFp = 0;
                 for (int x = 0; x < dstW; x++, srcXFp += xStep)
                 {
-                    var s = srcRow + (srcXFp >> 16) * 4;
+                    var sx = srcXFp >> 16;
+                    var sx1 = Math.Min(sx + 1, srcW - 1);
+
+                    var p00 = srcRow0 + sx * 4;
+                    var p10 = srcRow0 + sx1 * 4;
+                    var p01 = srcRow1 + sx * 4;
+                    var p11 = srcRow1 + sx1 * 4;
+
                     var d = dstRow + x * 4;
-                    *(int*)d = *(int*)s; // copy 4 bytes at once
+                    d[0] = (byte)((p00[0] + p10[0] + p01[0] + p11[0] + 2) >> 2);
+                    d[1] = (byte)((p00[1] + p10[1] + p01[1] + p11[1] + 2) >> 2);
+                    d[2] = (byte)((p00[2] + p10[2] + p01[2] + p11[2] + 2) >> 2);
+                    d[3] = (byte)((p00[3] + p10[3] + p01[3] + p11[3] + 2) >> 2);
                 }
             }
         }

@@ -36,4 +36,16 @@ public class AppSettings
 
     [JsonPropertyName("voiceSoundPack")]
     public string VoiceSoundPack { get; set; } = "Classic";
+
+    [JsonPropertyName("screenShareResolution")]
+    public string ScreenShareResolution { get; set; } = "1080p";
+
+    [JsonPropertyName("screenShareBitrateKbps")]
+    public int ScreenShareBitrateKbps { get; set; } = 1500;
+
+    [JsonPropertyName("screenShareFrameRate")]
+    public int ScreenShareFrameRate { get; set; } = 30;
+
+    [JsonPropertyName("viewerDownscalePercent")]
+    public int ViewerDownscalePercent { get; set; } = 100;
 }

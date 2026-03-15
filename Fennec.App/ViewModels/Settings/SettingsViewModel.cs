@@ -24,6 +24,7 @@ public partial class SettingsViewModel : ObservableObject, IRecipient<ZoomChange
         Categories.Add(new SettingsCategory("Account", MaterialIconKind.Account, new AccountSettingsViewModel(username, serverUrl)));
         Categories.Add(new SettingsCategory("Appearance", MaterialIconKind.Palette, new AppearanceSettingsViewModel(settingsStore, currentSettings)));
         Categories.Add(new SettingsCategory("Audio", MaterialIconKind.Microphone, new AudioSettingsViewModel(settingsStore, currentSettings)));
+        Categories.Add(new SettingsCategory("Video", MaterialIconKind.Monitor, new VideoSettingsViewModel(settingsStore, currentSettings)));
         Categories.Add(new SettingsCategory("Keybindings", MaterialIconKind.Keyboard, new KeybindingsSettingsViewModel(keymapService, settingsStore)));
 
         SelectedCategory = Categories[0];

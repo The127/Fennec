@@ -203,7 +203,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         if (!IsConnected || IsScreenSharing || CurrentServerId is null || CurrentChannelId is null)
             return;
 
-        _videoSource = new ScreenShareVideoSource(_logger);
+        var settings = await _settingsStore.LoadAsync();
+        var (maxW, maxH) = ScreenShareVideoSource.ResolutionPresetToDimensions(settings.ScreenShareResolution);
+        _videoSource = new ScreenShareVideoSource(_logger, maxW, maxH, settings.ScreenShareBitrateKbps, (uint)settings.ScreenShareFrameRate);
 
         // Wire video source encoded samples to all peers
         _videoSource.OnVideoSourceEncodedSample += (durationRtpUnits, sample) =>
@@ -556,6 +558,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private readonly Dictionary<Guid, List<byte>> _videoFrameBuffers = new();
     private int _videoRtpCount;
     private int _videoFrameCount;
+    private int? _cachedViewerDownscalePercent;
 
     private void HandleIncomingVideoRtp(Guid fromUserId, SIPSorcery.Net.RTPPacket pkt)
     {
@@ -594,6 +597,22 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                     _logger.LogInformation("ScreenShare: Decoded frame #{Num} {W}x{H} from {UserId} (assembled {Bytes} bytes)",
                         _videoFrameCount, result.Value.Width, result.Value.Height, fromUserId, frameData.Length);
                 var (rgba, width, height) = result.Value;
+
+                // Apply viewer downscale if configured
+                _cachedViewerDownscalePercent ??= _settingsStore.LoadAsync().GetAwaiter().GetResult().ViewerDownscalePercent;
+                var scale = _cachedViewerDownscalePercent.Value;
+                if (scale < 100 && scale > 0)
+                {
+                    var dstW = width * scale / 100 & ~1;
+                    var dstH = height * scale / 100 & ~1;
+                    if (dstW > 0 && dstH > 0)
+                    {
+                        rgba = ScreenShareVideoSource.BilinearDownscaleRgba(rgba, width, height, dstW, dstH);
+                        width = dstW;
+                        height = dstH;
+                    }
+                }
+
                 _messenger.Send(new ScreenShareFrameMessage(fromUserId, rgba, width, height));
             }
         }
