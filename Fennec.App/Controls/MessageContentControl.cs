@@ -351,20 +351,42 @@ public class MessageContentControl : UserControl
             BorderThickness = new Thickness(1),
             MaxWidth = 400,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Cursor = new Cursor(StandardCursorType.Hand),
         };
         BindBrushToResource(border, Border.BackgroundProperty, "CodeBlockBackgroundBrush");
         BindBrushToResource(border, Border.BorderBrushProperty, "CodeBlockBorderBrush");
 
         var stack = new StackPanel { Spacing = 4 };
-        stack.Children.Add(new TextBlock
+
+        var header = new TextBlock
         {
             Text = "Spotify",
             FontSize = 11,
             Opacity = 0.6,
             FontWeight = FontWeight.SemiBold,
             Foreground = new SolidColorBrush(Color.FromRgb(30, 215, 96)),
-        });
+            Cursor = new Cursor(StandardCursorType.Hand),
+        };
+        header.PointerPressed += (_, _) =>
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(embed.SourceUrl.AbsoluteUri)
+                    { UseShellExecute = true });
+            }
+            catch { }
+        };
+        stack.Children.Add(header);
+
+        // oEmbed metadata (shown by default, like YouTube/Twitch)
+        var thumbnail = new Avalonia.Controls.Image
+        {
+            MaxWidth = 380,
+            MaxHeight = 214,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            IsVisible = false,
+        };
+        stack.Children.Add(thumbnail);
 
         var body = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         body.Children.Add(new MaterialIcon
@@ -374,28 +396,19 @@ public class MessageContentControl : UserControl
             Height = 32,
             Foreground = new SolidColorBrush(Color.FromRgb(30, 215, 96)),
         });
-
-        var info = new StackPanel { Spacing = 2 };
-        info.Children.Add(new TextBlock
+        var titleText = new TextBlock
         {
-            Text = char.ToUpper(embed.ResourceType[0]) + embed.ResourceType[1..],
+            Text = "Loading...",
             FontSize = 13,
-            FontWeight = FontWeight.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-        info.Children.Add(new TextBlock
-        {
-            Text = embed.SourceUrl.AbsoluteUri,
-            FontSize = 11,
-            Opacity = 0.6,
             TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 320,
-        });
-        body.Children.Add(info);
-
+            VerticalAlignment = VerticalAlignment.Center,
+            MaxWidth = 340,
+        };
+        body.Children.Add(titleText);
         stack.Children.Add(body);
-        border.Child = stack;
 
+        border.Child = stack;
+        border.Cursor = new Cursor(StandardCursorType.Hand);
         border.PointerPressed += (_, _) =>
         {
             try
@@ -406,7 +419,44 @@ public class MessageContentControl : UserControl
             catch { }
         };
 
+        _ = LoadSpotifyOEmbedAsync(embed.SourceUrl, thumbnail, titleText);
+
         return border;
+    }
+
+    private static async Task LoadSpotifyOEmbedAsync(
+        Uri sourceUrl,
+        Avalonia.Controls.Image thumbnail,
+        TextBlock titleText)
+    {
+        try
+        {
+            using var httpClient = new System.Net.Http.HttpClient();
+            var oEmbedUrl = $"https://open.spotify.com/oembed?url={Uri.EscapeDataString(sourceUrl.AbsoluteUri)}&format=json";
+            var json = await httpClient.GetStringAsync(oEmbedUrl);
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("title", out var titleProp))
+                titleText.Text = titleProp.GetString();
+
+            if (root.TryGetProperty("thumbnail_url", out var thumbProp))
+            {
+                var thumbUrl = thumbProp.GetString();
+                if (!string.IsNullOrEmpty(thumbUrl))
+                {
+                    var data = await httpClient.GetByteArrayAsync(thumbUrl);
+                    var stream = new System.IO.MemoryStream(data);
+                    var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+                    thumbnail.Source = bitmap;
+                    thumbnail.IsVisible = true;
+                }
+            }
+        }
+        catch
+        {
+            titleText.Text = sourceUrl.AbsoluteUri;
+        }
     }
 
     private static Control BuildTwitchEmbed(TwitchEmbed embed)
