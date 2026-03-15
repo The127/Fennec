@@ -51,9 +51,14 @@ Fennec is a **federated real-time chat platform** — a Discord-like app where m
 
 **Federation** — Server-to-server communication via `FederationClient/` and `FederationApi/` controllers. HTTP requests are signed with `FederationSigningHandler`. Users register on a "home instance" and can join servers on other instances.
 
+- **HTTP browsing** (messages, channels, members): proxied through the home instance via federation HTTP endpoints. The client always talks to its home API; the home API forwards requests to the hosting instance.
+- **Real-time features** (voice, signaling): the client opens a **direct SignalR connection to the hosting instance** using a federation JWT (cached in `TokenStore`). This is necessary because the hosting instance's hub needs a real `connectionId` for the user — without it, peer-targeted operations (SDP/ICE relay, speaking state) silently fail.
+- **Identity on remote hubs**: `GetCallerIdentity()` reads userId/username from the JWT and the issuer as instanceUrl. When the user connects directly, `IsRemote(instanceUrl)` returns `false` on the hosting instance, so the user is treated as a local participant with full signaling support.
+- `TokenStore` is a DI singleton shared between `ClientFactory` and services like `VoiceHubService` so federation JWTs are accessible app-wide.
+
 **Desktop UI** — Avalonia MVVM with CommunityToolkit.MVVM. `ViewModels/` bind to `Views/` (XAML). Navigation via `Routes/` + `Routing/` layer. DI configured in `App.axaml.cs`.
 
-**Voice** — WebRTC peer-to-peer calls via SIPSorcery + PortAudio for audio I/O. `VoiceStateService` manages call state on the API side.
+**Voice** — WebRTC peer-to-peer calls via SIPSorcery + PortAudio for audio I/O. `VoiceStateService` manages call state on the API side. `VoiceHubService` handles hub routing: local channels use the home `MessageHubClient`, remote channels open a direct `HubConnection` to the hosting server.
 
 ### Data Flow
 
