@@ -49,7 +49,7 @@ Fennec is a **federated real-time chat platform** — a Discord-like app where m
 
 **Authentication** — Dual-token system: session tokens for local API auth, JWT public tokens for federation. `AuthenticationMiddleware` validates requests; `IAuthPrincipal` provides user context. RSA private key (`private.pem`) signs JWTs.
 
-**Federation** — Server-to-server communication via `FederationClient/` and `FederationApi/` controllers. HTTP requests are signed with `FederationSigningHandler`. Users register on a "home instance" and can join servers on other instances.
+**Federation** — Server-to-server communication via `FederationClient/` and `FederationApi/` controllers. HTTP requests are signed with `FederationSigningHandler`. See [Federation Design](#federation-design) below for the full model.
 
 - **HTTP browsing** (messages, channels, members): proxied through the home instance via federation HTTP endpoints. The client always talks to its home API; the home API forwards requests to the hosting instance.
 - **Real-time features** (voice, signaling): the client opens a **direct SignalR connection to the hosting instance** using a federation JWT (cached in `TokenStore`). This is necessary because the hosting instance's hub needs a real `connectionId` for the user — without it, peer-targeted operations (SDP/ICE relay, speaking state) silently fail.
@@ -77,3 +77,52 @@ Desktop App (Avalonia)
 - **API**: PostgreSQL with EF Core, snake_case naming convention (`EFCore.NamingConventions`), audit triggers via `EntityFrameworkCore.Triggered`, NodaTime for timestamps
 - **Client**: SQLite local cache (`AppDbContext` in Fennec.App)
 - Migrations in `Fennec.Api/Migrations/`
+
+## Federation Design
+
+### Core Concepts
+
+Every user has a **home instance** — the instance they registered on. The home instance is privileged in that it must be informed of actions the user takes (e.g. joining a remote server, future: sending DMs). Users connect **directly** to remote instances for server activity (messages, voice) — those do not get federated back to the home instance.
+
+Federation is currently **open**: any instance with valid RSA keys can federate. Whitelisting/blacklisting is not yet implemented.
+
+### User/Server Membership Model
+
+The DB uses a normalized pattern so local and remote users are represented uniformly:
+
+- `User` — local user registered on this instance
+- `KnownUser` — a remote user (from another instance), identified by `(RemoteId, InstanceUrl)`
+- `ServerMember` — links either a `User` or `KnownUser` to a server (polymorphic FK via `KnownUserId`)
+- `KnownServer` — a remote server (on another instance), identified by `(RemoteId, InstanceUrl)`
+- `UserJoinedKnownServer` — tracks which local users have joined which remote servers (so the home instance knows the user's full server list)
+
+### Join Flow (User on Instance A joins Server on Instance B)
+
+1. User POSTs join request to **home instance A**
+2. Instance A federates to **instance B**: creates `KnownUser` + `ServerMember` on B
+3. Instance A also records `KnownServer` (for instance B's server) + `UserJoinedKnownServer` locally, so it knows the user's membership
+
+> `KnownServer` and `UserJoinedKnownServer` tables exist in the schema but the home-instance-side of this flow is not yet implemented.
+
+### Message Delivery
+
+Server messages are **not federated**. A message posted to a server stays on the hosting instance's DB. Remote members connect directly to the hosting instance via SignalR/API to read and post messages. The home instance is not involved.
+
+### Notification Federation
+
+When a user on instance A is mentioned on instance B, instance B calls `POST /federation/v1/notification/push` on instance A (the user's home instance), which delivers it via SignalR to the client.
+
+### Voice Federation
+
+The instance hosting the channel is authoritative for voice state. When a remote user joins:
+- Their client calls the hosting instance's federation voice endpoint
+- The hosting instance manages `VoiceStateService` and broadcasts events
+- Remote instances (where other participants are) receive `participant-joined/left` push notifications
+
+### Server-to-Server Auth
+
+Each instance signs outbound requests with RSA-SHA256 (`FederationSigningHandler`). Headers: `X-Instance`, `X-Timestamp`, `X-Signature`. Receiving instances verify the signature against the sender's public key fetched from `/.well-known/fennec/public-key`. Requests older than 30 seconds are rejected.
+
+### Future: Direct Messages
+
+DMs will route through the home instance: user sends to home instance → home instance federates to all participants' home instances.
