@@ -229,6 +229,9 @@
                                                                         <mi:MaterialIcon Kind="MicrophoneOff" Width="12" Height="12"
                                                                                          Opacity="0.5"
                                                                                          IsVisible="{Binding IsMuted}" />
+                                                                        <mi:MaterialIcon Kind="VolumeOff" Width="12" Height="12"
+                                                                                         Opacity="0.5"
+                                                                                         IsVisible="{Binding IsDeafened}" />
                                                                     </StackPanel>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>

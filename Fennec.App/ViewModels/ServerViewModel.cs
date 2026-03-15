@@ -31,6 +31,9 @@ public partial class VoiceParticipantItem(Guid userId, string username, string? 
     private bool _isMuted;
 
     [ObservableProperty]
+    private bool _isDeafened;
+
+    [ObservableProperty]
     private bool _isSpeaking;
 }
 
@@ -177,6 +180,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<UserOnlineMessage>,
     IRecipient<UserOfflineMessage>,
     IRecipient<VoiceMuteStateChangedMessage>,
+    IRecipient<VoiceDeafenStateChangedMessage>,
     IRecipient<VoiceSpeakingChangedMessage>
 {
     private readonly IFennecClient client;
@@ -826,7 +830,10 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         var channel = FindChannel(CurrentVoiceChannelId.Value);
         var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == _currentUserId);
         if (participant is not null)
+        {
             participant.IsMuted = IsMuted;
+            participant.IsDeafened = IsDeafened;
+        }
     }
 
     public void Receive(VoiceMuteStateChangedMessage message)
@@ -839,6 +846,19 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
             if (participant is not null)
                 participant.IsMuted = message.IsMuted;
+        });
+    }
+
+    public void Receive(VoiceDeafenStateChangedMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var channel = FindChannel(message.ChannelId);
+            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
+            if (participant is not null)
+                participant.IsDeafened = message.IsDeafened;
         });
     }
 

@@ -219,6 +219,15 @@ public class MessageHub(
             .SendAsync("VoiceMuteStateChanged", serverId, channelId, userId, isMuted);
     }
 
+    public async Task SetDeafenState(Guid serverId, Guid channelId, bool isDeafened)
+    {
+        var (userId, _, _) = GetCallerIdentity();
+        await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
+            .SendAsync("VoiceDeafenStateChanged", serverId, channelId, userId, isDeafened);
+        await Clients.OthersInGroup(ServerGroup(serverId))
+            .SendAsync("VoiceDeafenStateChanged", serverId, channelId, userId, isDeafened);
+    }
+
     public async Task SetSpeakingState(Guid serverId, Guid channelId, bool isSpeaking)
     {
         var (userId, _, _) = GetCallerIdentity();

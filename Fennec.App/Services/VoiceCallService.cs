@@ -150,6 +150,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         // When deafened, also mute
         if (deafened && !IsMuted)
             SetMuted(true);
+
+        if (IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
+            _ = _voiceHub.SetDeafenStateAsync(CurrentServerId.Value, CurrentChannelId.Value, deafened);
     }
 
     private async Task TryInitAudioEndPointAsync()

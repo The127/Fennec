@@ -15,6 +15,7 @@ public interface IVoiceHubService
     Task SendSdpAnswerAsync(Guid serverId, Guid channelId, Guid targetUserId, string sdp);
     Task SendIceCandidateAsync(Guid serverId, Guid channelId, Guid targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex);
     Task SetMuteStateAsync(Guid serverId, Guid channelId, bool isMuted);
+    Task SetDeafenStateAsync(Guid serverId, Guid channelId, bool isDeafened);
     Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking);
 
     event Action<Guid, Guid, Guid, string>? SdpOfferReceived;
@@ -76,6 +77,11 @@ public class VoiceHubService : IVoiceHubService
         _hubClient.VoiceMuteStateChanged += (serverId, channelId, userId, isMuted) =>
         {
             _messenger.Send(new VoiceMuteStateChangedMessage(serverId, channelId, userId, isMuted));
+        };
+
+        _hubClient.VoiceDeafenStateChanged += (serverId, channelId, userId, isDeafened) =>
+        {
+            _messenger.Send(new VoiceDeafenStateChangedMessage(serverId, channelId, userId, isDeafened));
         };
 
         _hubClient.VoiceSpeakingStateChanged += (serverId, channelId, userId, isSpeaking) =>
@@ -149,6 +155,11 @@ public class VoiceHubService : IVoiceHubService
         _directConnection.On<Guid, Guid, Guid, bool>("VoiceMuteStateChanged", (sid, cid, userId, isMuted) =>
         {
             _messenger.Send(new VoiceMuteStateChangedMessage(sid, cid, userId, isMuted));
+        });
+
+        _directConnection.On<Guid, Guid, Guid, bool>("VoiceDeafenStateChanged", (sid, cid, userId, isDeafened) =>
+        {
+            _messenger.Send(new VoiceDeafenStateChangedMessage(sid, cid, userId, isDeafened));
         });
 
         _directConnection.On<Guid, Guid, Guid, bool>("VoiceSpeakingStateChanged", (sid, cid, userId, isSpeaking) =>
@@ -228,6 +239,14 @@ public class VoiceHubService : IVoiceHubService
             await _directConnection.InvokeAsync("SetMuteState", serverId, channelId, isMuted);
         else
             await _hubClient.SetMuteStateAsync(serverId, channelId, isMuted);
+    }
+
+    public async Task SetDeafenStateAsync(Guid serverId, Guid channelId, bool isDeafened)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("SetDeafenState", serverId, channelId, isDeafened);
+        else
+            await _hubClient.SetDeafenStateAsync(serverId, channelId, isDeafened);
     }
 
     public async Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking)
