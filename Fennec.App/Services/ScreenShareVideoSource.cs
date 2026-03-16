@@ -20,6 +20,8 @@ public class ScreenShareVideoSource : IDisposable
     private long _pts;
     private volatile bool _forceNextKeyFrame;
 
+    public string? EncoderName => _encoder?.EncoderName;
+
     /// <summary>
     /// Fires when an H.264 NAL unit is ready to send via WebRTC.
     /// Parameters: (durationRtpUnits, nalData, isKeyframe)

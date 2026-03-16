@@ -33,6 +33,9 @@ internal static class NativeVideoInterop
     public static extern int fennec_encoder_update_fps(IntPtr enc, int fps);
 
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern IntPtr fennec_encoder_get_name(IntPtr enc);
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     public static extern void fennec_encoder_destroy(IntPtr enc);
 
     // --- Fused capture+encode (macOS) ---

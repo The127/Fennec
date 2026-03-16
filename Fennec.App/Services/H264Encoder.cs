@@ -19,6 +19,8 @@ public sealed class H264Encoder : IDisposable
     // Temporary state during Encode call
     private Action<byte[], long, bool>? _currentCallback;
 
+    public string EncoderName { get; }
+
     public H264Encoder(ILogger logger, int width, int height, int bitrateKbps = 1500, int fps = 30)
     {
         _logger = logger;
@@ -33,8 +35,10 @@ public sealed class H264Encoder : IDisposable
         if (_encoder == IntPtr.Zero)
             throw new InvalidOperationException("Failed to create native H.264 encoder");
 
-        _logger.LogInformation("H264Encoder: Created {W}x{H}, bitrate={Bitrate}Kbps, fps={Fps}",
-            _width, _height, _bitrateKbps, _fps);
+        EncoderName = Marshal.PtrToStringUTF8(NativeVideoInterop.fennec_encoder_get_name(_encoder)) ?? "unknown";
+
+        _logger.LogInformation("H264Encoder: Created {W}x{H}, bitrate={Bitrate}Kbps, fps={Fps}, encoder={Encoder}",
+            _width, _height, _bitrateKbps, _fps, EncoderName);
     }
 
     public void Encode(byte[] rgbaData, int width, int height, long pts, bool forceKeyframe,

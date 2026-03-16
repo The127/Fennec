@@ -83,6 +83,7 @@ public class ScreenShareMetrics
     public long FramesEncoded { get; set; }
     public long FramesSent { get; set; }
     public long FramesDropped { get; set; }
+    public string? EncoderName { get; set; }
 
     // Receiver
     public MetricSeries TransportFps { get; } = new();

@@ -44,6 +44,7 @@ FENNEC_API fennec_status   fennec_encoder_encode_rgba(fennec_encoder* enc, const
 FENNEC_API fennec_status   fennec_encoder_update_size(fennec_encoder* enc, int w, int h);
 FENNEC_API fennec_status   fennec_encoder_update_bitrate(fennec_encoder* enc, int bitrate_kbps);
 FENNEC_API fennec_status   fennec_encoder_update_fps(fennec_encoder* enc, int fps);
+FENNEC_API const char*     fennec_encoder_get_name(fennec_encoder* enc);
 FENNEC_API void            fennec_encoder_destroy(fennec_encoder* enc);
 
 // --- Fused capture+encode ---

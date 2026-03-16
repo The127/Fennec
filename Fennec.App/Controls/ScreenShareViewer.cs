@@ -190,6 +190,7 @@ public class ScreenShareViewer : Control
         var counterLines = new List<(string Label, string Value, IBrush Color)>();
         if (metrics.IsSender)
         {
+            counterLines.Add(("ENCODER", metrics.EncoderName ?? "?", Brushes.Cyan));
             counterLines.Add(("ENCODED", $"{metrics.FramesEncoded}", Brushes.White));
             counterLines.Add(("SENT", $"{metrics.FramesSent}", Brushes.LimeGreen));
             counterLines.Add(("DROPPED", $"{metrics.FramesDropped}", metrics.FramesDropped > 0 ? Brushes.Red : Brushes.Gray));

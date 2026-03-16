@@ -380,6 +380,11 @@ FENNEC_API fennec_status fennec_encoder_update_fps(fennec_encoder* enc, int fps)
     return SUCCEEDED(hr) ? FENNEC_OK : FENNEC_ERR_INIT;
 }
 
+FENNEC_API const char* fennec_encoder_get_name(fennec_encoder* enc) {
+    if (!enc) return "unknown";
+    return "h264_mf";
+}
+
 FENNEC_API void fennec_encoder_destroy(fennec_encoder* enc) {
     if (!enc) return;
 

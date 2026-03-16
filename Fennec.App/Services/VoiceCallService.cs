@@ -356,6 +356,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             return;
         }
 
+        senderMetrics.EncoderName = "h264_videotoolbox";
+
         // Mark as sharing early so onconnectionstatechange can trigger deferred renegotiation
         IsScreenSharing = true;
 
@@ -523,6 +525,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _videoSource = null;
                 return;
             }
+
+            senderMetrics.EncoderName = "h264_videotoolbox";
         }
         else
         {
@@ -533,6 +537,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _videoSource!.OnFrame(rgba, w, h);
                 encodeSw.Stop();
                 senderMetrics.EncodeTimeMs.Add(encodeSw.Elapsed.TotalMilliseconds);
+                senderMetrics.EncoderName ??= _videoSource.EncoderName;
 
                 OnPreviewFrame(rgba, w, h);
             });
