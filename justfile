@@ -6,16 +6,19 @@ generate-private-key:
 build-native-macos:
     cmake -S native -B native/build-macos -DCMAKE_BUILD_TYPE=Release
     cmake --build native/build-macos
+    mkdir -p Fennec.App/runtimes/osx-arm64/native/
     cp native/build-macos/macos/libfennec_video.dylib Fennec.App/runtimes/osx-arm64/native/
 
 # build native video library for Linux (x64)
 build-native-linux:
     cmake -S native -B native/build-linux -DCMAKE_BUILD_TYPE=Release
     cmake --build native/build-linux
+    mkdir -p Fennec.App/runtimes/linux-x64/native/
     cp native/build-linux/linux/libfennec_video.so Fennec.App/runtimes/linux-x64/native/
 
 # build native video library for Windows (x64)
 build-native-windows:
     cmake -S native -B native/build-windows -DCMAKE_BUILD_TYPE=Release
     cmake --build native/build-windows --config Release
+    mkdir -p Fennec.App/runtimes/win-x64/native/
     cp native/build-windows/windows/Release/fennec_video.dll Fennec.App/runtimes/win-x64/native/
