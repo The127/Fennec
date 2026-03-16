@@ -8,6 +8,8 @@ public class VoiceStateService
     private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), List<(Guid UserId, string Username, string? InstanceUrl, string? ConnectionId)>> _channels = new();
     private readonly ConcurrentDictionary<string, (Guid ServerId, Guid ChannelId, Guid UserId)> _connectionMap = new();
     private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), HashSet<Guid>> _screenSharers = new();
+    private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), HashSet<Guid>> _mutedUsers = new();
+    private readonly ConcurrentDictionary<(Guid ServerId, Guid ChannelId), HashSet<Guid>> _deafenedUsers = new();
     private readonly object _lock = new();
 
     public List<VoiceParticipantDto> AddParticipant(Guid serverId, Guid channelId, Guid userId, string username, string? instanceUrl, string? connectionId)
@@ -24,7 +26,7 @@ public class VoiceStateService
             if (connectionId is not null)
                 _connectionMap[connectionId] = (serverId, channelId, userId);
 
-            return list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username, InstanceUrl = p.InstanceUrl }).ToList();
+            return list.Select(p => ToDto(key, p)).ToList();
         }
     }
 
@@ -43,12 +45,7 @@ public class VoiceStateService
                     _channels.TryRemove(key, out _);
             }
 
-            if (_screenSharers.TryGetValue(key, out var sharers))
-            {
-                sharers.Remove(userId);
-                if (sharers.Count == 0)
-                    _screenSharers.TryRemove(key, out _);
-            }
+            RemoveUserState(key, userId);
         }
     }
 
@@ -67,12 +64,7 @@ public class VoiceStateService
                     _channels.TryRemove(key, out _);
             }
 
-            if (_screenSharers.TryGetValue(key, out var sharers))
-            {
-                sharers.Remove(info.UserId);
-                if (sharers.Count == 0)
-                    _screenSharers.TryRemove(key, out _);
-            }
+            RemoveUserState(key, info.UserId);
 
             return info;
         }
@@ -95,7 +87,7 @@ public class VoiceStateService
         {
             var key = (serverId, channelId);
             if (_channels.TryGetValue(key, out var list))
-                return list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username, InstanceUrl = p.InstanceUrl }).ToList();
+                return list.Select(p => ToDto(key, p)).ToList();
             return [];
         }
     }
@@ -127,7 +119,7 @@ public class VoiceStateService
             {
                 if (key.ServerId == serverId && list.Count > 0)
                 {
-                    result[key.ChannelId] = list.Select(p => new VoiceParticipantDto { UserId = p.UserId, Username = p.Username, InstanceUrl = p.InstanceUrl }).ToList();
+                    result[key.ChannelId] = list.Select(p => ToDto(key, p)).ToList();
                 }
             }
             return result;
@@ -181,5 +173,84 @@ public class VoiceStateService
             var key = (serverId, channelId);
             return _screenSharers.TryGetValue(key, out var sharers) && sharers.Contains(userId);
         }
+    }
+
+    public void SetMuted(Guid serverId, Guid channelId, Guid userId, bool isMuted)
+    {
+        lock (_lock)
+        {
+            var key = (serverId, channelId);
+            if (isMuted)
+            {
+                var set = _mutedUsers.GetOrAdd(key, _ => []);
+                set.Add(userId);
+            }
+            else
+            {
+                if (_mutedUsers.TryGetValue(key, out var set))
+                {
+                    set.Remove(userId);
+                    if (set.Count == 0)
+                        _mutedUsers.TryRemove(key, out _);
+                }
+            }
+        }
+    }
+
+    public void SetDeafened(Guid serverId, Guid channelId, Guid userId, bool isDeafened)
+    {
+        lock (_lock)
+        {
+            var key = (serverId, channelId);
+            if (isDeafened)
+            {
+                var set = _deafenedUsers.GetOrAdd(key, _ => []);
+                set.Add(userId);
+            }
+            else
+            {
+                if (_deafenedUsers.TryGetValue(key, out var set))
+                {
+                    set.Remove(userId);
+                    if (set.Count == 0)
+                        _deafenedUsers.TryRemove(key, out _);
+                }
+            }
+        }
+    }
+
+    private void RemoveUserState((Guid ServerId, Guid ChannelId) key, Guid userId)
+    {
+        if (_screenSharers.TryGetValue(key, out var sharers))
+        {
+            sharers.Remove(userId);
+            if (sharers.Count == 0)
+                _screenSharers.TryRemove(key, out _);
+        }
+        if (_mutedUsers.TryGetValue(key, out var muted))
+        {
+            muted.Remove(userId);
+            if (muted.Count == 0)
+                _mutedUsers.TryRemove(key, out _);
+        }
+        if (_deafenedUsers.TryGetValue(key, out var deafened))
+        {
+            deafened.Remove(userId);
+            if (deafened.Count == 0)
+                _deafenedUsers.TryRemove(key, out _);
+        }
+    }
+
+    private VoiceParticipantDto ToDto((Guid ServerId, Guid ChannelId) key, (Guid UserId, string Username, string? InstanceUrl, string? ConnectionId) p)
+    {
+        return new VoiceParticipantDto
+        {
+            UserId = p.UserId,
+            Username = p.Username,
+            InstanceUrl = p.InstanceUrl,
+            IsMuted = _mutedUsers.TryGetValue(key, out var muted) && muted.Contains(p.UserId),
+            IsDeafened = _deafenedUsers.TryGetValue(key, out var deafened) && deafened.Contains(p.UserId),
+            IsScreenSharing = _screenSharers.TryGetValue(key, out var sharers) && sharers.Contains(p.UserId),
+        };
     }
 }

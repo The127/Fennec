@@ -808,7 +808,12 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             if (channel.VoiceParticipants.Any(p => p.UserId == message.UserId))
                 return;
 
-            channel.VoiceParticipants.Add(new VoiceParticipantItem(message.UserId, message.Username, message.InstanceUrl));
+            channel.VoiceParticipants.Add(new VoiceParticipantItem(message.UserId, message.Username, message.InstanceUrl)
+            {
+                IsMuted = message.IsMuted,
+                IsDeafened = message.IsDeafened,
+                IsScreenSharing = message.IsScreenSharing,
+            });
         });
     }
 

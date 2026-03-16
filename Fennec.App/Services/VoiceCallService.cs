@@ -128,10 +128,20 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _ = _soundEffects.PlayAsync(SoundEffect.Join);
         _messenger.Send(new VoiceStateChangedMessage(true, serverId, channelId));
 
+        // Seed active screen sharers from join response
+        foreach (var participant in participants)
+        {
+            if (participant.IsScreenSharing && participant.UserId != currentUserId
+                && !_activeScreenSharers.Any(s => s.UserId == participant.UserId))
+            {
+                _activeScreenSharers.Add(new ActiveScreenSharer(participant.UserId, participant.Username, participant.InstanceUrl));
+            }
+        }
+
         // Notify UI about all current participants (including self)
         foreach (var participant in participants)
         {
-            _messenger.Send(new VoiceParticipantJoinedMessage(serverId, channelId, participant.UserId, participant.Username, participant.InstanceUrl));
+            _messenger.Send(new VoiceParticipantJoinedMessage(serverId, channelId, participant.UserId, participant.Username, participant.InstanceUrl, participant.IsMuted, participant.IsDeafened, participant.IsScreenSharing));
         }
 
         // Create peer connections to all existing participants except self (joiner offers)

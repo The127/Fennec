@@ -238,6 +238,7 @@ public class MessageHub(
     public async Task SetMuteState(Guid serverId, Guid channelId, bool isMuted)
     {
         var (userId, _, _) = GetCallerIdentity();
+        voiceState.SetMuted(serverId, channelId, userId, isMuted);
         await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
             .SendAsync("VoiceMuteStateChanged", serverId, channelId, userId, isMuted);
         await Clients.OthersInGroup(ServerGroup(serverId))
@@ -247,6 +248,7 @@ public class MessageHub(
     public async Task SetDeafenState(Guid serverId, Guid channelId, bool isDeafened)
     {
         var (userId, _, _) = GetCallerIdentity();
+        voiceState.SetDeafened(serverId, channelId, userId, isDeafened);
         await Clients.OthersInGroup(VoiceGroup(serverId, channelId))
             .SendAsync("VoiceDeafenStateChanged", serverId, channelId, userId, isDeafened);
         await Clients.OthersInGroup(ServerGroup(serverId))
