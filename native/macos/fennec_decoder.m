@@ -64,6 +64,7 @@ static OSStatus createDecoderSession(fennec_decoder* dec) {
 
     // Destroy old session if exists
     if (dec->session) {
+        VTDecompressionSessionWaitForAsynchronousFrames(dec->session);
         VTDecompressionSessionInvalidate(dec->session);
         CFRelease(dec->session);
         dec->session = NULL;
@@ -123,6 +124,12 @@ fennec_status fennec_decoder_decode(fennec_decoder* dec, const uint8_t* nal, int
         memcpy(dec->sps, nal, size);
         dec->sps_size = size;
         fprintf(stderr, "[fennec_decoder] SPS stored (%d bytes)\n", size);
+
+        if (dec->pps) {
+            OSStatus status = createDecoderSession(dec);
+            fprintf(stderr, "[fennec_decoder] Session recreated after SPS change: status=%d\n", (int)status);
+            if (status != noErr) return FENNEC_ERR_INIT;
+        }
         return FENNEC_OK;
     }
 
