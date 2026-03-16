@@ -38,7 +38,7 @@ release bump="patch":
         *) echo "Unknown bump type: {{bump}} (use patch, minor, or major)"; exit 1 ;;
     esac
     new_tag="v${major}.${minor}.${patch}"
-    echo "Tagging $new_tag"
+    echo "Tagging ${latest:-v0.0.0} -> $new_tag"
     git tag "$new_tag"
     git push origin "$new_tag"
 
