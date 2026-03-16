@@ -21,9 +21,9 @@ public class UpdateService(ILogger<UpdateService> logger) : IUpdateService
 
     public async Task<UpdateInfo?> CheckForUpdateAsync()
     {
-        if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+        if (Environment.GetEnvironmentVariable("FENNEC_NO_UPDATE") is not null)
         {
-            logger.LogInformation("Skipping update check in Development environment");
+            logger.LogInformation("Auto-update disabled (FENNEC_NO_UPDATE is set)");
             return null;
         }
 
