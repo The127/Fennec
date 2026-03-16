@@ -128,6 +128,16 @@ public partial class App : Application
 
             services.AddSingleton<ICursorPositionService, LinuxCursorPositionService>();
         }
+        else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
+        {
+            services.AddSingleton<IScreenCaptureService, MacOsScreenCaptureService>();
+            services.AddSingleton<ICursorPositionService, StubCursorPositionService>();
+        }
+        else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+        {
+            services.AddSingleton<IScreenCaptureService, WindowsScreenCaptureService>();
+            services.AddSingleton<ICursorPositionService, StubCursorPositionService>();
+        }
         else
         {
             services.AddSingleton<IScreenCaptureService, StubScreenCaptureService>();

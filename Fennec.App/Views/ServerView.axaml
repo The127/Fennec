@@ -68,7 +68,7 @@
                         BorderThickness="0,1,0,0"
                         Padding="8,6"
                         IsVisible="{Binding IsInVoiceChannel}">
-                    <Grid ColumnDefinitions="* Auto Auto Auto Auto">
+                    <Grid ColumnDefinitions="* Auto Auto Auto Auto Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
                             <TextBlock Text="Voice Connected" FontSize="11" FontWeight="SemiBold"
                                        Foreground="{DynamicResource SuccessColor}" />
@@ -111,6 +111,46 @@
                                              Foreground="{DynamicResource ErrorColor}" />
                         </Button>
                         <Button Grid.Column="4" Classes="Ghost" Padding="6" Width="32" Height="32"
+                                IsVisible="{Binding IsScreenSharing}"
+                                ToolTip.Tip="Share Settings">
+                            <mi:MaterialIcon Kind="Cog" Width="16" Height="16" />
+                            <Button.Flyout>
+                                <Flyout Placement="Top">
+                                    <StackPanel Spacing="12" Width="280" Margin="8">
+                                        <TextBlock Text="Share Settings" FontWeight="SemiBold" FontSize="14" />
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Resolution" FontSize="12" Classes="Muted" />
+                                            <ComboBox ItemsSource="{Binding ShareResolutionOptions}"
+                                                      SelectedItem="{Binding ShareResolution}"
+                                                      HorizontalAlignment="Stretch" />
+                                        </StackPanel>
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Frame Rate" FontSize="12" Classes="Muted" />
+                                            <ComboBox ItemsSource="{Binding ShareFrameRateOptions}"
+                                                      SelectedItem="{Binding ShareFrameRate}"
+                                                      HorizontalAlignment="Stretch" />
+                                        </StackPanel>
+                                        <StackPanel Spacing="4">
+                                            <TextBlock FontSize="12" Classes="Muted">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="Bitrate ({0} Kbps)">
+                                                        <Binding Path="ShareBitrateKbps" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <Slider Minimum="500" Maximum="50000"
+                                                    Value="{Binding ShareBitrateKbps}"
+                                                    TickFrequency="500"
+                                                    IsSnapToTickEnabled="True" />
+                                        </StackPanel>
+                                        <Button Content="Apply" Classes="Primary"
+                                                Command="{Binding UpdateScreenShareSettingsCommand}"
+                                                HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                        <Button Grid.Column="5" Classes="Ghost" Padding="6" Width="32" Height="32"
                                 Command="{Binding LeaveVoiceChannelCommand}"
                                 ToolTip.Tip="Disconnect">
                             <mi:MaterialIcon Kind="PhoneHangup" Width="16" Height="16"
@@ -445,7 +485,9 @@
                     <!-- Screen share content -->
                     <controls:ScreenShareViewer Source="{Binding ScreenShareFrame}"
                                                 CursorX="{Binding CursorX}"
-                                                CursorY="{Binding CursorY}" />
+                                                CursorY="{Binding CursorY}"
+                                                ShowDebugOverlay="{Binding ShowDebugOverlay}"
+                                                DebugMetrics="{Binding DebugMetrics}" />
                     <!-- Share info bar at top -->
                     <Border VerticalAlignment="Top" Padding="8,4"
                             Background="#80000000">
@@ -801,7 +843,9 @@
     <Grid IsVisible="{Binding IsScreenShareMaximized}" Background="{DynamicResource BackgroundColor}">
         <controls:ScreenShareViewer Source="{Binding ScreenShareFrame}"
                                     CursorX="{Binding CursorX}"
-                                    CursorY="{Binding CursorY}" />
+                                    CursorY="{Binding CursorY}"
+                                    ShowDebugOverlay="{Binding ShowDebugOverlay}"
+                                    DebugMetrics="{Binding DebugMetrics}" />
         <!-- Top info bar -->
         <Border VerticalAlignment="Top" Padding="8,4"
                 Background="#80000000">

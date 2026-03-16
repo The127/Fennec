@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Fennec.App.ViewModels;
@@ -20,6 +21,16 @@ public partial class ScreenShareWindow : Window
         };
 
         Closed += OnWindowClosed;
+        KeyDown += OnKeyDown;
+    }
+
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F3 && DataContext is ScreenShareWindowViewModel vm)
+        {
+            vm.ShowDebugOverlay = !vm.ShowDebugOverlay;
+            e.Handled = true;
+        }
     }
 
     private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

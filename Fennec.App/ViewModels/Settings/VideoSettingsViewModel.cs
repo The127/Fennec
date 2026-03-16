@@ -31,7 +31,7 @@ public partial class VideoSettingsViewModel : ObservableObject
         _selectedResolution = ResolutionOptions.Contains(currentSettings.ScreenShareResolution)
             ? currentSettings.ScreenShareResolution
             : "1080p";
-        _bitrateKbps = Math.Clamp(currentSettings.ScreenShareBitrateKbps, 500, 5000);
+        _bitrateKbps = Math.Clamp(currentSettings.ScreenShareBitrateKbps, 500, 50_000);
         _selectedFrameRate = FrameRateOptions.Contains(currentSettings.ScreenShareFrameRate)
             ? currentSettings.ScreenShareFrameRate
             : 30;

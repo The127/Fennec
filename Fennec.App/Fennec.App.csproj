@@ -45,10 +45,24 @@
       <ProjectReference Include="..\Fennec.Shared\Fennec.Shared.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <None Include="runtimes\linux-x64\native\libvpx.so">
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+      <None Include="runtimes\linux-x64\native\libfennec_video.so">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        <Link>runtimes\linux-x64\native\libvpx.so</Link>
+        <Link>runtimes\linux-x64\native\libfennec_video.so</Link>
+      </None>
+    </ItemGroup>
+
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+      <None Include="runtimes\osx-arm64\native\libfennec_video.dylib">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>runtimes\osx-arm64\native\libfennec_video.dylib</Link>
+      </None>
+    </ItemGroup>
+
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+      <None Include="runtimes\win-x64\native\fennec_video.dll">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>runtimes\win-x64\native\fennec_video.dll</Link>
       </None>
     </ItemGroup>
 </Project>

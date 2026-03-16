@@ -11,5 +11,7 @@
     <controls:ScreenShareViewer Source="{Binding ScreenShareFrame}"
                                 CursorX="{Binding CursorX}"
                                 CursorY="{Binding CursorY}"
-                                CursorShape="{Binding CursorShape}" />
+                                CursorShape="{Binding CursorShape}"
+                                ShowDebugOverlay="{Binding ShowDebugOverlay}"
+                                DebugMetrics="{Binding DebugMetrics}" />
 </Window>

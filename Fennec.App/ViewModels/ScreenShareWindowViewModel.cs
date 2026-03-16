@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
+using Fennec.App.Services;
 
 namespace Fennec.App.ViewModels;
 
@@ -13,7 +15,9 @@ public partial class ScreenShareWindowViewModel : ObservableObject,
     IDisposable
 {
     private readonly IMessenger _messenger;
+    private readonly IVoiceCallService _voiceCallService;
     private readonly Guid _voiceServerId;
+    private int _queueDepth;
 
     public Guid UserId { get; }
     public string Username { get; }
@@ -33,9 +37,15 @@ public partial class ScreenShareWindowViewModel : ObservableObject,
     [ObservableProperty]
     private bool _shouldClose;
 
-    public ScreenShareWindowViewModel(IMessenger messenger, Guid userId, string username, Guid voiceServerId)
+    [ObservableProperty]
+    private bool _showDebugOverlay;
+
+    public ScreenShareMetrics? DebugMetrics => _voiceCallService.GetMetrics(UserId);
+
+    public ScreenShareWindowViewModel(IMessenger messenger, IVoiceCallService voiceCallService, Guid userId, string username, Guid voiceServerId)
     {
         _messenger = messenger;
+        _voiceCallService = voiceCallService;
         UserId = userId;
         Username = username;
         _voiceServerId = voiceServerId;
@@ -49,10 +59,19 @@ public partial class ScreenShareWindowViewModel : ObservableObject,
     {
         if (message.UserId != UserId) return;
 
+        var metrics = DebugMetrics;
+        Interlocked.Increment(ref _queueDepth);
+        metrics?.QueueDepth.Add(Interlocked.CompareExchange(ref _queueDepth, 0, 0));
+
         Dispatcher.UIThread.Post(() =>
         {
+            Interlocked.Decrement(ref _queueDepth);
             try
             {
+                // Measure frame lag
+                if (metrics != null && message.Timestamp != 0)
+                    metrics.FrameLagMs.Add(Stopwatch.GetElapsedTime(message.Timestamp).TotalMilliseconds);
+
                 if (ScreenShareFrame is null
                     || ScreenShareFrame.PixelSize.Width != message.Width
                     || ScreenShareFrame.PixelSize.Height != message.Height)
@@ -64,6 +83,7 @@ public partial class ScreenShareWindowViewModel : ObservableObject,
                         Avalonia.Platform.AlphaFormat.Unpremul);
                 }
 
+                var copySw = Stopwatch.StartNew();
                 using (var frameBuffer = ScreenShareFrame.Lock())
                 {
                     var srcStride = message.Width * 4;
@@ -84,6 +104,8 @@ public partial class ScreenShareWindowViewModel : ObservableObject,
                         }
                     }
                 }
+                copySw.Stop();
+                metrics?.BitmapCopyTimeMs.Add(copySw.Elapsed.TotalMilliseconds);
 
                 OnPropertyChanged(nameof(ScreenShareFrame));
             }

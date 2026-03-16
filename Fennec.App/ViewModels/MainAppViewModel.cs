@@ -299,7 +299,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         if (_client is null) return;
         var server = Servers.FirstOrDefault(s => s.Id == serverId);
         var instanceUrl = server?.InstanceUrl ?? _session!.Url;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, serverId, serverName, instanceUrl, _session!.UserId, Username));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, _settingsStore, serverId, serverName, instanceUrl, _session!.UserId, Username));
     }
 
     public void Receive(ServerJoinedMessage message)
@@ -391,7 +391,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private async Task NavigateToServerAsync(SidebarServer server)
     {
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, server.Id, server.Name, server.InstanceUrl, _session!.UserId, Username));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, _settingsStore, server.Id, server.Name, server.InstanceUrl, _session!.UserId, Username));
     }
 
     [RelayCommand]
@@ -617,7 +617,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         if (_voiceServerId is null || _client is null || _session is null) return;
         var server = Servers.FirstOrDefault(s => s.Id == _voiceServerId);
         if (server is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, server.Id, server.Name, server.InstanceUrl, _session.UserId, Username));
+        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, _settingsStore, server.Id, server.Name, server.InstanceUrl, _session.UserId, Username));
     }
 
     // --- Floating screen share ---
@@ -793,7 +793,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
         if (_voiceServerId is null) return;
 
-        var vm = new ScreenShareWindowViewModel(_messenger, userId, username, _voiceServerId.Value);
+        var vm = new ScreenShareWindowViewModel(_messenger, _voiceCallService, userId, username, _voiceServerId.Value);
         var window = new Views.ScreenShareWindow { DataContext = vm };
         _popOutWindows[userId] = window;
         IsScreenSharePoppedOut = true;

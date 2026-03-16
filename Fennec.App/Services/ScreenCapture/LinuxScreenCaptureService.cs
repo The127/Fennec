@@ -311,7 +311,7 @@ public class LinuxScreenCaptureService : IScreenCaptureService
             var capturedW = rw;
             var capturedH = rh;
 
-            // Fire encode on threadpool so capture thread isn't blocked by VP8
+            // Fire encode on threadpool so capture thread isn't blocked by encoding
             ThreadPool.UnsafeQueueUserWorkItem(_ =>
             {
                 try

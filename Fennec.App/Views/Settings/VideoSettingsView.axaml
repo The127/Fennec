@@ -25,9 +25,9 @@
                     </MultiBinding>
                 </TextBlock.Text>
             </TextBlock>
-            <Slider Minimum="500" Maximum="5000"
+            <Slider Minimum="500" Maximum="50000"
                     Value="{Binding BitrateKbps}"
-                    TickFrequency="100"
+                    TickFrequency="500"
                     IsSnapToTickEnabled="True"
                     MinWidth="300"
                     HorizontalAlignment="Left" />

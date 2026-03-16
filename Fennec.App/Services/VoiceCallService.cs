@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Net;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
 using Microsoft.Extensions.Logging;
@@ -15,7 +17,8 @@ public interface IVoiceCallService
     void SetMuted(bool muted);
     void SetDeafened(bool deafened);
     Task<List<CaptureTarget>> GetScreenShareTargetsAsync();
-    Task StartScreenShareAsync(CaptureTarget target);
+    Task StartScreenShareAsync(CaptureTarget target, string resolution, int bitrateKbps, int frameRate);
+    Task UpdateScreenShareSettingsAsync(string resolution, int bitrateKbps, int frameRate);
     Task StopScreenShareAsync();
     bool IsConnected { get; }
     Guid? CurrentServerId { get; }
@@ -24,6 +27,7 @@ public interface IVoiceCallService
     bool IsDeafened { get; }
     bool IsScreenSharing { get; }
     IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers { get; }
+    ScreenShareMetrics? GetMetrics(Guid userId);
 }
 
 public class VoiceCallService : IVoiceCallService, IDisposable
@@ -39,12 +43,21 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private readonly Dictionary<Guid, RTCPeerConnection> _peers = new();
     private readonly Dictionary<Guid, RTCDataChannel> _cursorDataChannels = new();
     private readonly List<ActiveScreenSharer> _activeScreenSharers = [];
+    private readonly Dictionary<Guid, ScreenShareMetrics> _screenShareMetrics = new();
     private PortAudioEndPoint? _audioEndPoint;
     private ScreenShareVideoSource? _videoSource;
     private Guid _currentUserId;
     private bool _isSpeaking;
     private long _speakingLastActiveTicks;
     private bool _isLeaving;
+
+    // Sender FPS tracking
+    private int _senderFrameCount;
+    private long _senderFpsTimestamp;
+
+    // Receiver FPS tracking per user
+    private readonly Dictionary<Guid, int> _receiverFrameCounts = new();
+    private readonly Dictionary<Guid, long> _receiverFpsTimestamps = new();
 
     public bool IsConnected { get; private set; }
     public Guid? CurrentServerId { get; private set; }
@@ -54,6 +67,12 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     public bool IsDeafened { get; private set; }
     public bool IsScreenSharing { get; private set; }
     public IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers => _activeScreenSharers;
+
+    public ScreenShareMetrics? GetMetrics(Guid userId)
+    {
+        _screenShareMetrics.TryGetValue(userId, out var m);
+        return m;
+    }
 
     private static readonly RTCIceServer[] StunServers =
     [
@@ -202,25 +221,36 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         return _screenCapture.GetAvailableTargetsAsync();
     }
 
-    public async Task StartScreenShareAsync(CaptureTarget target)
+    public async Task StartScreenShareAsync(CaptureTarget target, string resolution, int bitrateKbps, int frameRate)
     {
         if (!IsConnected || IsScreenSharing || CurrentServerId is null || CurrentChannelId is null)
             return;
 
-        var settings = await _settingsStore.LoadAsync();
-        var (maxW, maxH) = ScreenShareVideoSource.ResolutionPresetToDimensions(settings.ScreenShareResolution);
-        _videoSource = new ScreenShareVideoSource(_logger, maxW, maxH, settings.ScreenShareBitrateKbps, (uint)settings.ScreenShareFrameRate);
+        var (maxW, maxH) = ScreenShareVideoSource.ResolutionPresetToDimensions(resolution);
+        // "Native" returns (0,0) — use the actual target dimensions
+        if (maxW == 0 || maxH == 0)
+        {
+            maxW = target.Width > 0 ? target.Width : 1920;
+            maxH = target.Height > 0 ? target.Height : 1080;
+        }
+        _videoSource = new ScreenShareVideoSource(_logger, maxW, maxH, bitrateKbps, (uint)frameRate);
 
-        // Wire video source encoded samples to all peers
+        var senderMetrics = new ScreenShareMetrics { IsSender = true };
+        _screenShareMetrics[_currentUserId] = senderMetrics;
+        _senderFrameCount = 0;
+        _senderFpsTimestamp = Stopwatch.GetTimestamp();
+
+        // Wire video source encoded samples to all peers (H.264 access units in Annex B format)
         _videoSource.OnVideoSourceEncodedSample += (durationRtpUnits, sample) =>
         {
+            senderMetrics.EncodedSizeKb.Add(sample.Length / 1024.0);
             foreach (var (_, pc) in _peers)
             {
-                pc.SendVideo(durationRtpUnits, sample);
+                pc.VideoStream?.SendH264Frame(durationRtpUnits, 96, sample);
             }
         };
 
-        // Add VP8 video track to each existing peer and renegotiate
+        // Add H.264 video track to each existing peer and renegotiate
         _logger.LogInformation("ScreenShare: Renegotiating with {Count} peers", _peers.Count);
         foreach (var (remoteUserId, pc) in _peers)
         {
@@ -247,16 +277,86 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _cursorPosition.OnCursorChanged += OnCursorChanged;
         _cursorPosition.Start(target);
 
-        // Start capture (also send frames locally for preview)
-        await _screenCapture.StartAsync(target, (rgba, w, h) =>
+        // Preview callback — local display only, no encoding
+        void OnPreviewFrame(byte[] rgba, int w, int h)
         {
-            _videoSource.OnFrame(rgba, w, h);
-            _messenger.Send(new ScreenShareFrameMessage(_currentUserId, rgba, w, h));
-        });
+            senderMetrics.CaptureWidth = w;
+            senderMetrics.CaptureHeight = h;
+
+            // Track capture FPS
+            _senderFrameCount++;
+            var now = Stopwatch.GetTimestamp();
+            var elapsed = Stopwatch.GetElapsedTime(_senderFpsTimestamp);
+            if (elapsed.TotalSeconds >= 1.0)
+            {
+                senderMetrics.CaptureFps.Add(_senderFrameCount / elapsed.TotalSeconds);
+                _senderFrameCount = 0;
+                _senderFpsTimestamp = now;
+            }
+
+            _messenger.Send(new ScreenShareFrameMessage(_currentUserId, rgba, w, h, Stopwatch.GetTimestamp()));
+        }
+
+        if (_screenCapture is ScreenCapture.MacOsScreenCaptureService macCapture)
+        {
+            // Fused mode: native capture does hardware H.264 encoding via VideoToolbox
+            // NAL units go to peers, RGBA preview goes to local display
+            await macCapture.StartFusedAsync(target, maxW, maxH, bitrateKbps,
+                frameRate,
+                onNal: (nal, pts, isKf) => _videoSource!.OnNalUnit(nal, pts, isKf),
+                onPreview: OnPreviewFrame);
+
+            if (!macCapture.IsCapturing)
+            {
+                _logger.LogError("ScreenShare: Fused capture failed to start, aborting");
+                _cursorPosition.OnCursorChanged -= OnCursorChanged;
+                _cursorPosition.Stop();
+                _videoSource?.Dispose();
+                _videoSource = null;
+                return;
+            }
+        }
+        else
+        {
+            // Standalone mode (Linux): software H.264 encoding
+            await _screenCapture.StartAsync(target, (rgba, w, h) =>
+            {
+                var encodeSw = Stopwatch.StartNew();
+                _videoSource!.OnFrame(rgba, w, h);
+                encodeSw.Stop();
+                senderMetrics.EncodeTimeMs.Add(encodeSw.Elapsed.TotalMilliseconds);
+
+                OnPreviewFrame(rgba, w, h);
+            });
+        }
 
         IsScreenSharing = true;
         await _voiceHub.StartScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);
         _logger.LogInformation("ScreenShare: Started sharing");
+    }
+
+    public Task UpdateScreenShareSettingsAsync(string resolution, int bitrateKbps, int frameRate)
+    {
+        if (!IsScreenSharing || _videoSource is null)
+            return Task.CompletedTask;
+
+        if (_screenCapture is ScreenCapture.MacOsScreenCaptureService macCapture)
+        {
+            // Fused mode: update via capture service
+            macCapture.UpdateFusedBitrate(bitrateKbps);
+            macCapture.UpdateFusedFps(frameRate);
+        }
+        else
+        {
+            // Standalone mode: update via video source
+            _videoSource.UpdateBitrate(bitrateKbps);
+            _videoSource.UpdateFps(frameRate);
+            _videoSource.UpdateResolution(resolution);
+        }
+
+        _logger.LogInformation("ScreenShare: Settings updated — resolution={Resolution}, bitrate={Bitrate}Kbps, fps={Fps}",
+            resolution, bitrateKbps, frameRate);
+        return Task.CompletedTask;
     }
 
     public async Task StopScreenShareAsync()
@@ -369,7 +469,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private async Task AddVideoTrackAndCursorChannel(Guid remoteUserId, RTCPeerConnection pc)
     {
         var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(
-            SIPSorceryMedia.Abstractions.VideoCodecsEnum.VP8, 96);
+            SIPSorceryMedia.Abstractions.VideoCodecsEnum.H264, 96);
         var videoTrack = new SIPSorcery.Net.MediaStreamTrack(videoFormat,
             SIPSorcery.Net.MediaStreamStatusEnum.SendOnly);
         pc.addTrack(videoTrack);
@@ -426,10 +526,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             };
         }
 
-        // Handle incoming audio and video
+        // Handle incoming audio (raw RTP for PortAudio)
         pc.OnRtpPacketReceived += (ep, media, pkt) =>
         {
-            // Only process RTP if this is still the active peer
             if (!_peers.TryGetValue(remoteUserId, out var activePc) || activePc != pc)
                 return;
 
@@ -438,10 +537,15 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _audioEndPoint.GotAudioRtp(ep, pkt.Header.SyncSource, pkt.Header.SequenceNumber,
                     pkt.Header.Timestamp, pkt.Header.PayloadType, pkt.Header.MarkerBit == 1, pkt.Payload);
             }
-            else if (media == SDPMediaTypesEnum.video)
-            {
-                HandleIncomingVideoRtp(remoteUserId, pkt);
-            }
+        };
+
+        // Handle incoming H.264 video frames (depacketised by SIPSorcery)
+        pc.OnVideoFrameReceived += (IPEndPoint ep, uint timestamp, byte[] frame, VideoFormat format) =>
+        {
+            if (!_peers.TryGetValue(remoteUserId, out var activePc) || activePc != pc)
+                return;
+
+            HandleIncomingVideoFrame(remoteUserId, frame);
         };
 
         // Handle incoming data channels (cursor data from sharers)
@@ -531,7 +635,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 await AddVideoTrackAndCursorChannel(fromUserId, pc);
             else if (hasVideo && pc.VideoLocalTrack == null)
             {
-                var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(VideoCodecsEnum.VP8, 96);
+                var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(VideoCodecsEnum.H264, 96);
                 var videoTrack = new MediaStreamTrack(videoFormat, MediaStreamStatusEnum.RecvOnly);
                 pc.addTrack(videoTrack);
                 _logger.LogInformation("ScreenShare: Added RecvOnly video track for {UserId}", fromUserId);
@@ -593,66 +697,70 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
     }
 
-    private readonly Dictionary<Guid, LibVpxDecoder> _videoDecoders = new();
-    private readonly Dictionary<Guid, List<byte>> _videoFrameBuffers = new();
-    private int _videoRtpCount;
+    private readonly Dictionary<Guid, H264Decoder> _videoDecoders = new();
     private int _videoFrameCount;
     private int? _cachedViewerDownscalePercent;
 
-    private void HandleIncomingVideoRtp(Guid fromUserId, SIPSorcery.Net.RTPPacket pkt)
+    private void HandleIncomingVideoFrame(Guid fromUserId, byte[] accessUnit)
     {
         try
         {
-            _videoRtpCount++;
-            if (_videoRtpCount <= 3 || _videoRtpCount % 500 == 0)
-                _logger.LogInformation("ScreenShare: Video RTP #{Count} from {UserId}, payloadLen={Len}, marker={Marker}",
-                    _videoRtpCount, fromUserId, pkt.Payload.Length, pkt.Header.MarkerBit);
-
-            var payload = pkt.Payload;
-            var skip = GetVp8DescriptorLength(payload);
-            if (skip >= payload.Length) return;
-
-            // Accumulate VP8 payload data across RTP packets until marker bit signals end of frame
-            if (!_videoFrameBuffers.TryGetValue(fromUserId, out var buffer))
-                _videoFrameBuffers[fromUserId] = buffer = new List<byte>();
-
-            buffer.AddRange(payload.AsSpan(skip).ToArray());
-
-            // Marker bit = 1 means this is the last packet of the VP8 frame
-            if (pkt.Header.MarkerBit != 1)
-                return;
-
-            var frameData = buffer.ToArray();
-            buffer.Clear();
-
             if (!_videoDecoders.TryGetValue(fromUserId, out var decoder))
-                _videoDecoders[fromUserId] = decoder = new LibVpxDecoder();
+                _videoDecoders[fromUserId] = decoder = new H264Decoder(_logger);
 
-            var result = decoder.Decode(frameData);
-            if (result != null)
+            if (!_screenShareMetrics.TryGetValue(fromUserId, out var metrics))
+                _screenShareMetrics[fromUserId] = metrics = new ScreenShareMetrics { IsSender = false };
+
+            // Parse Annex B NAL units from the access unit
+            var nals = ParseAnnexBNals(accessUnit);
+            foreach (var nal in nals)
             {
-                _videoFrameCount++;
-                if (_videoFrameCount <= 3 || _videoFrameCount % 100 == 0)
-                    _logger.LogInformation("ScreenShare: Decoded frame #{Num} {W}x{H} from {UserId} (assembled {Bytes} bytes)",
-                        _videoFrameCount, result.Value.Width, result.Value.Height, fromUserId, frameData.Length);
-                var (rgba, width, height) = result.Value;
-
-                // Apply viewer downscale if configured
-                _cachedViewerDownscalePercent ??= _settingsStore.LoadAsync().GetAwaiter().GetResult().ViewerDownscalePercent;
-                var scale = _cachedViewerDownscalePercent.Value;
-                if (scale < 100 && scale > 0)
+                var decodeSw = Stopwatch.StartNew();
+                decoder.Decode(nal, (rgba, width, height) =>
                 {
-                    var dstW = width * scale / 100 & ~1;
-                    var dstH = height * scale / 100 & ~1;
-                    if (dstW > 0 && dstH > 0)
-                    {
-                        rgba = ScreenShareVideoSource.BilinearDownscaleRgba(rgba, width, height, dstW, dstH);
-                        width = dstW;
-                        height = dstH;
-                    }
-                }
+                    decodeSw.Stop();
+                    metrics.DecodeTimeMs.Add(decodeSw.Elapsed.TotalMilliseconds);
 
-                _messenger.Send(new ScreenShareFrameMessage(fromUserId, rgba, width, height));
+                    _videoFrameCount++;
+                    if (_videoFrameCount <= 3 || _videoFrameCount % 100 == 0)
+                        _logger.LogInformation("ScreenShare: Decoded H.264 frame #{Num} {W}x{H} from {UserId}",
+                            _videoFrameCount, width, height, fromUserId);
+
+                    // Track receive FPS
+                    if (!_receiverFrameCounts.ContainsKey(fromUserId))
+                    {
+                        _receiverFrameCounts[fromUserId] = 0;
+                        _receiverFpsTimestamps[fromUserId] = Stopwatch.GetTimestamp();
+                    }
+                    _receiverFrameCounts[fromUserId]++;
+                    var elapsed = Stopwatch.GetElapsedTime(_receiverFpsTimestamps[fromUserId]);
+                    if (elapsed.TotalSeconds >= 1.0)
+                    {
+                        metrics.ReceiveFps.Add(_receiverFrameCounts[fromUserId] / elapsed.TotalSeconds);
+                        _receiverFrameCounts[fromUserId] = 0;
+                        _receiverFpsTimestamps[fromUserId] = Stopwatch.GetTimestamp();
+                    }
+
+                    // Apply viewer downscale if configured
+                    _cachedViewerDownscalePercent ??= _settingsStore.LoadAsync().GetAwaiter().GetResult().ViewerDownscalePercent;
+                    var scale = _cachedViewerDownscalePercent.Value;
+                    if (scale < 100 && scale > 0)
+                    {
+                        var dstW = width * scale / 100 & ~1;
+                        var dstH = height * scale / 100 & ~1;
+                        if (dstW > 0 && dstH > 0)
+                        {
+                            var scaleSw = Stopwatch.StartNew();
+                            rgba = ScreenShareVideoSource.BilinearDownscaleRgba(rgba, width, height, dstW, dstH);
+                            scaleSw.Stop();
+                            metrics.DownscaleTimeMs.Add(scaleSw.Elapsed.TotalMilliseconds);
+                            width = dstW;
+                            height = dstH;
+                        }
+                    }
+
+                    _messenger.Send(new ScreenShareFrameMessage(fromUserId, rgba, width, height, Stopwatch.GetTimestamp()));
+                });
             }
         }
         catch (Exception ex)
@@ -662,31 +770,48 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     }
 
     /// <summary>
-    /// Returns the byte length of the VP8 RTP payload descriptor (RFC 7741).
-    /// The VP8 bitstream begins at this offset within pkt.Payload.
+    /// Parses Annex B formatted data into individual NAL units (without start codes).
     /// </summary>
-    private static int GetVp8DescriptorLength(byte[] payload)
+    private static List<byte[]> ParseAnnexBNals(byte[] data)
     {
-        if (payload.Length == 0) return 0;
+        var nals = new List<byte[]>();
         int i = 0;
-        bool x = (payload[i] & 0x80) != 0;  // X — extension present
-        i++;
-        if (!x) return i;
-        // Extension byte: I | L | T | K | RSV
-        bool hasI = (payload[i] & 0x80) != 0;  // PictureID
-        bool hasL = (payload[i] & 0x40) != 0;  // TL0PICIDX
-        bool hasT = (payload[i] & 0x20) != 0;  // TID
-        bool hasK = (payload[i] & 0x10) != 0;  // KEYIDX
-        i++;
-        if (hasI)
+
+        while (i < data.Length)
         {
-            bool m = (payload[i] & 0x80) != 0;  // M — 15-bit PictureID
-            i++;
-            if (m) i++;
+            // Find start code
+            int scLen = 0;
+            if (i + 3 <= data.Length && data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1)
+                scLen = 3;
+            else if (i + 4 <= data.Length && data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 0 && data[i + 3] == 1)
+                scLen = 4;
+            else { i++; continue; }
+
+            int nalStart = i + scLen;
+
+            // Find next start code
+            int nalEnd = data.Length;
+            for (int j = nalStart + 1; j < data.Length - 2; j++)
+            {
+                if (data[j] == 0 && data[j + 1] == 0 &&
+                    (data[j + 2] == 1 || (j + 3 < data.Length && data[j + 2] == 0 && data[j + 3] == 1)))
+                {
+                    nalEnd = j;
+                    break;
+                }
+            }
+
+            if (nalEnd > nalStart)
+            {
+                var nal = new byte[nalEnd - nalStart];
+                Buffer.BlockCopy(data, nalStart, nal, 0, nal.Length);
+                nals.Add(nal);
+            }
+
+            i = nalEnd;
         }
-        if (hasL) i++;
-        if (hasT || hasK) i++;
-        return i;
+
+        return nals;
     }
 
     private void CleanupPeers()

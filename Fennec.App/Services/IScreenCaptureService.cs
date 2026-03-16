@@ -6,7 +6,7 @@ public enum CaptureTargetKind
     Window,
 }
 
-public record CaptureTarget(CaptureTargetKind Kind, string Id, string Name);
+public record CaptureTarget(CaptureTargetKind Kind, string Id, string Name, int Width = 0, int Height = 0);
 
 public interface IScreenCaptureService
 {

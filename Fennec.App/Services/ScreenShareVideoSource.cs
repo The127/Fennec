@@ -3,25 +3,25 @@ using Microsoft.Extensions.Logging;
 namespace Fennec.App.Services;
 
 /// <summary>
-/// Bridges screen capture frames to VP8-encoded video samples for WebRTC transmission.
-/// Takes RGBA frames from IScreenCaptureService, converts to I420, encodes to VP8.
-/// Downscales frames exceeding MaxWidth/MaxHeight to keep encoding performant.
+/// Bridges screen capture frames to H.264-encoded video samples for WebRTC transmission.
+/// Two modes:
+/// - Standalone (Linux): Takes RGBA frames, encodes to H.264 NAL units via native encoder
+/// - Fused (macOS): NAL units arrive directly from native capture+encode, passed through
 /// </summary>
 public class ScreenShareVideoSource : IDisposable
 {
-    private readonly int _maxWidth;
-    private readonly int _maxHeight;
-    private readonly int _bitrateKbps;
+    private int _maxWidth;
+    private int _maxHeight;
+    private int _bitrateKbps;
 
     private readonly ILogger _logger;
-    private readonly uint _frameRate;
-    private LibVpxEncoder? _encoder;
-    private int _encWidth;
-    private int _encHeight;
+    private uint _frameRate;
+    private H264Encoder? _encoder;
     private long _pts;
 
     /// <summary>
-    /// Fires when a VP8-encoded video sample is ready to send via WebRTC.
+    /// Fires when an H.264 NAL unit is ready to send via WebRTC.
+    /// Parameters: (durationRtpUnits, nalData, isKeyframe)
     /// </summary>
     public event Action<uint, byte[]>? OnVideoSourceEncodedSample;
 
@@ -35,16 +35,13 @@ public class ScreenShareVideoSource : IDisposable
     }
 
     /// <summary>
-    /// Process an incoming RGBA frame: downscale if needed, convert to I420, VP8-encode.
+    /// Process an incoming RGBA frame (Linux standalone mode): downscale if needed, H.264-encode.
     /// </summary>
     public void OnFrame(byte[] rgbaData, int width, int height)
     {
         try
         {
-            // Compute target resolution (fit within max dimensions, preserve aspect ratio)
             ComputeScaledSize(width, height, _maxWidth, _maxHeight, out var targetW, out var targetH);
-
-            // Ensure even dimensions for I420
             targetW &= ~1;
             targetH &= ~1;
 
@@ -64,34 +61,48 @@ public class ScreenShareVideoSource : IDisposable
                 frameH = height;
             }
 
-            if (_encWidth != frameW || _encHeight != frameH)
-            {
-                _encoder?.Dispose();
-                _encoder = null;
-                _encWidth = frameW;
-                _encHeight = frameH;
-                _logger.LogInformation("ScreenShareVideo: Resolution {SrcW}x{SrcH} -> encode at {W}x{H}, bitrate={Bitrate}Kbps, fps={Fps}",
-                    width, height, frameW, frameH, _bitrateKbps, _frameRate);
-            }
-
-            _encoder ??= new LibVpxEncoder(frameW, frameH, _bitrateKbps);
-
-            var i420 = RgbaToI420(frameData, frameW, frameH);
+            _encoder ??= new H264Encoder(_logger, frameW, frameH, _bitrateKbps, (int)_frameRate);
 
             var forceKeyFrame = _pts == 0;
-            var encoded = _encoder.Encode(i420, _pts, forceKeyFrame);
-            _pts += 90000 / _frameRate;
+            var durationRtpUnits = (uint)(90000 / _frameRate);
 
-            if (encoded != null && encoded.Length > 0)
+            // Collect all NAL units for this frame into an Annex B access unit
+            using var accessUnit = new MemoryStream();
+            _encoder.Encode(frameData, frameW, frameH, _pts, forceKeyFrame, (nal, pts, isKf) =>
             {
-                var durationRtpUnits = (uint)(90000 / _frameRate);
-                OnVideoSourceEncodedSample?.Invoke(durationRtpUnits, encoded);
+                // Annex B start code prefix
+                accessUnit.Write([0x00, 0x00, 0x00, 0x01]);
+                accessUnit.Write(nal);
+            });
+
+            if (accessUnit.Length > 4)
+            {
+                OnVideoSourceEncodedSample?.Invoke(durationRtpUnits, accessUnit.ToArray());
             }
+
+            _pts += 90000 / _frameRate;
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "ScreenShareVideo: Encode error");
         }
+    }
+
+    /// <summary>
+    /// Handle a NAL unit from the fused macOS capture (zero-copy path).
+    /// Wraps in Annex B format for SendH264Frame.
+    /// </summary>
+    public void OnNalUnit(byte[] nalData, long pts, bool isKeyframe)
+    {
+        var durationRtpUnits = (uint)(90000 / _frameRate);
+        // Wrap single NAL in Annex B format
+        var accessUnit = new byte[4 + nalData.Length];
+        accessUnit[0] = 0x00;
+        accessUnit[1] = 0x00;
+        accessUnit[2] = 0x00;
+        accessUnit[3] = 0x01;
+        Buffer.BlockCopy(nalData, 0, accessUnit, 4, nalData.Length);
+        OnVideoSourceEncodedSample?.Invoke(durationRtpUnits, accessUnit);
     }
 
     /// <summary>
@@ -102,13 +113,13 @@ public class ScreenShareVideoSource : IDisposable
         "720p" => (1280, 720),
         "1080p" => (1920, 1080),
         "1440p" => (2560, 1440),
-        "Native" => (int.MaxValue, int.MaxValue),
+        "Native" => (0, 0),
         _ => (1920, 1080),
     };
 
     internal static void ComputeScaledSize(int srcW, int srcH, int maxWidth, int maxHeight, out int dstW, out int dstH)
     {
-        if (srcW <= maxWidth && srcH <= maxHeight)
+        if (maxWidth <= 0 || maxHeight <= 0 || (srcW <= maxWidth && srcH <= maxHeight))
         {
             dstW = srcW;
             dstH = srcH;
@@ -123,12 +134,11 @@ public class ScreenShareVideoSource : IDisposable
     }
 
     /// <summary>
-    /// Bilinear downscale of an RGBA buffer. Averages a 2x2 block of source pixels per destination pixel.
+    /// Bilinear downscale of an RGBA buffer.
     /// </summary>
     internal static unsafe byte[] BilinearDownscaleRgba(byte[] src, int srcW, int srcH, int dstW, int dstH)
     {
         var dst = new byte[dstW * dstH * 4];
-        // Fixed-point 16.16 arithmetic for the inner loop
         var xStep = (srcW << 16) / dstW;
         var yStep = (srcH << 16) / dstH;
 
@@ -165,38 +175,24 @@ public class ScreenShareVideoSource : IDisposable
         return dst;
     }
 
-    private static byte[] RgbaToI420(byte[] rgba, int width, int height)
+    public void UpdateBitrate(int kbps)
     {
-        var ySize = width * height;
-        var uvSize = (width / 2) * (height / 2);
-        var i420 = new byte[ySize + uvSize * 2];
+        _bitrateKbps = kbps;
+        _encoder?.UpdateBitrate(kbps);
+    }
 
-        var yPlane = i420.AsSpan(0, ySize);
-        var uPlane = i420.AsSpan(ySize, uvSize);
-        var vPlane = i420.AsSpan(ySize + uvSize, uvSize);
+    public void UpdateFps(int fps)
+    {
+        _frameRate = (uint)fps;
+        _encoder?.UpdateFps(fps);
+    }
 
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                var rgbaOffset = (y * width + x) * 4;
-                var r = rgba[rgbaOffset];
-                var g = rgba[rgbaOffset + 1];
-                var b = rgba[rgbaOffset + 2];
-
-                var yVal = (byte)Math.Clamp(((66 * r + 129 * g + 25 * b + 128) >> 8) + 16, 0, 255);
-                yPlane[y * width + x] = yVal;
-
-                if (y % 2 == 0 && x % 2 == 0)
-                {
-                    var uvIndex = (y / 2) * (width / 2) + (x / 2);
-                    uPlane[uvIndex] = (byte)Math.Clamp(((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128, 0, 255);
-                    vPlane[uvIndex] = (byte)Math.Clamp(((112 * r - 94 * g - 18 * b + 128) >> 8) + 128, 0, 255);
-                }
-            }
-        }
-
-        return i420;
+    public void UpdateResolution(string preset)
+    {
+        var (w, h) = ResolutionPresetToDimensions(preset);
+        _maxWidth = w;
+        _maxHeight = h;
+        // Resolution changes take effect on the next frame (encoder auto-resizes)
     }
 
     public void Dispose()

@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.20)
+project(fennec_video C)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if(APPLE)
+    enable_language(OBJC)
+    add_subdirectory(macos)
+elseif(WIN32)
+    add_subdirectory(windows)
+elseif(UNIX)
+    add_subdirectory(linux)
+else()
+    message(FATAL_ERROR "Unsupported platform. Only macOS, Windows, and Linux are supported.")
+endif()

@@ -573,3 +573,6 @@ Temporary Items
 
 .junie
 .run/
+
+# Native video library build artifacts
+native/build-*/

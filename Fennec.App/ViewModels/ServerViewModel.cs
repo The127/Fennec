@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -203,11 +205,12 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     private readonly IMessenger _messenger;
     private readonly ILogger<ServerViewModel> _logger;
     private readonly ToastManager _toastManager;
+    private readonly ISettingsStore _settingsStore;
     private readonly string instanceUrl;
     private readonly string _currentUsername;
     private readonly Guid _currentUserId;
 
-    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, ToastManager toastManager, ILogger<ServerViewModel> logger, Guid serverId, string serverName, string instanceUrl, Guid currentUserId, string currentUsername)
+    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, ToastManager toastManager, ILogger<ServerViewModel> logger, ISettingsStore settingsStore, Guid serverId, string serverName, string instanceUrl, Guid currentUserId, string currentUsername)
     {
         this.client = client;
         this.dialogManager = dialogManager;
@@ -217,6 +220,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         _messenger = messenger;
         _toastManager = toastManager;
         _logger = logger;
+        _settingsStore = settingsStore;
         ServerId = serverId;
         _serverName = serverName;
         this.instanceUrl = instanceUrl;
@@ -969,6 +973,18 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     private bool _showOwnScreenShare;
 
     [ObservableProperty]
+    private bool _showDebugOverlay;
+
+    public ScreenShareMetrics? DebugMetrics => FocusedScreenShareUserId is { } uid ? _voiceCallService.GetMetrics(uid) : null;
+
+    private int _queueDepth;
+
+    partial void OnFocusedScreenShareUserIdChanged(Guid? value)
+    {
+        OnPropertyChanged(nameof(DebugMetrics));
+    }
+
+    [ObservableProperty]
     private bool _isScreenSharing;
 
     [ObservableProperty]
@@ -986,6 +1002,18 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     [ObservableProperty]
     private CursorType _cursorShape;
 
+    public List<string> ShareResolutionOptions { get; } = ["720p", "1080p", "1440p", "Native"];
+    public List<int> ShareFrameRateOptions { get; } = [15, 30, 60];
+
+    [ObservableProperty]
+    private string _shareResolution = "1080p";
+
+    [ObservableProperty]
+    private int _shareBitrateKbps = 1500;
+
+    [ObservableProperty]
+    private int _shareFrameRate = 30;
+
     [RelayCommand]
     private async Task StartScreenShare()
     {
@@ -998,19 +1026,46 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 return;
             }
 
-            var vm = new ScreenSharePickerViewModel(dialogManager, targets);
+            var settings = await _settingsStore.LoadAsync();
+            var vm = new ScreenSharePickerViewModel(dialogManager, _settingsStore, settings, targets);
             dialogManager.CreateDialog(vm)
                 .Dismissible()
                 .WithSuccessCallback<ScreenSharePickerViewModel>(async ctx =>
                 {
                     if (ctx.Result is not null)
-                        await _voiceCallService.StartScreenShareAsync(ctx.Result);
+                    {
+                        ShareResolution = ctx.Result.Resolution;
+                        ShareBitrateKbps = ctx.Result.BitrateKbps;
+                        ShareFrameRate = ctx.Result.FrameRate;
+                        await _voiceCallService.StartScreenShareAsync(
+                            ctx.Result.Target, ctx.Result.Resolution, ctx.Result.BitrateKbps, ctx.Result.FrameRate);
+                    }
                 })
                 .Show();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to start screen share");
+        }
+    }
+
+    [RelayCommand]
+    private async Task UpdateScreenShareSettings()
+    {
+        try
+        {
+            await _voiceCallService.UpdateScreenShareSettingsAsync(ShareResolution, ShareBitrateKbps, ShareFrameRate);
+
+            // Persist as new defaults
+            var settings = await _settingsStore.LoadAsync();
+            settings.ScreenShareResolution = ShareResolution;
+            settings.ScreenShareBitrateKbps = ShareBitrateKbps;
+            settings.ScreenShareFrameRate = ShareFrameRate;
+            await _settingsStore.SaveAsync(settings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to update screen share settings");
         }
     }
 
@@ -1222,10 +1277,18 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         if (message.UserId == _currentUserId && !ShowOwnScreenShare)
             return;
 
+        var metrics = DebugMetrics;
+        Interlocked.Increment(ref _queueDepth);
+        metrics?.QueueDepth.Add(Interlocked.CompareExchange(ref _queueDepth, 0, 0));
+
         Dispatcher.UIThread.Post(() =>
         {
+            Interlocked.Decrement(ref _queueDepth);
+
             try
             {
+                var sw = Stopwatch.StartNew();
+
                 if (ScreenShareFrame is null
                     || ScreenShareFrame.PixelSize.Width != message.Width
                     || ScreenShareFrame.PixelSize.Height != message.Height)
@@ -1258,6 +1321,10 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                         }
                     }
                 }
+
+                sw.Stop();
+                metrics?.BitmapCopyTimeMs.Add(sw.Elapsed.TotalMilliseconds);
+                metrics?.FrameLagMs.Add(Stopwatch.GetElapsedTime(message.Timestamp).TotalMilliseconds);
 
                 // Force re-render — writing pixels doesn't change the property reference
                 OnPropertyChanged(nameof(ScreenShareFrame));

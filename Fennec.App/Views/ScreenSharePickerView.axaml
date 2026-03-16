@@ -4,14 +4,15 @@
              xmlns:svc="using:Fennec.App.Services"
              x:DataType="vm:ScreenSharePickerViewModel"
              x:Class="Fennec.App.Views.ScreenSharePickerView"
-             MinWidth="400" MaxWidth="500">
+             MinWidth="400" MaxWidth="500" MaxHeight="600">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="16" Margin="24">
         <TextBlock Classes="H4" Text="Share Screen" />
         <TextBlock Text="Select a screen or window to share:" Classes="Muted" FontSize="12" />
 
         <ListBox ItemsSource="{Binding Targets}"
                  SelectedItem="{Binding SelectedTarget}"
-                 MaxHeight="300"
+                 MaxHeight="180"
                  DoubleTapped="OnDoubleTapped">
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="svc:CaptureTarget">
@@ -23,9 +24,43 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
+        <Separator />
+        <TextBlock Text="Quality" FontWeight="SemiBold" FontSize="14" />
+
+        <Grid ColumnDefinitions="* *" RowDefinitions="Auto">
+            <StackPanel Grid.Column="0" Grid.Row="0" Spacing="4" Margin="0,0,8,0">
+                <TextBlock Text="Resolution" FontSize="12" Classes="Muted" />
+                <ComboBox ItemsSource="{Binding ResolutionOptions}"
+                          SelectedItem="{Binding SelectedResolution}"
+                          HorizontalAlignment="Stretch" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Grid.Row="0" Spacing="4" Margin="8,0,0,0">
+                <TextBlock Text="Frame Rate" FontSize="12" Classes="Muted" />
+                <ComboBox ItemsSource="{Binding FrameRateOptions}"
+                          SelectedItem="{Binding SelectedFrameRate}"
+                          HorizontalAlignment="Stretch" />
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Spacing="4">
+            <TextBlock FontSize="12" Classes="Muted">
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="Bitrate ({0} Kbps)">
+                        <Binding Path="BitrateKbps" />
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+            <Slider Minimum="500" Maximum="50000"
+                    Value="{Binding BitrateKbps}"
+                    TickFrequency="500"
+                    IsSnapToTickEnabled="True"
+                    HorizontalAlignment="Stretch" />
+        </StackPanel>
+
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,8,0,0">
             <Button Content="Cancel" Command="{Binding CancelCommand}" />
             <Button Content="Share" Command="{Binding ConfirmCommand}" Classes="Primary" />
         </StackPanel>
     </StackPanel>
+    </ScrollViewer>
 </UserControl>

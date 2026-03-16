@@ -70,6 +70,13 @@ public partial class ServerView : UserControl
     {
         if (DataContext is not ServerViewModel vm) return;
 
+        if (e.Key == Key.F3 && e.KeyModifiers == KeyModifiers.None)
+        {
+            vm.ShowDebugOverlay = !vm.ShowDebugOverlay;
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && vm.IsScreenShareMaximized)
         {
             vm.ExitScreenShareMaximizeCommand.Execute(null);
