@@ -21,6 +21,12 @@ public class UpdateService(ILogger<UpdateService> logger) : IUpdateService
 
     public async Task<UpdateInfo?> CheckForUpdateAsync()
     {
+        if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+        {
+            logger.LogInformation("Skipping update check in Development environment");
+            return null;
+        }
+
         var currentVersion = Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 0, 0);
         var url = $"https://api.github.com/repos/{Repo}/releases/latest";
         logger.LogInformation("Checking for updates at {Url} (current version: {CurrentVersion})", url, currentVersion);
