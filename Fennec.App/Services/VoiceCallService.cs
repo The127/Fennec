@@ -29,7 +29,7 @@ public interface IVoiceCallService
     bool IsScreenSharing { get; }
     bool IsNativePickerAvailable { get; }
     IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers { get; }
-    ScreenShareMetrics? GetMetrics(Guid userId);
+    ScreenShareMetrics GetMetrics(Guid userId);
 }
 
 public class VoiceCallService : IVoiceCallService, IDisposable
@@ -75,9 +75,13 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         ScreenCapture.MacOsScreenCaptureService.IsNativePickerAvailable;
     public IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers => _activeScreenSharers;
 
-    public ScreenShareMetrics? GetMetrics(Guid userId)
+    public ScreenShareMetrics GetMetrics(Guid userId)
     {
-        _screenShareMetrics.TryGetValue(userId, out var m);
+        if (!_screenShareMetrics.TryGetValue(userId, out var m))
+        {
+            m = new ScreenShareMetrics { IsSender = userId == _currentUserId };
+            _screenShareMetrics[userId] = m;
+        }
         return m;
     }
 
