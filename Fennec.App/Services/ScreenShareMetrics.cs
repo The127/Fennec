@@ -54,6 +54,16 @@ public class MetricSeries
         }
     }
 
+    public void Clear()
+    {
+        lock (_lock)
+        {
+            Array.Clear(_buffer);
+            _head = 0;
+            _count = 0;
+        }
+    }
+
     public double Max
     {
         get
@@ -101,4 +111,29 @@ public class ScreenShareMetrics
     public MetricSeries FrameLagMs { get; } = new();
 
     public bool IsSender { get; set; }
+
+    public void Reset()
+    {
+        CaptureFps.Clear();
+        EncodeTimeMs.Clear();
+        EncodedSizeKb.Clear();
+        SentFps.Clear();
+        CaptureWidth = 0;
+        CaptureHeight = 0;
+        FramesEncoded = 0;
+        FramesSent = 0;
+        FramesDropped = 0;
+        EncoderName = null;
+        ViewerCount = 0;
+        TransportFps.Clear();
+        ReceiveFps.Clear();
+        DecodeTimeMs.Clear();
+        DownscaleTimeMs.Clear();
+        FramesReceived = 0;
+        FramesDecoded = 0;
+        RenderFps.Clear();
+        BitmapCopyTimeMs.Clear();
+        QueueDepth.Clear();
+        FrameLagMs.Clear();
+    }
 }

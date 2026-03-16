@@ -293,8 +293,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
         _videoSource = new ScreenShareVideoSource(_logger, maxW, maxH, bitrateKbps, (uint)frameRate);
 
-        var senderMetrics = new ScreenShareMetrics { IsSender = true };
-        _screenShareMetrics[_currentUserId] = senderMetrics;
+        var senderMetrics = GetMetrics(_currentUserId);
+        senderMetrics.Reset();
+        senderMetrics.IsSender = true;
         _senderFrameCount = 0;
         _senderFpsTimestamp = Stopwatch.GetTimestamp();
         _senderSentCount = 0;
@@ -419,8 +420,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
         _videoSource = new ScreenShareVideoSource(_logger, maxW, maxH, bitrateKbps, (uint)frameRate);
 
-        var senderMetrics = new ScreenShareMetrics { IsSender = true };
-        _screenShareMetrics[_currentUserId] = senderMetrics;
+        var senderMetrics = GetMetrics(_currentUserId);
+        senderMetrics.Reset();
+        senderMetrics.IsSender = true;
         _senderFrameCount = 0;
         _senderFpsTimestamp = Stopwatch.GetTimestamp();
         _senderSentCount = 0;
@@ -617,26 +619,19 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
         IsScreenSharing = false;
 
-        // Renegotiate each peer to remove the video track, keeping the connection alive.
-        // This prevents the peer from closing when the video source disappears.
-        foreach (var (remoteUserId, pc) in _peers.ToList())
+        // SIPSorcery has no removeTrack(), so the existing peer has stale SendOnly video
+        // m-lines. Dispose each peer and let the auto-reconnect mechanism in
+        // onconnectionstatechange re-establish a clean audio-only connection.
+        // We don't create new peers here to avoid SDP glare when the remote side also
+        // rebuilds its peers simultaneously.
+        _recvVideoTrackPeers.Clear();
+        foreach (var (remoteUserId, oldPc) in _peers.ToList())
         {
-            try
-            {
-                if (pc.connectionState != RTCPeerConnectionState.connected)
-                    continue;
-
-                // Create a new offer without the video track — SIPSorcery will reflect the
-                // current track list. Since we set IsScreenSharing=false above, any auto-reconnect
-                // triggered will also use CreatePeerAndOffer which now checks _activeScreenSharers.
-                var offer = pc.createOffer();
-                await pc.setLocalDescription(offer);
-                await _voiceHub.SendSdpOfferAsync(CurrentServerId!.Value, CurrentChannelId!.Value, remoteUserId, offer.sdp);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "ScreenShare: Failed to renegotiate video removal with {UserId}", remoteUserId);
-            }
+            _peers.Remove(remoteUserId);
+            _loggedFirstVideoRtp.Remove(remoteUserId);
+            _loggedFirstVideoFrame.Remove(remoteUserId);
+            _videoStreamNullSince.Remove(remoteUserId);
+            oldPc.Dispose();
         }
 
         // Notify local UI immediately — don't rely on hub round-trip
@@ -653,6 +648,12 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     {
         if (!IsConnected || CurrentServerId is null || CurrentChannelId is null)
             return;
+
+        // Reset receiver metrics for a new watch session
+        var metrics = GetMetrics(sharerUserId);
+        if (!metrics.IsSender)
+            metrics.Reset();
+
         await _voiceHub.WatchScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value, sharerUserId);
     }
 
@@ -1068,6 +1069,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
         pc.onconnectionstatechange += state =>
         {
+            _logger.LogInformation("PeerState: {RemoteUserId} → {State}", remoteUserId, state);
+
             if (IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
                 _messenger.Send(new VoicePeerStateChangedMessage(CurrentServerId.Value, CurrentChannelId.Value, remoteUserId, state.ToString().ToLowerInvariant()));
 
@@ -1098,16 +1101,26 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
             if (state is RTCPeerConnectionState.failed or RTCPeerConnectionState.closed)
             {
+                // Ignore callbacks from stale peers that have already been replaced
+                if (_peers.TryGetValue(remoteUserId, out var current) && current != pc)
+                {
+                    _logger.LogDebug("PeerState: Ignoring stale {State} for {RemoteUserId}", state, remoteUserId);
+                    return;
+                }
+
                 if (_peers.Remove(remoteUserId, out var removed))
                     removed.Dispose();
                 _recvVideoTrackPeers.Remove(remoteUserId);
 
                 // Clean up watcher state for disconnected peer
+                bool wasWatcher;
                 lock (_watcherLock)
                 {
-                    _screenShareWatchers.Remove(remoteUserId);
+                    wasWatcher = _screenShareWatchers.Remove(remoteUserId);
                     _watcherCount = RemoteWatcherCount();
                 }
+                if (wasWatcher)
+                    _logger.LogWarning("PeerState: Removed watcher {RemoteUserId} due to peer {State}, remaining={Count}", remoteUserId, state, _watcherCount);
 
                 // Auto-reconnect if the closure was unexpected (not during LeaveAsync)
                 if (!_isLeaving && IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
@@ -1149,6 +1162,33 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _peers[fromUserId] = pc;
                 reused = false;
             }
+            else if (pc.connectionState != RTCPeerConnectionState.connected)
+            {
+                // SDP glare: both sides sent offers simultaneously.
+                // Use userId comparison as tie-breaker — lower userId is "impolite" (keeps its offer).
+                if (_currentUserId.CompareTo(fromUserId) < 0)
+                {
+                    _logger.LogInformation("ScreenShare: SDP glare with {UserId}, we are impolite (lower userId), ignoring their offer", fromUserId);
+                    return;
+                }
+
+                // We are "polite" — discard our offer, accept theirs on a fresh peer.
+                _logger.LogInformation("ScreenShare: SDP glare with {UserId}, we are polite (higher userId), accepting their offer on fresh peer", fromUserId);
+                if (_peers.Remove(fromUserId, out var glarePc))
+                    glarePc.Dispose();
+                _recvVideoTrackPeers.Remove(fromUserId);
+                _loggedFirstVideoRtp.Remove(fromUserId);
+                _loggedFirstVideoFrame.Remove(fromUserId);
+                if (_cursorDataChannels.Remove(fromUserId, out var glareDc))
+                {
+                    try { glareDc.close(); } catch { }
+                }
+                _videoStreamNullSince.Remove(fromUserId);
+
+                pc = CreatePeerConnection(fromUserId);
+                _peers[fromUserId] = pc;
+                reused = false;
+            }
             else
             {
                 reused = true;
@@ -1173,10 +1213,41 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
             if (setResult != SetDescriptionResultEnum.OK)
             {
-                _logger.LogWarning("ScreenShare: setRemoteDescription(offer) failed: {Result} for {UserId}, rebuilding peer for receive",
+                // setRemoteDescription failed — likely SDP glare (both sides sent offers).
+                // Create a fresh peer and accept the incoming offer as answerer to break the cycle.
+                _logger.LogWarning("ScreenShare: setRemoteDescription(offer) failed: {Result} for {UserId}, accepting on fresh peer",
                     setResult, fromUserId);
-                _ = Task.Run(() => RebuildPeerForReceiveAsync(fromUserId, hasVideo));
-                return;
+
+                if (_peers.Remove(fromUserId, out var stalePc))
+                    stalePc.Dispose();
+                _recvVideoTrackPeers.Remove(fromUserId);
+                _loggedFirstVideoRtp.Remove(fromUserId);
+                _loggedFirstVideoFrame.Remove(fromUserId);
+                if (_cursorDataChannels.Remove(fromUserId, out var staleDc))
+                {
+                    try { staleDc.close(); } catch { }
+                }
+                _videoStreamNullSince.Remove(fromUserId);
+
+                pc = CreatePeerConnection(fromUserId);
+                _peers[fromUserId] = pc;
+
+                if (IsScreenSharing)
+                    await AddVideoTrackAndCursorChannel(fromUserId, pc);
+                else if (hasVideo)
+                {
+                    var vf = new SIPSorceryMedia.Abstractions.VideoFormat(VideoCodecsEnum.H264, 96);
+                    pc.addTrack(new MediaStreamTrack(vf, MediaStreamStatusEnum.RecvOnly));
+                    _recvVideoTrackPeers.Add(fromUserId);
+                }
+
+                offer = new RTCSessionDescriptionInit { type = RTCSdpType.offer, sdp = sdp };
+                setResult = pc.setRemoteDescription(offer);
+                if (setResult != SetDescriptionResultEnum.OK)
+                {
+                    _logger.LogError("ScreenShare: setRemoteDescription(offer) failed again on fresh peer: {Result} for {UserId}", setResult, fromUserId);
+                    return;
+                }
             }
 
             var answer = pc.createAnswer();
@@ -1269,8 +1340,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             if (!_videoDecoders.TryGetValue(fromUserId, out var decoder))
                 _videoDecoders[fromUserId] = decoder = new H264Decoder(_logger);
 
-            if (!_screenShareMetrics.TryGetValue(fromUserId, out var metrics))
-                _screenShareMetrics[fromUserId] = metrics = new ScreenShareMetrics { IsSender = false };
+            var metrics = GetMetrics(fromUserId);
+            metrics.IsSender = false;
 
             // Track access units received from WebRTC (transport stage)
             if (!_transportFrameCounts.ContainsKey(fromUserId))
