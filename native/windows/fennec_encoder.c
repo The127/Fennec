@@ -20,6 +20,17 @@
 #pragma comment(lib, "mfuuid.lib")
 #pragma comment(lib, "ole32.lib")
 
+// MFSetAttributeSize/Ratio are C++ inline helpers in mfapi.h;
+// provide C equivalents here.
+static inline HRESULT MFSetAttributeSize_(IMFAttributes* p, REFGUID key, UINT32 w, UINT32 h) {
+    return IMFAttributes_SetUINT64(p, key, ((UINT64)w << 32) | h);
+}
+static inline HRESULT MFSetAttributeRatio_(IMFAttributes* p, REFGUID key, UINT32 num, UINT32 den) {
+    return IMFAttributes_SetUINT64(p, key, ((UINT64)num << 32) | den);
+}
+#define MFSetAttributeSize  MFSetAttributeSize_
+#define MFSetAttributeRatio MFSetAttributeRatio_
+
 struct fennec_encoder {
     IMFTransform* mft;
     DWORD input_stream_id;

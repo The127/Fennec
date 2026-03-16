@@ -15,7 +15,6 @@ target_link_libraries(fennec_video PRIVATE
     mfreadwrite
     mf
     mfuuid
-    evr
     strmiids
     ole32
     shlwapi

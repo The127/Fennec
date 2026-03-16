@@ -16,6 +16,16 @@
 #pragma comment(lib, "mfuuid.lib")
 #pragma comment(lib, "ole32.lib")
 
+// MFGetAttributeSize is a C++ inline helper in mfapi.h;
+// provide a C equivalent here.
+static inline HRESULT MFGetAttributeSize_(IMFAttributes* p, REFGUID key, UINT32* pw, UINT32* ph) {
+    UINT64 val;
+    HRESULT hr = IMFAttributes_GetUINT64(p, key, &val);
+    if (SUCCEEDED(hr)) { *pw = (UINT32)(val >> 32); *ph = (UINT32)val; }
+    return hr;
+}
+#define MFGetAttributeSize MFGetAttributeSize_
+
 struct fennec_decoder {
     IMFTransform* mft;
     DWORD input_stream_id;

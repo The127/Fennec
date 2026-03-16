@@ -27,6 +27,17 @@
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shlwapi.lib")
 
+// MFSetAttributeSize/Ratio/GetAttributeSize are C++ inline helpers in mfapi.h;
+// provide C equivalents here.
+static inline HRESULT MFSetAttributeSize_(IMFAttributes* p, REFGUID key, UINT32 w, UINT32 h) {
+    return IMFAttributes_SetUINT64(p, key, ((UINT64)w << 32) | h);
+}
+static inline HRESULT MFSetAttributeRatio_(IMFAttributes* p, REFGUID key, UINT32 num, UINT32 den) {
+    return IMFAttributes_SetUINT64(p, key, ((UINT64)num << 32) | den);
+}
+#define MFSetAttributeSize  MFSetAttributeSize_
+#define MFSetAttributeRatio MFSetAttributeRatio_
+
 // --- Capture target listing ---
 
 typedef struct {
