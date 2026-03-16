@@ -8,7 +8,7 @@
         xmlns:shadui="using:ShadUI"
         x:Class="Fennec.App.Views.MainWindow"
         x:DataType="vm:AppShellViewModel"
-        Icon="/Assets/logo.ico"
+        Icon="/Assets/logo.png"
         Title="Fennec"
         MinWidth="900"
         MinHeight="500">

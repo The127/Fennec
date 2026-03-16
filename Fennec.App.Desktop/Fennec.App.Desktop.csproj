@@ -12,6 +12,7 @@
 
     <PropertyGroup>
         <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>..\Fennec.App\Assets\logo.ico</ApplicationIcon>
     </PropertyGroup>
 
     <ItemGroup>
@@ -28,5 +29,17 @@
     <ItemGroup>
         <ProjectReference Include="..\Fennec.App\Fennec.App.csproj" />
     </ItemGroup>
+
+    <!-- macOS app bundle: output into Fennec.app/Contents/MacOS so Info.plist + .icns are found -->
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+        <OutputPath>bin/$(Configuration)/Fennec.app/Contents/MacOS</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <UseAppHost>true</UseAppHost>
+    </PropertyGroup>
+
+    <Target Name="CopyMacOSBundleFiles" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+        <Copy SourceFiles="Info.plist" DestinationFolder="bin/$(Configuration)/Fennec.app/Contents" />
+        <Copy SourceFiles="..\Fennec.App\Assets\logo.icns" DestinationFolder="bin/$(Configuration)/Fennec.app/Contents/Resources" />
+    </Target>
 
 </Project>
