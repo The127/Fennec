@@ -35,8 +35,8 @@ static inline HRESULT MFSetAttributeSize_(IMFAttributes* p, REFGUID key, UINT32 
 static inline HRESULT MFSetAttributeRatio_(IMFAttributes* p, REFGUID key, UINT32 num, UINT32 den) {
     return IMFAttributes_SetUINT64(p, key, ((UINT64)num << 32) | den);
 }
-#define MFSetAttributeSize  MFSetAttributeSize_
-#define MFSetAttributeRatio MFSetAttributeRatio_
+#define MFSetAttributeSize(p, key, a, b)  MFSetAttributeSize_((IMFAttributes*)(p), key, a, b)
+#define MFSetAttributeRatio(p, key, a, b) MFSetAttributeRatio_((IMFAttributes*)(p), key, a, b)
 
 // --- Capture target listing ---
 

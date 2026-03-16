@@ -24,7 +24,7 @@ static inline HRESULT MFGetAttributeSize_(IMFAttributes* p, REFGUID key, UINT32*
     if (SUCCEEDED(hr)) { *pw = (UINT32)(val >> 32); *ph = (UINT32)val; }
     return hr;
 }
-#define MFGetAttributeSize MFGetAttributeSize_
+#define MFGetAttributeSize(p, key, pw, ph) MFGetAttributeSize_((IMFAttributes*)(p), key, pw, ph)
 
 struct fennec_decoder {
     IMFTransform* mft;
