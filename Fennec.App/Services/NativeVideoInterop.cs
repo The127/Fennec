@@ -74,6 +74,41 @@ internal static class NativeVideoInterop
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     public static extern void fennec_capture_destroy(IntPtr cap);
 
+    // --- Picker callbacks ---
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void PickerSelectedCallback(IntPtr userData);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void PickerCancelledCallback(IntPtr userData);
+
+    // --- Native picker (macOS 14+) ---
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int fennec_picker_is_available();
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern IntPtr fennec_picker_create(
+        int maxW, int maxH, int bitrateKbps, int fps,
+        NalCallback nalCb, FrameCallback previewCb,
+        PickerSelectedCallback onSelected, PickerCancelledCallback onCancelled,
+        IntPtr userData);
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int fennec_picker_activate(IntPtr picker);
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int fennec_picker_stop(IntPtr picker);
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int fennec_picker_update_bitrate(IntPtr picker, int bitrateKbps);
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int fennec_picker_update_fps(IntPtr picker, int fps);
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void fennec_picker_destroy(IntPtr picker);
+
     // --- Decoder ---
 
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]

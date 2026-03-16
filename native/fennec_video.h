@@ -69,6 +69,25 @@ FENNEC_API fennec_status   fennec_capture_update_bitrate(fennec_capture* cap, in
 FENNEC_API fennec_status   fennec_capture_update_fps(fennec_capture* cap, int fps);
 FENNEC_API void            fennec_capture_destroy(fennec_capture* cap);
 
+// --- Native picker (macOS 14+) ---
+typedef void (*fennec_picker_selected_callback)(void* user_data);
+typedef void (*fennec_picker_cancelled_callback)(void* user_data);
+
+typedef struct fennec_picker fennec_picker;
+
+FENNEC_API int             fennec_picker_is_available(void);
+FENNEC_API fennec_picker*  fennec_picker_create(
+                               int max_w, int max_h, int bitrate_kbps, int fps,
+                               fennec_nal_callback nal_cb, fennec_frame_callback preview_cb,
+                               fennec_picker_selected_callback on_selected,
+                               fennec_picker_cancelled_callback on_cancelled,
+                               void* user_data);
+FENNEC_API fennec_status   fennec_picker_activate(fennec_picker* picker);
+FENNEC_API fennec_status   fennec_picker_stop(fennec_picker* picker);
+FENNEC_API fennec_status   fennec_picker_update_bitrate(fennec_picker* picker, int bitrate_kbps);
+FENNEC_API fennec_status   fennec_picker_update_fps(fennec_picker* picker, int fps);
+FENNEC_API void            fennec_picker_destroy(fennec_picker* picker);
+
 // --- Decoder ---
 FENNEC_API fennec_decoder* fennec_decoder_create(void);
 FENNEC_API fennec_status   fennec_decoder_decode(fennec_decoder* dec, const uint8_t* nal, int size,

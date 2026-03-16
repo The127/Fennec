@@ -1019,29 +1019,43 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     {
         try
         {
-            var targets = await _voiceCallService.GetScreenShareTargetsAsync();
-            if (targets.Count == 0)
+            if (_voiceCallService.IsNativePickerAvailable)
             {
-                _logger.LogWarning("No screen share targets available");
-                return;
+                // macOS 14+: use native picker with saved settings
+                var settings = await _settingsStore.LoadAsync();
+                ShareResolution = settings.ScreenShareResolution;
+                ShareBitrateKbps = settings.ScreenShareBitrateKbps;
+                ShareFrameRate = settings.ScreenShareFrameRate;
+                await _voiceCallService.StartScreenShareWithPickerAsync(
+                    ShareResolution, ShareBitrateKbps, ShareFrameRate);
             }
-
-            var settings = await _settingsStore.LoadAsync();
-            var vm = new ScreenSharePickerViewModel(dialogManager, _settingsStore, settings, targets);
-            dialogManager.CreateDialog(vm)
-                .Dismissible()
-                .WithSuccessCallback<ScreenSharePickerViewModel>(async ctx =>
+            else
+            {
+                // Fallback: custom picker dialog
+                var targets = await _voiceCallService.GetScreenShareTargetsAsync();
+                if (targets.Count == 0)
                 {
-                    if (ctx.Result is not null)
+                    _logger.LogWarning("No screen share targets available");
+                    return;
+                }
+
+                var settings = await _settingsStore.LoadAsync();
+                var vm = new ScreenSharePickerViewModel(dialogManager, _settingsStore, settings, targets);
+                dialogManager.CreateDialog(vm)
+                    .Dismissible()
+                    .WithSuccessCallback<ScreenSharePickerViewModel>(async ctx =>
                     {
-                        ShareResolution = ctx.Result.Resolution;
-                        ShareBitrateKbps = ctx.Result.BitrateKbps;
-                        ShareFrameRate = ctx.Result.FrameRate;
-                        await _voiceCallService.StartScreenShareAsync(
-                            ctx.Result.Target, ctx.Result.Resolution, ctx.Result.BitrateKbps, ctx.Result.FrameRate);
-                    }
-                })
-                .Show();
+                        if (ctx.Result is not null)
+                        {
+                            ShareResolution = ctx.Result.Resolution;
+                            ShareBitrateKbps = ctx.Result.BitrateKbps;
+                            ShareFrameRate = ctx.Result.FrameRate;
+                            await _voiceCallService.StartScreenShareAsync(
+                                ctx.Result.Target, ctx.Result.Resolution, ctx.Result.BitrateKbps, ctx.Result.FrameRate);
+                        }
+                    })
+                    .Show();
+            }
         }
         catch (Exception ex)
         {

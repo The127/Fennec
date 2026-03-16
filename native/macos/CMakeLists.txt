@@ -1,5 +1,6 @@
 add_library(fennec_video SHARED
     fennec_capture.m
+    fennec_picker.m
     fennec_encoder.m
     fennec_decoder.m
 )

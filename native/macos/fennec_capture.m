@@ -5,6 +5,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <AppKit/AppKit.h>
 #include "fennec_video.h"
+#include "fennec_capture_internal.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -82,15 +83,7 @@ void fennec_capture_free_targets(fennec_capture_target* targets, int count) {
 
 // --- Fused capture + encode ---
 
-@interface FennecCaptureDelegate : NSObject <SCStreamOutput>
-@property (nonatomic) VTCompressionSessionRef compressionSession;
-@property (nonatomic) fennec_nal_callback nalCallback;
-@property (nonatomic) fennec_frame_callback previewCallback;
-@property (nonatomic) void* userData;
-@property (nonatomic) int64_t frameCount;
-@property (nonatomic) int fps;
-@property (nonatomic) int previewInterval;  // deliver preview every N frames
-@end
+// --- Shared VT + delegate helpers (used by both capture and picker) ---
 
 struct fennec_capture {
     SCStream* stream;
@@ -105,7 +98,7 @@ struct fennec_capture {
     char* target_id;
 };
 
-static void vtCompressionOutputCallback(void* outputCallbackRefCon,
+void fennec_vt_compression_output_callback(void* outputCallbackRefCon,
     void* sourceFrameRefCon, OSStatus status, VTEncodeInfoFlags infoFlags,
     CMSampleBufferRef sampleBuffer) {
 
@@ -171,6 +164,70 @@ static void vtCompressionOutputCallback(void* outputCallbackRefCon,
         }
         offset += nalLength;
     }
+}
+
+OSStatus fennec_vt_create_session(int width, int height, int bitrate_kbps, int fps,
+    FennecCaptureDelegate* delegate, VTCompressionSessionRef* outSession) {
+
+    OSStatus vtStatus = VTCompressionSessionCreate(NULL, width, height,
+        kCMVideoCodecType_H264, NULL, NULL, NULL,
+        fennec_vt_compression_output_callback, (__bridge void*)delegate, outSession);
+
+    if (vtStatus != noErr) return vtStatus;
+
+    VTCompressionSessionRef session = *outSession;
+
+    VTSessionSetProperty(session, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue);
+    VTSessionSetProperty(session, kVTCompressionPropertyKey_ProfileLevel,
+        kVTProfileLevel_H264_Main_AutoLevel);
+    VTSessionSetProperty(session, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse);
+
+    int avgBitrate = bitrate_kbps * 1000;
+    CFNumberRef bitrateRef = CFNumberCreate(NULL, kCFNumberIntType, &avgBitrate);
+    VTSessionSetProperty(session, kVTCompressionPropertyKey_AverageBitRate, bitrateRef);
+    CFRelease(bitrateRef);
+
+    int bytesPerSec = avgBitrate * 3 / 2 / 8;
+    double oneSecond = 1.0;
+    CFNumberRef bytesRef = CFNumberCreate(NULL, kCFNumberIntType, &bytesPerSec);
+    CFNumberRef durationRef = CFNumberCreate(NULL, kCFNumberDoubleType, &oneSecond);
+    const void* limitValues[] = { bytesRef, durationRef };
+    CFArrayRef dataRateLimit = CFArrayCreate(NULL, limitValues, 2, &kCFTypeArrayCallBacks);
+    VTSessionSetProperty(session, kVTCompressionPropertyKey_DataRateLimits, dataRateLimit);
+    CFRelease(bytesRef);
+    CFRelease(durationRef);
+    CFRelease(dataRateLimit);
+
+    int maxKeyFrameInterval = fps * 5;
+    CFNumberRef kfRef = CFNumberCreate(NULL, kCFNumberIntType, &maxKeyFrameInterval);
+    VTSessionSetProperty(session, kVTCompressionPropertyKey_MaxKeyFrameInterval, kfRef);
+    CFRelease(kfRef);
+
+    VTCompressionSessionPrepareToEncodeFrames(session);
+
+    return noErr;
+}
+
+fennec_status fennec_vt_update_bitrate(VTCompressionSessionRef session, int bitrate_kbps) {
+    if (!session) return FENNEC_ERR_INIT;
+
+    int avgBitrate = bitrate_kbps * 1000;
+    CFNumberRef bitrateRef = CFNumberCreate(NULL, kCFNumberIntType, &avgBitrate);
+    VTSessionSetProperty(session, kVTCompressionPropertyKey_AverageBitRate, bitrateRef);
+    CFRelease(bitrateRef);
+
+    int bytesPerSec = avgBitrate * 3 / 2 / 8;
+    double oneSecond = 1.0;
+    CFNumberRef bytesRef = CFNumberCreate(NULL, kCFNumberIntType, &bytesPerSec);
+    CFNumberRef durationRef = CFNumberCreate(NULL, kCFNumberDoubleType, &oneSecond);
+    const void* limitValues[] = { bytesRef, durationRef };
+    CFArrayRef dataRateLimit = CFArrayCreate(NULL, limitValues, 2, &kCFTypeArrayCallBacks);
+    VTSessionSetProperty(session, kVTCompressionPropertyKey_DataRateLimits, dataRateLimit);
+    CFRelease(bytesRef);
+    CFRelease(durationRef);
+    CFRelease(dataRateLimit);
+
+    return FENNEC_OK;
 }
 
 @implementation FennecCaptureDelegate
@@ -306,16 +363,9 @@ fennec_status fennec_capture_start(fennec_capture* cap) {
         config.showsCursor = YES;
         config.queueDepth = 8;
 
-        // Create VideoToolbox compression session
-        int encWidth = cap->max_w;
-        int encHeight = cap->max_h;
-
-        // Get actual source size from filter to compute aspect-correct encode size
-        // For now use max dimensions; ScreenCaptureKit will letterbox if needed
-
-        OSStatus vtStatus = VTCompressionSessionCreate(NULL, encWidth, encHeight,
-            kCMVideoCodecType_H264, NULL, NULL, NULL,
-            vtCompressionOutputCallback, (__bridge void*)cap->delegate, &cap->session);
+        // Create VideoToolbox compression session using shared helper
+        OSStatus vtStatus = fennec_vt_create_session(cap->max_w, cap->max_h,
+            cap->bitrate_kbps, cap->fps, cap->delegate, &cap->session);
 
         if (vtStatus != noErr) {
             result = FENNEC_ERR_INIT;
@@ -324,36 +374,6 @@ fennec_status fennec_capture_start(fennec_capture* cap) {
         }
 
         cap->delegate.compressionSession = cap->session;
-
-        // Configure encoder for low-latency real-time
-        VTSessionSetProperty(cap->session, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue);
-        VTSessionSetProperty(cap->session, kVTCompressionPropertyKey_ProfileLevel,
-            kVTProfileLevel_H264_Main_AutoLevel);
-        VTSessionSetProperty(cap->session, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse);
-
-        int avgBitrate = cap->bitrate_kbps * 1000;
-        CFNumberRef bitrateRef = CFNumberCreate(NULL, kCFNumberIntType, &avgBitrate);
-        VTSessionSetProperty(cap->session, kVTCompressionPropertyKey_AverageBitRate, bitrateRef);
-        CFRelease(bitrateRef);
-
-        // Data rate limit: 1.5x average over 1 second
-        int bytesPerSec = avgBitrate * 3 / 2 / 8;
-        double oneSecond = 1.0;
-        CFNumberRef bytesRef = CFNumberCreate(NULL, kCFNumberIntType, &bytesPerSec);
-        CFNumberRef durationRef = CFNumberCreate(NULL, kCFNumberDoubleType, &oneSecond);
-        const void* limitValues[] = { bytesRef, durationRef };
-        CFArrayRef dataRateLimit = CFArrayCreate(NULL, limitValues, 2, &kCFTypeArrayCallBacks);
-        VTSessionSetProperty(cap->session, kVTCompressionPropertyKey_DataRateLimits, dataRateLimit);
-        CFRelease(bytesRef);
-        CFRelease(durationRef);
-        CFRelease(dataRateLimit);
-
-        int maxKeyFrameInterval = cap->fps * 5; // keyframe every 5 seconds
-        CFNumberRef kfRef = CFNumberCreate(NULL, kCFNumberIntType, &maxKeyFrameInterval);
-        VTSessionSetProperty(cap->session, kVTCompressionPropertyKey_MaxKeyFrameInterval, kfRef);
-        CFRelease(kfRef);
-
-        VTCompressionSessionPrepareToEncodeFrames(cap->session);
 
         // Create and start SCStream
         cap->stream = [[SCStream alloc] initWithFilter:filter configuration:config delegate:nil];
@@ -405,28 +425,8 @@ fennec_status fennec_capture_stop(fennec_capture* cap) {
 
 fennec_status fennec_capture_update_bitrate(fennec_capture* cap, int bitrate_kbps) {
     if (!cap || !cap->session) return FENNEC_ERR_INIT;
-
     cap->bitrate_kbps = bitrate_kbps;
-
-    // VideoToolbox supports live bitrate updates without teardown
-    int avgBitrate = bitrate_kbps * 1000;
-    CFNumberRef bitrateRef = CFNumberCreate(NULL, kCFNumberIntType, &avgBitrate);
-    VTSessionSetProperty(cap->session, kVTCompressionPropertyKey_AverageBitRate, bitrateRef);
-    CFRelease(bitrateRef);
-
-    // Update data rate limit too (1.5x average over 1 second)
-    int bytesPerSec = avgBitrate * 3 / 2 / 8;
-    double oneSecond = 1.0;
-    CFNumberRef bytesRef = CFNumberCreate(NULL, kCFNumberIntType, &bytesPerSec);
-    CFNumberRef durationRef = CFNumberCreate(NULL, kCFNumberDoubleType, &oneSecond);
-    const void* limitValues[] = { bytesRef, durationRef };
-    CFArrayRef dataRateLimit = CFArrayCreate(NULL, limitValues, 2, &kCFTypeArrayCallBacks);
-    VTSessionSetProperty(cap->session, kVTCompressionPropertyKey_DataRateLimits, dataRateLimit);
-    CFRelease(bytesRef);
-    CFRelease(durationRef);
-    CFRelease(dataRateLimit);
-
-    return FENNEC_OK;
+    return fennec_vt_update_bitrate(cap->session, bitrate_kbps);
 }
 
 fennec_status fennec_capture_update_fps(fennec_capture* cap, int fps) {

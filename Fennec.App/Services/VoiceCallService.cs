@@ -18,6 +18,7 @@ public interface IVoiceCallService
     void SetDeafened(bool deafened);
     Task<List<CaptureTarget>> GetScreenShareTargetsAsync();
     Task StartScreenShareAsync(CaptureTarget target, string resolution, int bitrateKbps, int frameRate);
+    Task StartScreenShareWithPickerAsync(string resolution, int bitrateKbps, int frameRate);
     Task UpdateScreenShareSettingsAsync(string resolution, int bitrateKbps, int frameRate);
     Task StopScreenShareAsync();
     bool IsConnected { get; }
@@ -26,6 +27,7 @@ public interface IVoiceCallService
     bool IsMuted { get; }
     bool IsDeafened { get; }
     bool IsScreenSharing { get; }
+    bool IsNativePickerAvailable { get; }
     IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers { get; }
     ScreenShareMetrics? GetMetrics(Guid userId);
 }
@@ -66,6 +68,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     public bool IsMuted { get; private set; }
     public bool IsDeafened { get; private set; }
     public bool IsScreenSharing { get; private set; }
+    public bool IsNativePickerAvailable =>
+        _screenCapture is ScreenCapture.MacOsScreenCaptureService &&
+        ScreenCapture.MacOsScreenCaptureService.IsNativePickerAvailable;
     public IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers => _activeScreenSharers;
 
     public ScreenShareMetrics? GetMetrics(Guid userId)
@@ -221,6 +226,109 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         return _screenCapture.GetAvailableTargetsAsync();
     }
 
+    public async Task StartScreenShareWithPickerAsync(string resolution, int bitrateKbps, int frameRate)
+    {
+        if (!IsConnected || IsScreenSharing || CurrentServerId is null || CurrentChannelId is null)
+            return;
+
+        if (_screenCapture is not ScreenCapture.MacOsScreenCaptureService macCapture)
+            return;
+
+        var (maxW, maxH) = ScreenShareVideoSource.ResolutionPresetToDimensions(resolution);
+        if (maxW == 0 || maxH == 0)
+        {
+            maxW = 1920;
+            maxH = 1080;
+        }
+
+        _videoSource = new ScreenShareVideoSource(_logger, maxW, maxH, bitrateKbps, (uint)frameRate);
+
+        var senderMetrics = new ScreenShareMetrics { IsSender = true };
+        _screenShareMetrics[_currentUserId] = senderMetrics;
+        _senderFrameCount = 0;
+        _senderFpsTimestamp = Stopwatch.GetTimestamp();
+
+        _videoSource.OnVideoSourceEncodedSample += (durationRtpUnits, sample) =>
+        {
+            senderMetrics.EncodedSizeKb.Add(sample.Length / 1024.0);
+            foreach (var (_, pc) in _peers)
+            {
+                pc.VideoStream?.SendH264Frame(durationRtpUnits, 96, sample);
+            }
+        };
+
+        void OnPreviewFrame(byte[] rgba, int w, int h)
+        {
+            senderMetrics.CaptureWidth = w;
+            senderMetrics.CaptureHeight = h;
+
+            _senderFrameCount++;
+            var now = Stopwatch.GetTimestamp();
+            var elapsed = Stopwatch.GetElapsedTime(_senderFpsTimestamp);
+            if (elapsed.TotalSeconds >= 1.0)
+            {
+                senderMetrics.CaptureFps.Add(_senderFrameCount / elapsed.TotalSeconds);
+                _senderFrameCount = 0;
+                _senderFpsTimestamp = now;
+            }
+
+            _messenger.Send(new ScreenShareFrameMessage(_currentUserId, rgba, w, h, Stopwatch.GetTimestamp()));
+        }
+
+        // Subscribe to picker cancel for system stop button
+        void OnPickerCancelled()
+        {
+            macCapture.OnPickerCancelled -= OnPickerCancelled;
+            if (IsScreenSharing)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try { await StopScreenShareAsync(); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "ScreenShare: Error stopping after picker cancel"); }
+                });
+            }
+        }
+        macCapture.OnPickerCancelled += OnPickerCancelled;
+
+        var selected = await macCapture.StartWithPickerAsync(maxW, maxH, bitrateKbps, frameRate,
+            onNal: (nal, pts, isKf) => _videoSource!.OnNalUnit(nal, pts, isKf),
+            onPreview: OnPreviewFrame);
+
+        if (!selected)
+        {
+            _logger.LogInformation("ScreenShare: Picker cancelled, aborting");
+            macCapture.OnPickerCancelled -= OnPickerCancelled;
+            _videoSource?.Dispose();
+            _videoSource = null;
+            return;
+        }
+
+        // User selected a target — renegotiate with peers
+        _logger.LogInformation("ScreenShare: Picker selection confirmed, renegotiating with {Count} peers", _peers.Count);
+        foreach (var (remoteUserId, pc) in _peers)
+        {
+            try
+            {
+                await AddVideoTrackAndCursorChannel(remoteUserId, pc);
+                var offer = pc.createOffer();
+                await pc.setLocalDescription(offer);
+                await _voiceHub.SendSdpOfferAsync(CurrentServerId.Value, CurrentChannelId.Value, remoteUserId, offer.sdp);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ScreenShare: Failed to renegotiate with {UserId}", remoteUserId);
+            }
+        }
+
+        // Start cursor tracking (use a dummy target since picker doesn't provide one)
+        _cursorPosition.OnCursorChanged += OnCursorChanged;
+        _cursorPosition.Start(new CaptureTarget(CaptureTargetKind.Screen, "picker", "Native Picker", maxW, maxH));
+
+        IsScreenSharing = true;
+        await _voiceHub.StartScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);
+        _logger.LogInformation("ScreenShare: Started sharing via native picker");
+    }
+
     public async Task StartScreenShareAsync(CaptureTarget target, string resolution, int bitrateKbps, int frameRate)
     {
         if (!IsConnected || IsScreenSharing || CurrentServerId is null || CurrentChannelId is null)
@@ -342,9 +450,14 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
         if (_screenCapture is ScreenCapture.MacOsScreenCaptureService macCapture)
         {
-            // Fused mode: update via capture service
-            macCapture.UpdateFusedBitrate(bitrateKbps);
-            macCapture.UpdateFusedFps(frameRate);
+            // Check if using picker or fused mode
+            if (macCapture.IsCapturing)
+            {
+                macCapture.UpdatePickerBitrate(bitrateKbps);
+                macCapture.UpdatePickerFps(frameRate);
+                macCapture.UpdateFusedBitrate(bitrateKbps);
+                macCapture.UpdateFusedFps(frameRate);
+            }
         }
         else
         {
@@ -380,6 +493,10 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _videoSource = null;
 
         IsScreenSharing = false;
+
+        // Notify local UI immediately — don't rely on hub round-trip
+        if (CurrentServerId is not null && CurrentChannelId is not null)
+            _messenger.Send(new ScreenShareStoppedMessage(CurrentServerId.Value, CurrentChannelId.Value, _currentUserId));
 
         if (IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
             await _voiceHub.StopScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);

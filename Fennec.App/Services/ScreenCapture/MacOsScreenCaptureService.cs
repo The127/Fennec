@@ -20,6 +20,25 @@ public class MacOsScreenCaptureService : IScreenCaptureService
     // Preview callback for local display
     private Action<byte[], int, int>? _onFrame;
 
+    // --- Native picker state ---
+    private IntPtr _picker;
+    private bool _pickerActive;
+    private NativeVideoInterop.NalCallback? _pickerNalCallback;
+    private NativeVideoInterop.FrameCallback? _pickerPreviewCallback;
+    private NativeVideoInterop.PickerSelectedCallback? _pickerSelectedCallback;
+    private NativeVideoInterop.PickerCancelledCallback? _pickerCancelledCallback;
+
+    public static bool IsNativePickerAvailable { get; } = CheckPickerAvailability();
+
+    public event Action? OnPickerSelected;
+    public event Action? OnPickerCancelled;
+
+    private static bool CheckPickerAvailability()
+    {
+        try { return NativeVideoInterop.fennec_picker_is_available() != 0; }
+        catch { return false; }
+    }
+
     public MacOsScreenCaptureService(ILogger<MacOsScreenCaptureService> logger)
     {
         _logger = logger;
@@ -91,7 +110,13 @@ public class MacOsScreenCaptureService : IScreenCaptureService
 
     public Task StopAsync()
     {
-        if (!_isCapturing)
+        // Stop picker if active
+        if (_pickerActive || _picker != IntPtr.Zero)
+        {
+            StopPicker();
+        }
+
+        if (!_isCapturing && _capture == IntPtr.Zero)
             return Task.CompletedTask;
 
         if (_capture != IntPtr.Zero)
@@ -170,6 +195,100 @@ public class MacOsScreenCaptureService : IScreenCaptureService
             _logger.LogWarning("MacOsScreenCapture: Failed to update fused FPS to {Fps}", fps);
         else
             _logger.LogInformation("MacOsScreenCapture: Fused FPS updated to {Fps}", fps);
+    }
+
+    /// <summary>
+    /// Starts the native macOS picker (macOS 14+). Returns a Task that completes
+    /// when the user selects a target or cancels.
+    /// </summary>
+    public Task<bool> StartWithPickerAsync(int maxW, int maxH, int bitrateKbps, int fps,
+        Action<byte[], long, bool> onNal, Action<byte[], int, int> onPreview)
+    {
+        if (_pickerActive || _isCapturing)
+            return Task.FromResult(false);
+
+        _onFrame = onPreview;
+        OnNalUnit = null;
+        OnNalUnit += onNal;
+
+        var tcs = new TaskCompletionSource<bool>();
+
+        _pickerNalCallback = OnNativeNalUnit;
+        _pickerPreviewCallback = OnNativePreviewFrame;
+        _pickerSelectedCallback = _ =>
+        {
+            _isCapturing = true;
+            _logger.LogInformation("MacOsScreenCapture: Picker — user selected target, capture started");
+            OnPickerSelected?.Invoke();
+            tcs.TrySetResult(true);
+        };
+        _pickerCancelledCallback = _ =>
+        {
+            _isCapturing = false;
+            _pickerActive = false;
+            _logger.LogInformation("MacOsScreenCapture: Picker — cancelled or system stop");
+            OnPickerCancelled?.Invoke();
+            tcs.TrySetResult(false);
+        };
+
+        _picker = NativeVideoInterop.fennec_picker_create(
+            maxW, maxH, bitrateKbps, fps,
+            _pickerNalCallback, _pickerPreviewCallback,
+            _pickerSelectedCallback, _pickerCancelledCallback,
+            IntPtr.Zero);
+
+        if (_picker == IntPtr.Zero)
+        {
+            _logger.LogError("MacOsScreenCapture: Failed to create native picker");
+            return Task.FromResult(false);
+        }
+
+        var status = NativeVideoInterop.fennec_picker_activate(_picker);
+        if (status != 0)
+        {
+            _logger.LogError("MacOsScreenCapture: Failed to activate picker, status={Status}", status);
+            NativeVideoInterop.fennec_picker_destroy(_picker);
+            _picker = IntPtr.Zero;
+            return Task.FromResult(false);
+        }
+
+        _pickerActive = true;
+        _logger.LogInformation("MacOsScreenCapture: Native picker activated");
+        return tcs.Task;
+    }
+
+    public void StopPicker()
+    {
+        if (_picker == IntPtr.Zero) return;
+
+        NativeVideoInterop.fennec_picker_stop(_picker);
+        NativeVideoInterop.fennec_picker_destroy(_picker);
+        _picker = IntPtr.Zero;
+        _pickerActive = false;
+        _isCapturing = false;
+        _onFrame = null;
+        _pickerNalCallback = null;
+        _pickerPreviewCallback = null;
+        _pickerSelectedCallback = null;
+        _pickerCancelledCallback = null;
+
+        _logger.LogInformation("MacOsScreenCapture: Picker stopped and destroyed");
+    }
+
+    public void UpdatePickerBitrate(int kbps)
+    {
+        if (_picker == IntPtr.Zero) return;
+        var result = NativeVideoInterop.fennec_picker_update_bitrate(_picker, kbps);
+        if (result != 0)
+            _logger.LogWarning("MacOsScreenCapture: Failed to update picker bitrate to {Kbps}", kbps);
+    }
+
+    public void UpdatePickerFps(int fps)
+    {
+        if (_picker == IntPtr.Zero) return;
+        var result = NativeVideoInterop.fennec_picker_update_fps(_picker, fps);
+        if (result != 0)
+            _logger.LogWarning("MacOsScreenCapture: Failed to update picker FPS to {Fps}", fps);
     }
 
     private void OnNativeNalUnit(IntPtr nalData, int nalSize, long pts, int isKeyframe, IntPtr userData)
