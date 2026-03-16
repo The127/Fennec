@@ -20,6 +20,10 @@ public class ScreenShareVideoSource : IDisposable
     private long _pts;
     private volatile bool _forceNextKeyFrame;
 
+    // Buffer for macOS fused mode: accumulate NAL units into a complete access unit
+    private MemoryStream? _nalBuffer;
+    private long _nalBufferPts = -1;
+
     public string? EncoderName => _encoder?.EncoderName;
 
     /// <summary>
@@ -94,19 +98,38 @@ public class ScreenShareVideoSource : IDisposable
 
     /// <summary>
     /// Handle a NAL unit from the fused macOS capture (zero-copy path).
-    /// Wraps in Annex B format for SendH264Frame.
+    /// Buffers NAL units sharing the same pts into a single Annex B access unit,
+    /// flushing the previous frame when pts changes.
     /// </summary>
     public void OnNalUnit(byte[] nalData, long pts, bool isKeyframe)
     {
+        // When pts changes, flush the buffered access unit from the previous frame
+        if (_nalBuffer != null && pts != _nalBufferPts)
+            FlushNalBuffer();
+
+        _nalBuffer ??= new MemoryStream();
+        _nalBufferPts = pts;
+
+        // Annex B start code + NAL data
+        _nalBuffer.Write([0x00, 0x00, 0x00, 0x01]);
+        _nalBuffer.Write(nalData);
+    }
+
+    /// <summary>
+    /// Flush any buffered NAL units as a complete access unit.
+    /// Call when capture stops or periodically to avoid stale data.
+    /// </summary>
+    public void FlushNalBuffer()
+    {
+        if (_nalBuffer == null || _nalBuffer.Length <= 4)
+        {
+            _nalBuffer?.SetLength(0);
+            return;
+        }
+
         var durationRtpUnits = (uint)(90000 / _frameRate);
-        // Wrap single NAL in Annex B format
-        var accessUnit = new byte[4 + nalData.Length];
-        accessUnit[0] = 0x00;
-        accessUnit[1] = 0x00;
-        accessUnit[2] = 0x00;
-        accessUnit[3] = 0x01;
-        Buffer.BlockCopy(nalData, 0, accessUnit, 4, nalData.Length);
-        OnVideoSourceEncodedSample?.Invoke(durationRtpUnits, accessUnit);
+        OnVideoSourceEncodedSample?.Invoke(durationRtpUnits, _nalBuffer.ToArray());
+        _nalBuffer.SetLength(0);
     }
 
     /// <summary>
@@ -210,6 +233,9 @@ public class ScreenShareVideoSource : IDisposable
 
     public void Dispose()
     {
+        FlushNalBuffer();
+        _nalBuffer?.Dispose();
+        _nalBuffer = null;
         _encoder?.Dispose();
         _encoder = null;
     }
