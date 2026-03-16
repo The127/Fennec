@@ -722,6 +722,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
 
         // Handle incoming audio (raw RTP for PortAudio)
+        var videoRtpCount = 0;
         pc.OnRtpPacketReceived += (ep, media, pkt) =>
         {
             if (!_peers.TryGetValue(remoteUserId, out var activePc) || activePc != pc)
@@ -732,11 +733,24 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _audioEndPoint.GotAudioRtp(ep, pkt.Header.SyncSource, pkt.Header.SequenceNumber,
                     pkt.Header.Timestamp, pkt.Header.PayloadType, pkt.Header.MarkerBit == 1, pkt.Payload);
             }
+            else if (media == SDPMediaTypesEnum.video)
+            {
+                videoRtpCount++;
+                if (videoRtpCount <= 5 || videoRtpCount % 500 == 0)
+                    _logger.LogInformation("ScreenShare: Video RTP #{Count} from {UserId}, PT={PayloadType}, len={Len}, SSRC={Ssrc}",
+                        videoRtpCount, remoteUserId, pkt.Header.PayloadType, pkt.Payload.Length, pkt.Header.SyncSource);
+            }
         };
 
         // Handle incoming H.264 video frames (depacketised by SIPSorcery)
+        var videoFrameCallbackCount = 0;
         pc.OnVideoFrameReceived += (IPEndPoint ep, uint timestamp, byte[] frame, VideoFormat format) =>
         {
+            videoFrameCallbackCount++;
+            if (videoFrameCallbackCount <= 3)
+                _logger.LogInformation("ScreenShare: OnVideoFrameReceived #{Count} from {UserId}, size={Size}, format={Format}",
+                    videoFrameCallbackCount, remoteUserId, frame.Length, format.Codec);
+
             if (!_peers.TryGetValue(remoteUserId, out var activePc) || activePc != pc)
                 return;
 
@@ -868,6 +882,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             _logger.LogInformation("ScreenShare: Sending SDP answer to {UserId}, answer has video={AnswerHasVideo}", fromUserId, answer.sdp?.Contains("m=video"));
 
             await _voiceHub.SendSdpAnswerAsync(serverId, channelId, fromUserId, answer.sdp);
+
+            _logger.LogInformation("ScreenShare: Post-renegotiation state for {UserId}: VideoLocalTrack={VLT}, VideoRemoteTrack={VRT}, connState={State}",
+                fromUserId, pc.VideoLocalTrack != null, pc.VideoRemoteTrack != null, pc.connectionState);
 
             // If we're screen sharing but the peer's offer didn't include video,
             // send a counter-offer so the remote side can receive our video track
