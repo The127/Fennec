@@ -28,6 +28,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <InternalsVisibleTo Include="Fennec.Integration.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
       <Folder Include="Migrations\" />
     </ItemGroup>
 
