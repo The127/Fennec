@@ -50,9 +50,9 @@
     </ItemGroup>
 
     <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-      <None Include="runtimes\linux-x64\native\libfennec_video.so">
+      <None Include="runtimes/linux-x64/native/*">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        <Link>runtimes\linux-x64\native\libfennec_video.so</Link>
+        <Link>runtimes/linux-x64/native/%(Filename)%(Extension)</Link>
       </None>
     </ItemGroup>
 

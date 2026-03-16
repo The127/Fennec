@@ -15,6 +15,11 @@ build-native-linux:
     cmake --build native/build-linux
     mkdir -p Fennec.App/runtimes/linux-x64/native/
     find native/build-linux/linux -name 'lib*.so*' -not -type l -exec cp {} Fennec.App/runtimes/linux-x64/native/ \;
+    cd Fennec.App/runtimes/linux-x64/native/ && \
+      for f in lib*.so.*.*.*; do \
+        soname=$(objdump -p "$f" 2>/dev/null | awk '/SONAME/{print $2}'); \
+        [ -n "$soname" ] && ln -sf "$f" "$soname"; \
+      done
 
 # build native video library for Windows (x64)
 build-native-windows:
