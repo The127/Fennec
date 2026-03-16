@@ -26,7 +26,10 @@ namespace Fennec.App;
 
 public partial class App : Application
 {
-    public const string AppName = "FennecApp";
+    public static string AppName { get; } =
+        Environment.GetEnvironmentVariable("FENNEC_PROFILE") is { Length: > 0 } profile
+            ? $"FennecApp-{profile}"
+            : "FennecApp";
 
     private IServiceProvider _services = null!;
 

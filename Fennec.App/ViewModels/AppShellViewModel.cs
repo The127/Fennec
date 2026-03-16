@@ -87,6 +87,36 @@ public partial class AppShellViewModel
         }
         else
         {
+            var autoLogin = Environment.GetEnvironmentVariable("FENNEC_AUTO_LOGIN");
+            var autoPassword = Environment.GetEnvironmentVariable("FENNEC_AUTO_LOGIN_PASSWORD");
+            if (autoLogin is not null && autoPassword is not null && autoLogin.Contains('@'))
+            {
+                var atIndex = autoLogin.IndexOf('@');
+                var username = autoLogin[..atIndex];
+                var instanceUrl = autoLogin[(atIndex + 1)..];
+                try
+                {
+                    var authService = _serviceProvider.GetRequiredService<IAuthService>();
+                    var session = await authService.LoginAsync(username, autoPassword, instanceUrl, CancellationToken.None);
+                    if (session is not null)
+                    {
+                        _dbPathProvider.CurrentDbPath = _dbPathProvider.GetDbPath(session.UserId);
+                        EnsureDatabase();
+                        var vm = ActivatorUtilities.CreateInstance<MainAppViewModel>(_serviceProvider, Messenger);
+                        vm.ApplySession(session);
+                        CurrentViewModel = vm;
+                        State = AppShellState.LoggedIn;
+                        await vm.InitializeAsync();
+                        return;
+                    }
+                    // auto-login returned null
+                }
+                catch
+                {
+                    // auto-login failed, fall through to auth view
+                }
+            }
+
             CurrentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
             State = AppShellState.LoggedOut;
         }

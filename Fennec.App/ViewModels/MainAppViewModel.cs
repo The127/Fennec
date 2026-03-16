@@ -252,6 +252,18 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
         await NavigateToDashboardAsync();
         await LoadServersAsync(waitForRefresh: true);
+
+        var autoJoinServer = Environment.GetEnvironmentVariable("FENNEC_AUTO_JOIN_SERVER");
+        var autoJoinChannel = Environment.GetEnvironmentVariable("FENNEC_AUTO_JOIN_CHANNEL");
+        if (Guid.TryParse(autoJoinServer, out var serverId) && Guid.TryParse(autoJoinChannel, out var channelId))
+        {
+            var server = Servers.FirstOrDefault(s => s.Id == serverId);
+            if (server is not null && _session is not null)
+            {
+                await NavigateToServerAsync(server);
+                await _voiceCallService.JoinAsync(serverId, channelId, server.InstanceUrl, _session.UserId, Username);
+            }
+        }
     }
 
     [RelayCommand]
