@@ -34,9 +34,16 @@ public sealed class H264Decoder : IDisposable
         var pin = GCHandle.Alloc(nalData, GCHandleType.Pinned);
         try
         {
-            NativeVideoInterop.fennec_decoder_decode(
+            var result = NativeVideoInterop.fennec_decoder_decode(
                 _decoder, pin.AddrOfPinnedObject(), nalData.Length,
                 _frameCallbackDelegate, IntPtr.Zero);
+
+            if (result != 0)
+            {
+                var nalType = nalData.Length > 0 ? nalData[0] & 0x1F : -1;
+                _logger.LogWarning("H264Decoder: fennec_decoder_decode returned {Result} for NAL type={NalType} size={Size}",
+                    result, nalType, nalData.Length);
+            }
         }
         finally
         {

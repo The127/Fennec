@@ -81,11 +81,19 @@ public class ScreenShareViewer : Control
     {
         AffectsRender<ScreenShareViewer>(SourceProperty, CursorXProperty, CursorYProperty, CursorShapeProperty);
         SourceProperty.Changed.AddClassHandler<ScreenShareViewer>((viewer, _) => viewer.OnSourceChanged());
+        ShowDebugOverlayProperty.Changed.AddClassHandler<ScreenShareViewer>((viewer, _) => viewer.EnsureRenderTimer());
     }
 
     private void OnSourceChanged()
     {
-        if (Source is not null)
+        EnsureRenderTimer();
+    }
+
+    private void EnsureRenderTimer()
+    {
+        var needTimer = Source is not null || ShowDebugOverlay;
+
+        if (needTimer)
         {
             if (_renderTimer is null)
             {
@@ -106,49 +114,46 @@ public class ScreenShareViewer : Control
         base.Render(context);
 
         var source = Source;
-        if (source is null)
-            return;
-
-        var bounds = Bounds;
-        var imageWidth = source.PixelSize.Width;
-        var imageHeight = source.PixelSize.Height;
-
-        if (imageWidth == 0 || imageHeight == 0)
-            return;
-
-        // Calculate aspect-fit rectangle
-        var scaleX = bounds.Width / imageWidth;
-        var scaleY = bounds.Height / imageHeight;
-        var scale = Math.Min(scaleX, scaleY);
-        var renderWidth = imageWidth * scale;
-        var renderHeight = imageHeight * scale;
-        var offsetX = (bounds.Width - renderWidth) / 2;
-        var offsetY = (bounds.Height - renderHeight) / 2;
-
-        var destRect = new Rect(offsetX, offsetY, renderWidth, renderHeight);
-        context.DrawImage(source, destRect);
-
-        // Draw cursor overlay
-        var cursorPixelX = offsetX + CursorX * renderWidth;
-        var cursorPixelY = offsetY + CursorY * renderHeight;
-
-        // Draw a small cursor indicator
-        var cursorSize = 12;
-        var cursorBrush = Brushes.White;
-        var cursorPen = new Pen(Brushes.Black, 1.5);
-
-        // Simple arrow cursor shape
-        var cursorGeometry = GetCursorGeometry(CursorShape, cursorPixelX, cursorPixelY, cursorSize);
-        if (cursorGeometry != null)
+        if (source is not null)
         {
-            context.DrawGeometry(cursorBrush, cursorPen, cursorGeometry);
+            var bounds = Bounds;
+            var imageWidth = source.PixelSize.Width;
+            var imageHeight = source.PixelSize.Height;
+
+            if (imageWidth > 0 && imageHeight > 0)
+            {
+                // Calculate aspect-fit rectangle
+                var scaleX = bounds.Width / imageWidth;
+                var scaleY = bounds.Height / imageHeight;
+                var scale = Math.Min(scaleX, scaleY);
+                var renderWidth = imageWidth * scale;
+                var renderHeight = imageHeight * scale;
+                var offsetX = (bounds.Width - renderWidth) / 2;
+                var offsetY = (bounds.Height - renderHeight) / 2;
+
+                var destRect = new Rect(offsetX, offsetY, renderWidth, renderHeight);
+                context.DrawImage(source, destRect);
+
+                // Draw cursor overlay
+                var cursorPixelX = offsetX + CursorX * renderWidth;
+                var cursorPixelY = offsetY + CursorY * renderHeight;
+
+                var cursorSize = 12;
+                var cursorBrush = Brushes.White;
+                var cursorPen = new Pen(Brushes.Black, 1.5);
+
+                var cursorGeometry = GetCursorGeometry(CursorShape, cursorPixelX, cursorPixelY, cursorSize);
+                if (cursorGeometry != null)
+                {
+                    context.DrawGeometry(cursorBrush, cursorPen, cursorGeometry);
+                }
+            }
         }
 
-        // Debug overlay
+        // Debug overlay — renders even when no frame is available
         var metrics = DebugMetrics;
         if (ShowDebugOverlay && metrics != null)
         {
-            // Track render FPS
             _renderFrameCount++;
             var elapsed = Stopwatch.GetElapsedTime(_renderFpsTimestamp);
             if (elapsed.TotalSeconds >= 1.0)

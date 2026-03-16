@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
@@ -1089,6 +1090,22 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
             // Parse Annex B NAL units from the access unit
             var nals = ParseAnnexBNals(accessUnit);
+
+            if (nals.Count == 0)
+            {
+                // Raw NAL fallback: SIPSorcery may deliver without Annex B start codes
+                var hex = BitConverter.ToString(accessUnit, 0, Math.Min(16, accessUnit.Length));
+                _logger.LogWarning("ScreenShare: ParseAnnexBNals returned 0 NALs ({Len} bytes, first16={Hex}), treating as single NAL",
+                    accessUnit.Length, hex);
+                nals.Add(accessUnit);
+            }
+            else if (metrics.FramesReceived <= 3)
+            {
+                var nalTypes = string.Join(",", nals.Select(n => n.Length > 0 ? (n[0] & 0x1F).ToString() : "?"));
+                _logger.LogInformation("ScreenShare: Access unit #{Num} has {Count} NALs, types=[{Types}]",
+                    metrics.FramesReceived, nals.Count, nalTypes);
+            }
+
             foreach (var nal in nals)
             {
                 var decodeSw = Stopwatch.StartNew();

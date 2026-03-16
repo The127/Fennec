@@ -109,33 +109,56 @@ fennec_status fennec_decoder_decode(fennec_decoder* dec, const uint8_t* nal, int
     if (!dec || !nal || size < 1) return FENNEC_ERR_DECODE;
 
     uint8_t nalType = nal[0] & 0x1F;
+    fprintf(stderr, "[fennec_decoder] NAL type=%d size=%d\n", nalType, size);
 
     // SPS (type 7)
     if (nalType == 7) {
+        // Skip recreation if SPS is unchanged
+        if (dec->sps && dec->sps_size == size && memcmp(dec->sps, nal, size) == 0) {
+            fprintf(stderr, "[fennec_decoder] SPS unchanged, skipping\n");
+            return FENNEC_OK;
+        }
         free(dec->sps);
         dec->sps = malloc(size);
         memcpy(dec->sps, nal, size);
         dec->sps_size = size;
+        fprintf(stderr, "[fennec_decoder] SPS stored (%d bytes)\n", size);
         return FENNEC_OK;
     }
 
     // PPS (type 8)
     if (nalType == 8) {
+        // Skip recreation if PPS is unchanged
+        if (dec->pps && dec->pps_size == size && memcmp(dec->pps, nal, size) == 0) {
+            fprintf(stderr, "[fennec_decoder] PPS unchanged, skipping\n");
+            return FENNEC_OK;
+        }
         free(dec->pps);
         dec->pps = malloc(size);
         memcpy(dec->pps, nal, size);
         dec->pps_size = size;
+        fprintf(stderr, "[fennec_decoder] PPS stored (%d bytes)\n", size);
 
         // Recreate session with new parameters
         if (dec->sps) {
             OSStatus status = createDecoderSession(dec);
+            fprintf(stderr, "[fennec_decoder] Session created: status=%d\n", (int)status);
             if (status != noErr) return FENNEC_ERR_INIT;
         }
         return FENNEC_OK;
     }
 
+    // Skip non-video NAL types (SEI=6, AUD=9, etc.)
+    if (nalType != 1 && nalType != 5) {
+        fprintf(stderr, "[fennec_decoder] Skipping non-slice NAL type %d\n", nalType);
+        return FENNEC_OK;
+    }
+
     // IDR (type 5) or non-IDR (type 1) — actual video data
-    if (!dec->session) return FENNEC_ERR_DECODE;
+    if (!dec->session) {
+        fprintf(stderr, "[fennec_decoder] No session for slice NAL type %d\n", nalType);
+        return FENNEC_ERR_DECODE;
+    }
 
     // Wrap NAL in AVCC format: [4-byte big-endian length][NAL data]
     size_t avccSize = 4 + size;
@@ -181,6 +204,8 @@ fennec_status fennec_decoder_decode(fennec_decoder* dec, const uint8_t* nal, int
     if (status == noErr) {
         VTDecompressionSessionWaitForAsynchronousFrames(dec->session);
     }
+
+    fprintf(stderr, "[fennec_decoder] DecodeFrame NAL type=%d result=%d\n", nalType, (int)status);
 
     dec->frame_cb = NULL;
     dec->user_data = NULL;
