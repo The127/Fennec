@@ -323,6 +323,14 @@ public partial class ServerView : UserControl
         }
     }
 
+    private void OnChannelDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Border { DataContext: ChannelItem channel }) return;
+        if (channel.IsTextOnly) return;
+        if (DataContext is ServerViewModel vm)
+            vm.JoinVoiceChannelCommand.Execute(channel);
+    }
+
     private void RenameChannelGroup_KeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not ServerViewModel vm) return;

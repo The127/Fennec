@@ -196,6 +196,7 @@
                                                     <StackPanel>
                                                         <Border CornerRadius="4"
                                                                 Margin="0,1"
+                                                                DoubleTapped="OnChannelDoubleTapped"
                                                                 Background="{Binding IsSelected, Converter={StaticResource SelectedBackgroundConverter}}">
                                                             <Button HorizontalAlignment="Stretch"
                                                                     HorizontalContentAlignment="Left"
