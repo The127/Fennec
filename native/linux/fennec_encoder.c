@@ -16,15 +16,31 @@ struct fennec_encoder {
     int height;
     int bitrate_kbps;
     int fps;
+    enum AVPixelFormat target_pix_fmt;
 };
 
-// Try codecs in priority order: h264_vaapi (HW) -> libx264 (SW) -> libopenh264 (SW)
+// Try codecs in priority order: NVIDIA HW -> VA-API HW -> SW
 static const char* encoder_names[] = {
+    "h264_nvenc",
     "h264_vaapi",
     "libx264",
     "libopenh264",
     NULL
 };
+
+static void init_frame_and_sws(fennec_encoder* enc) {
+    enc->frame = av_frame_alloc();
+    enc->frame->format = enc->target_pix_fmt;
+    enc->frame->width = enc->width;
+    enc->frame->height = enc->height;
+    av_frame_get_buffer(enc->frame, 0);
+
+    enc->pkt = av_packet_alloc();
+
+    enc->sws = sws_getContext(enc->width, enc->height, AV_PIX_FMT_RGBA,
+        enc->width, enc->height, enc->target_pix_fmt,
+        SWS_FAST_BILINEAR, NULL, NULL, NULL);
+}
 
 static int init_encoder_ctx(fennec_encoder* enc) {
     enc->ctx = avcodec_alloc_context3(enc->codec);
@@ -37,14 +53,27 @@ static int init_encoder_ctx(fennec_encoder* enc) {
     enc->ctx->bit_rate = enc->bitrate_kbps * 1000;
     enc->ctx->gop_size = enc->fps * 5; // keyframe every 5 seconds
     enc->ctx->max_b_frames = 0; // no B-frames for low latency
-    enc->ctx->pix_fmt = AV_PIX_FMT_YUV420P;
     enc->ctx->thread_count = 2;
 
-    // Low-latency tuning
-    if (strcmp(enc->codec->name, "libx264") == 0) {
+    // Per-encoder pixel format and tuning
+    if (strcmp(enc->codec->name, "h264_nvenc") == 0) {
+        enc->ctx->pix_fmt = AV_PIX_FMT_NV12;
+        enc->target_pix_fmt = AV_PIX_FMT_NV12;
+        av_opt_set(enc->ctx->priv_data, "preset", "p1", 0);
+        av_opt_set(enc->ctx->priv_data, "tune", "ull", 0);
+        av_opt_set(enc->ctx->priv_data, "rc", "cbr", 0);
+        av_opt_set(enc->ctx->priv_data, "zerolatency", "1", 0);
+    } else if (strcmp(enc->codec->name, "h264_vaapi") == 0) {
+        enc->ctx->pix_fmt = AV_PIX_FMT_VAAPI;
+        enc->target_pix_fmt = AV_PIX_FMT_NV12; // won't be used — vaapi fails at open2
+    } else if (strcmp(enc->codec->name, "libx264") == 0) {
+        enc->ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+        enc->target_pix_fmt = AV_PIX_FMT_YUV420P;
         av_opt_set(enc->ctx->priv_data, "preset", "ultrafast", 0);
         av_opt_set(enc->ctx->priv_data, "tune", "zerolatency", 0);
-    } else if (strcmp(enc->codec->name, "libopenh264") == 0) {
+    } else {
+        enc->ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+        enc->target_pix_fmt = AV_PIX_FMT_YUV420P;
         av_opt_set(enc->ctx->priv_data, "allow_skip_frames", "1", 0);
     }
 
@@ -81,18 +110,7 @@ fennec_encoder* fennec_encoder_create(int width, int height, int bitrate_kbps, i
         return NULL;
     }
 
-    enc->frame = av_frame_alloc();
-    enc->frame->format = AV_PIX_FMT_YUV420P;
-    enc->frame->width = enc->width;
-    enc->frame->height = enc->height;
-    av_frame_get_buffer(enc->frame, 0);
-
-    enc->pkt = av_packet_alloc();
-
-    // RGBA -> YUV420P scaler
-    enc->sws = sws_getContext(enc->width, enc->height, AV_PIX_FMT_RGBA,
-        enc->width, enc->height, AV_PIX_FMT_YUV420P,
-        SWS_FAST_BILINEAR, NULL, NULL, NULL);
+    init_frame_and_sws(enc);
 
     return enc;
 }
@@ -106,7 +124,7 @@ fennec_status fennec_encoder_encode_rgba(fennec_encoder* enc, const uint8_t* rgb
     struct SwsContext* sws = enc->sws;
     if (w != enc->width || h != enc->height) {
         sws = sws_getContext(w, h, AV_PIX_FMT_RGBA,
-            enc->width, enc->height, AV_PIX_FMT_YUV420P,
+            enc->width, enc->height, enc->target_pix_fmt,
             SWS_FAST_BILINEAR, NULL, NULL, NULL);
         if (!sws) return FENNEC_ERR_ENCODE;
     }
@@ -200,17 +218,7 @@ fennec_status fennec_encoder_update_size(fennec_encoder* enc, int w, int h) {
 
     if (init_encoder_ctx(enc) != 0) return FENNEC_ERR_INIT;
 
-    enc->frame = av_frame_alloc();
-    enc->frame->format = AV_PIX_FMT_YUV420P;
-    enc->frame->width = w;
-    enc->frame->height = h;
-    av_frame_get_buffer(enc->frame, 0);
-
-    enc->pkt = av_packet_alloc();
-
-    enc->sws = sws_getContext(w, h, AV_PIX_FMT_RGBA,
-        w, h, AV_PIX_FMT_YUV420P,
-        SWS_FAST_BILINEAR, NULL, NULL, NULL);
+    init_frame_and_sws(enc);
 
     return FENNEC_OK;
 }
@@ -228,17 +236,7 @@ fennec_status fennec_encoder_update_bitrate(fennec_encoder* enc, int bitrate_kbp
 
     if (init_encoder_ctx(enc) != 0) return FENNEC_ERR_INIT;
 
-    enc->frame = av_frame_alloc();
-    enc->frame->format = AV_PIX_FMT_YUV420P;
-    enc->frame->width = enc->width;
-    enc->frame->height = enc->height;
-    av_frame_get_buffer(enc->frame, 0);
-
-    enc->pkt = av_packet_alloc();
-
-    enc->sws = sws_getContext(enc->width, enc->height, AV_PIX_FMT_RGBA,
-        enc->width, enc->height, AV_PIX_FMT_YUV420P,
-        SWS_FAST_BILINEAR, NULL, NULL, NULL);
+    init_frame_and_sws(enc);
 
     return FENNEC_OK;
 }
@@ -256,17 +254,7 @@ fennec_status fennec_encoder_update_fps(fennec_encoder* enc, int fps) {
 
     if (init_encoder_ctx(enc) != 0) return FENNEC_ERR_INIT;
 
-    enc->frame = av_frame_alloc();
-    enc->frame->format = AV_PIX_FMT_YUV420P;
-    enc->frame->width = enc->width;
-    enc->frame->height = enc->height;
-    av_frame_get_buffer(enc->frame, 0);
-
-    enc->pkt = av_packet_alloc();
-
-    enc->sws = sws_getContext(enc->width, enc->height, AV_PIX_FMT_RGBA,
-        enc->width, enc->height, AV_PIX_FMT_YUV420P,
-        SWS_FAST_BILINEAR, NULL, NULL, NULL);
+    init_frame_and_sws(enc);
 
     return FENNEC_OK;
 }
