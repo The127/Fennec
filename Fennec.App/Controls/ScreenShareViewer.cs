@@ -186,6 +186,20 @@ public class ScreenShareViewer : Control
         rows.Add(("  QUEUE", metrics.QueueDepth, "", Brushes.Orange));
         rows.Add(("  COPY ms", metrics.BitmapCopyTimeMs, "ms", Brushes.Cyan));
 
+        // Counter lines (no sparkline)
+        var counterLines = new List<(string Label, string Value, IBrush Color)>();
+        if (metrics.IsSender)
+        {
+            counterLines.Add(("ENCODED", $"{metrics.FramesEncoded}", Brushes.White));
+            counterLines.Add(("SENT", $"{metrics.FramesSent}", Brushes.LimeGreen));
+            counterLines.Add(("DROPPED", $"{metrics.FramesDropped}", metrics.FramesDropped > 0 ? Brushes.Red : Brushes.Gray));
+        }
+        else
+        {
+            counterLines.Add(("RECEIVED", $"{metrics.FramesReceived}", Brushes.White));
+            counterLines.Add(("DECODED", $"{metrics.FramesDecoded}", Brushes.LimeGreen));
+        }
+
         const double rowHeight = 18;
         const double padding = 8;
         const double labelWidth = 100;
@@ -193,6 +207,9 @@ public class ScreenShareViewer : Control
         const double valueWidth = 70;
         const double totalWidth = labelWidth + sparkWidth + valueWidth + padding * 2;
         var totalHeight = rows.Count * rowHeight + padding * 2;
+
+        // Extra lines for counters + separator
+        totalHeight += rowHeight * (counterLines.Count + 1);
 
         // Extra line for capture resolution
         if (metrics.IsSender && (metrics.CaptureWidth > 0 || metrics.CaptureHeight > 0))
@@ -230,6 +247,27 @@ public class ScreenShareViewer : Control
                 : latest >= 10 ? $"{latest:F0}" : $"{latest:F1}";
             var valueText = new FormattedText(valueStr, CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, MonoTypeface, 11, Brushes.White);
+            context.DrawText(valueText, new Point(valueX, y));
+
+            y += rowHeight;
+        }
+
+        // Separator + counters
+        y += rowHeight * 0.5;
+        var separatorPen = new Pen(Brushes.Gray, 0.5);
+        context.DrawLine(separatorPen, new Point(8 + padding, y - 4), new Point(8 + totalWidth - padding, y - 4));
+
+        foreach (var (label, value, color) in counterLines)
+        {
+            var labelX = 8 + padding;
+            var valueX = labelX + labelWidth + sparkWidth + 4;
+
+            var labelText = new FormattedText(label, CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, MonoTypeface, 11, Brushes.Gray);
+            context.DrawText(labelText, new Point(labelX, y));
+
+            var valueText = new FormattedText(value, CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, MonoTypeface, 11, color);
             context.DrawText(valueText, new Point(valueX, y));
 
             y += rowHeight;

@@ -267,6 +267,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
         _videoSource.OnVideoSourceEncodedSample += (durationRtpUnits, sample) =>
         {
+            senderMetrics.FramesEncoded++;
             senderMetrics.EncodedSizeKb.Add(sample.Length / 1024.0);
             var sentToPeers = 0;
             foreach (var (_, pc) in _peers)
@@ -280,6 +281,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
             if (sentToPeers > 0)
             {
+                senderMetrics.FramesSent++;
                 _senderSentCount++;
                 var sentElapsed = Stopwatch.GetElapsedTime(_senderSentTimestamp);
                 if (sentElapsed.TotalSeconds >= 1.0)
@@ -288,6 +290,10 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                     _senderSentCount = 0;
                     _senderSentTimestamp = Stopwatch.GetTimestamp();
                 }
+            }
+            else
+            {
+                senderMetrics.FramesDropped++;
             }
         };
 
@@ -389,6 +395,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _videoSource.OnVideoSourceEncodedSample += (durationRtpUnits, sample) =>
         {
             encodedFrameCount++;
+            senderMetrics.FramesEncoded++;
             senderMetrics.EncodedSizeKb.Add(sample.Length / 1024.0);
 
             if (encodedFrameCount <= 3)
@@ -408,6 +415,11 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                     sentToPeers++;
                 }
             }
+
+            if (sentToPeers > 0)
+                senderMetrics.FramesSent++;
+            else
+                senderMetrics.FramesDropped++;
 
             if (sentToPeers > 0)
             {
@@ -963,6 +975,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _transportFrameCounts[fromUserId] = 0;
                 _transportFpsTimestamps[fromUserId] = Stopwatch.GetTimestamp();
             }
+            metrics.FramesReceived++;
             _transportFrameCounts[fromUserId]++;
             var transportElapsed = Stopwatch.GetElapsedTime(_transportFpsTimestamps[fromUserId]);
             if (transportElapsed.TotalSeconds >= 1.0)
@@ -982,6 +995,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                     decodeSw.Stop();
                     metrics.DecodeTimeMs.Add(decodeSw.Elapsed.TotalMilliseconds);
 
+                    metrics.FramesDecoded++;
                     _videoFrameCount++;
                     if (_videoFrameCount <= 3 || _videoFrameCount % 100 == 0)
                         _logger.LogInformation("ScreenShare: Decoded H.264 frame #{Num} {W}x{H} from {UserId}",
