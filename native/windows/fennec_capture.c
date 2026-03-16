@@ -12,6 +12,8 @@
 #include <mfidl.h>
 #include <mftransform.h>
 #include <mferror.h>
+#include <unknwn.h>
+#include <oleauto.h>
 #include <codecapi.h>
 #include <shlwapi.h>
 
