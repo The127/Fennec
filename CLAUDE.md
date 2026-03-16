@@ -27,6 +27,27 @@ dotnet dev-certs https --trust          # Trust dev HTTPS certs
 
 PostgreSQL connection (dev): `Host=localhost;Port=7891;Database=fennec;Username=user;Password=password`
 
+## Test Harness
+
+The API and app instances run as systemd user services. Logs go to the journal.
+
+```bash
+# Service management
+systemctl --user start fennec-test-api            # API server
+systemctl --user start fennec-test-app@local       # Local app instance
+systemctl --user start fennec-test-app-mac-mini    # Mac Mini app (syncs, builds, runs over SSH)
+systemctl --user restart fennec-test-app@local
+systemctl --user stop fennec-test-api
+
+# Logs
+journalctl --user -u fennec-test-api -f            # Follow API logs
+journalctl --user -u fennec-test-app@local -f      # Follow local app logs
+journalctl --user -u fennec-test-app-mac-mini -f   # Follow Mac Mini logs
+journalctl --user -u 'fennec-test-*' --since '5m ago'  # All test logs, last 5 min
+```
+
+App instance env files live in `~/.config/fennec-test/<instance>.env` (e.g. `local.env`, `mac-mini.env`). Supported env vars: `FENNEC_PROFILE`, `FENNEC_AUTO_LOGIN`, `FENNEC_AUTO_LOGIN_PASSWORD`, `FENNEC_AUTO_JOIN_SERVER`, `FENNEC_AUTO_JOIN_CHANNEL`.
+
 ## Architecture
 
 Fennec is a **federated real-time chat platform** — a Discord-like app where multiple instances can communicate.

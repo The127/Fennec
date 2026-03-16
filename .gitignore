@@ -581,7 +581,3 @@ native/build/
 
 # Local dev secrets
 private.pem
-
-# Test harness
-test-hosts.conf
-test-logs/

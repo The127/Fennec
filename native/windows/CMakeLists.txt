@@ -10,10 +10,13 @@ target_compile_definitions(fennec_video PRIVATE FENNEC_VIDEO_EXPORTS)
 target_link_libraries(fennec_video PRIVATE
     d3d11
     dxgi
+    dxguid
     mfplat
     mfreadwrite
     mf
     mfuuid
+    evr
+    strmiids
     ole32
     shlwapi
 )
