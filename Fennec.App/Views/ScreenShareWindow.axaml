@@ -12,6 +12,7 @@
                                 CursorX="{Binding CursorX}"
                                 CursorY="{Binding CursorY}"
                                 CursorShape="{Binding CursorShape}"
+                                CursorVisible="{Binding CursorVisible}"
                                 ShowDebugOverlay="{Binding ShowDebugOverlay}"
                                 DebugMetrics="{Binding DebugMetrics}" />
 </Window>

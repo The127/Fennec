@@ -965,6 +965,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     [ObservableProperty]
     private CursorType _cursorShape;
 
+    [ObservableProperty]
+    private bool _cursorVisible = true;
+
     public List<string> ShareResolutionOptions { get; } = ["720p", "1080p", "1440p", "Native"];
     public List<int> ShareFrameRateOptions { get; } = [15, 30, 60];
 
@@ -1328,6 +1331,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             CursorX = message.X;
             CursorY = message.Y;
             CursorShape = message.Type;
+            CursorVisible = message.IsVisible;
         });
     }
 

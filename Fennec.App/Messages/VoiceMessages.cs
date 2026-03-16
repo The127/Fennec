@@ -10,7 +10,7 @@ public record VoicePeerStateChangedMessage(Guid ServerId, Guid ChannelId, Guid U
 public record ScreenShareStartedMessage(Guid ServerId, Guid ChannelId, Guid UserId, string Username, string? InstanceUrl);
 public record ScreenShareStoppedMessage(Guid ServerId, Guid ChannelId, Guid UserId);
 public record ScreenShareFrameMessage(Guid UserId, byte[] RgbaData, int Width, int Height, long Timestamp);
-public record ScreenShareCursorMessage(Guid UserId, float X, float Y, CursorType Type);
+public record ScreenShareCursorMessage(Guid UserId, float X, float Y, CursorType Type, bool IsVisible);
 public record ScreenSharePopOutRequestedMessage(Guid UserId, string Username);
 public record ScreenSharePopOutClosedMessage(Guid UserId);
 

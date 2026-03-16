@@ -509,6 +509,8 @@
                     <controls:ScreenShareViewer Source="{Binding ScreenShareFrame}"
                                                 CursorX="{Binding CursorX}"
                                                 CursorY="{Binding CursorY}"
+                                                CursorShape="{Binding CursorShape}"
+                                                CursorVisible="{Binding CursorVisible}"
                                                 ShowDebugOverlay="{Binding ShowDebugOverlay}"
                                                 DebugMetrics="{Binding DebugMetrics}" />
                     <!-- Share info bar at top -->
@@ -867,6 +869,8 @@
         <controls:ScreenShareViewer Source="{Binding ScreenShareFrame}"
                                     CursorX="{Binding CursorX}"
                                     CursorY="{Binding CursorY}"
+                                    CursorShape="{Binding CursorShape}"
+                                    CursorVisible="{Binding CursorVisible}"
                                     ShowDebugOverlay="{Binding ShowDebugOverlay}"
                                     DebugMetrics="{Binding DebugMetrics}" />
         <!-- Top info bar -->

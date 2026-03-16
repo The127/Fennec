@@ -35,6 +35,9 @@ public partial class ScreenShareWindowViewModel : ObservableObject,
     private CursorType _cursorShape;
 
     [ObservableProperty]
+    private bool _cursorVisible = true;
+
+    [ObservableProperty]
     private bool _shouldClose;
 
     [ObservableProperty]
@@ -125,6 +128,7 @@ public partial class ScreenShareWindowViewModel : ObservableObject,
             CursorX = message.X;
             CursorY = message.Y;
             CursorShape = message.Type;
+            CursorVisible = message.IsVisible;
         });
     }
 

@@ -7,7 +7,7 @@ namespace Fennec.App.Services.ScreenCapture;
 /// </summary>
 public class StubCursorPositionService : ICursorPositionService
 {
-    public event Action<float, float, CursorType>? OnCursorChanged;
+    public event Action<float, float, CursorType, bool>? OnCursorChanged;
 
     public void Start(CaptureTarget target) { }
     public void Stop() { }

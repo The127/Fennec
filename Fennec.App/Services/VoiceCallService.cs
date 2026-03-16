@@ -613,16 +613,17 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _logger.LogInformation("ScreenShare: Stopped sharing");
     }
 
-    private void OnCursorChanged(float x, float y, Messages.CursorType type)
+    private void OnCursorChanged(float x, float y, Messages.CursorType type, bool isVisible)
     {
         // Send cursor locally for preview
-        _messenger.Send(new ScreenShareCursorMessage(_currentUserId, x, y, type));
+        _messenger.Send(new ScreenShareCursorMessage(_currentUserId, x, y, type, isVisible));
 
-        // Serialize cursor data: 2x float32 + 1 byte enum = 9 bytes
-        var data = new byte[9];
+        // Serialize cursor data: 2x float32 + 1 byte enum + 1 byte visible = 10 bytes
+        var data = new byte[10];
         BitConverter.TryWriteBytes(data.AsSpan(0, 4), x);
         BitConverter.TryWriteBytes(data.AsSpan(4, 4), y);
         data[8] = (byte)type;
+        data[9] = isVisible ? (byte)1 : (byte)0;
 
         foreach (var dc in _cursorDataChannels.Values)
         {
@@ -865,12 +866,13 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             {
                 dc.onmessage += (_, _, data) =>
                 {
-                    if (data.Length == 9)
+                    if (data.Length >= 9)
                     {
                         var x = BitConverter.ToSingle(data, 0);
                         var y = BitConverter.ToSingle(data, 4);
                         var cursorType = (Messages.CursorType)data[8];
-                        _messenger.Send(new ScreenShareCursorMessage(remoteUserId, x, y, cursorType));
+                        var isVisible = data.Length >= 10 ? data[9] != 0 : true;
+                        _messenger.Send(new ScreenShareCursorMessage(remoteUserId, x, y, cursorType, isVisible));
                     }
                 };
             }

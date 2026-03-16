@@ -640,6 +640,9 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private CursorType _floatingCursorShape;
 
     [ObservableProperty]
+    private bool _floatingCursorVisible = true;
+
+    [ObservableProperty]
     private string? _floatingSharerUsername;
 
     private Guid? _focusedScreenShareUserId;
@@ -750,6 +753,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             FloatingCursorX = message.X;
             FloatingCursorY = message.Y;
             FloatingCursorShape = message.Type;
+            FloatingCursorVisible = message.IsVisible;
         });
     }
 

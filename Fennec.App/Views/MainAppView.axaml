@@ -216,7 +216,9 @@
         <Grid>
             <ctrls:ScreenShareViewer Source="{Binding FloatingScreenShareFrame}"
                                      CursorX="{Binding FloatingCursorX}"
-                                     CursorY="{Binding FloatingCursorY}" />
+                                     CursorY="{Binding FloatingCursorY}"
+                                     CursorShape="{Binding FloatingCursorShape}"
+                                     CursorVisible="{Binding FloatingCursorVisible}" />
             <!-- Title bar -->
             <Border VerticalAlignment="Top" Padding="8,4"
                     Background="#80000000">

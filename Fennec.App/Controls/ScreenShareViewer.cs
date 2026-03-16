@@ -27,6 +27,9 @@ public class ScreenShareViewer : Control
     public static readonly StyledProperty<CursorType> CursorShapeProperty =
         AvaloniaProperty.Register<ScreenShareViewer, CursorType>(nameof(CursorShape));
 
+    public static readonly StyledProperty<bool> CursorVisibleProperty =
+        AvaloniaProperty.Register<ScreenShareViewer, bool>(nameof(CursorVisible), defaultValue: true);
+
     public static readonly StyledProperty<bool> ShowDebugOverlayProperty =
         AvaloniaProperty.Register<ScreenShareViewer, bool>(nameof(ShowDebugOverlay));
 
@@ -65,6 +68,12 @@ public class ScreenShareViewer : Control
         set => SetValue(CursorShapeProperty, value);
     }
 
+    public bool CursorVisible
+    {
+        get => GetValue(CursorVisibleProperty);
+        set => SetValue(CursorVisibleProperty, value);
+    }
+
     public bool ShowDebugOverlay
     {
         get => GetValue(ShowDebugOverlayProperty);
@@ -79,10 +88,33 @@ public class ScreenShareViewer : Control
 
     static ScreenShareViewer()
     {
-        AffectsRender<ScreenShareViewer>(SourceProperty, CursorXProperty, CursorYProperty, CursorShapeProperty);
+        AffectsRender<ScreenShareViewer>(SourceProperty, CursorXProperty, CursorYProperty, CursorShapeProperty, CursorVisibleProperty);
         SourceProperty.Changed.AddClassHandler<ScreenShareViewer>((viewer, _) => viewer.OnSourceChanged());
         ShowDebugOverlayProperty.Changed.AddClassHandler<ScreenShareViewer>((viewer, _) => viewer.EnsureRenderTimer());
+        CursorShapeProperty.Changed.AddClassHandler<ScreenShareViewer>((viewer, _) => viewer.UpdateSystemCursor());
     }
+
+    private void UpdateSystemCursor()
+    {
+        Cursor = new Avalonia.Input.Cursor(MapToStandardCursor(CursorShape));
+    }
+
+    private static Avalonia.Input.StandardCursorType MapToStandardCursor(CursorType type) => type switch
+    {
+        CursorType.Arrow => Avalonia.Input.StandardCursorType.Arrow,
+        CursorType.Hand => Avalonia.Input.StandardCursorType.Hand,
+        CursorType.Text => Avalonia.Input.StandardCursorType.Ibeam,
+        CursorType.Crosshair => Avalonia.Input.StandardCursorType.Cross,
+        CursorType.ResizeNS => Avalonia.Input.StandardCursorType.SizeNorthSouth,
+        CursorType.ResizeEW => Avalonia.Input.StandardCursorType.SizeWestEast,
+        CursorType.ResizeNESW => Avalonia.Input.StandardCursorType.BottomLeftCorner,
+        CursorType.ResizeNWSE => Avalonia.Input.StandardCursorType.BottomRightCorner,
+        CursorType.Move => Avalonia.Input.StandardCursorType.SizeAll,
+        CursorType.NotAllowed => Avalonia.Input.StandardCursorType.No,
+        CursorType.Wait => Avalonia.Input.StandardCursorType.Wait,
+        CursorType.Help => Avalonia.Input.StandardCursorType.Help,
+        _ => Avalonia.Input.StandardCursorType.Arrow,
+    };
 
     private void OnSourceChanged()
     {
@@ -134,18 +166,21 @@ public class ScreenShareViewer : Control
                 var destRect = new Rect(offsetX, offsetY, renderWidth, renderHeight);
                 context.DrawImage(source, destRect);
 
-                // Draw cursor overlay
-                var cursorPixelX = offsetX + CursorX * renderWidth;
-                var cursorPixelY = offsetY + CursorY * renderHeight;
-
-                var cursorSize = 12;
-                var cursorBrush = Brushes.White;
-                var cursorPen = new Pen(Brushes.Black, 1.5);
-
-                var cursorGeometry = GetCursorGeometry(CursorShape, cursorPixelX, cursorPixelY, cursorSize);
-                if (cursorGeometry != null)
+                // Draw cursor overlay (only when visible)
+                if (CursorVisible)
                 {
-                    context.DrawGeometry(cursorBrush, cursorPen, cursorGeometry);
+                    var cursorPixelX = offsetX + CursorX * renderWidth;
+                    var cursorPixelY = offsetY + CursorY * renderHeight;
+
+                    var cursorSize = 12;
+                    var cursorBrush = Brushes.White;
+                    var cursorPen = new Pen(Brushes.Black, 1.5);
+
+                    var cursorGeometry = GetCursorGeometry(CursorShape, cursorPixelX, cursorPixelY, cursorSize);
+                    if (cursorGeometry != null)
+                    {
+                        context.DrawGeometry(cursorBrush, cursorPen, cursorGeometry);
+                    }
                 }
             }
         }
