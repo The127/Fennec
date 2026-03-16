@@ -67,6 +67,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     // VideoStream null detection for rebuild
     private readonly Dictionary<Guid, long> _videoStreamNullSince = new();
     private readonly HashSet<Guid> _rebuildAttempted = new();
+    private readonly HashSet<Guid> _recvVideoTrackPeers = new();
 
     public bool IsConnected { get; private set; }
     public Guid? CurrentServerId { get; private set; }
@@ -735,6 +736,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             // Dispose old peer connection and cursor data channel
             if (_peers.Remove(remoteUserId, out var oldPc))
                 oldPc.Dispose();
+            _recvVideoTrackPeers.Remove(remoteUserId);
             if (_cursorDataChannels.Remove(remoteUserId, out var oldDc))
             {
                 try { oldDc.close(); } catch { }
@@ -910,6 +912,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             {
                 if (_peers.Remove(remoteUserId, out var removed))
                     removed.Dispose();
+                _recvVideoTrackPeers.Remove(remoteUserId);
 
                 // Auto-reconnect if the closure was unexpected (not during LeaveAsync)
                 if (!_isLeaving && IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
@@ -963,11 +966,12 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
             if (IsScreenSharing)
                 await AddVideoTrackAndCursorChannel(fromUserId, pc);
-            else if (hasVideo && pc.VideoLocalTrack == null)
+            else if (hasVideo && !_recvVideoTrackPeers.Contains(fromUserId))
             {
                 var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(VideoCodecsEnum.H264, 96);
                 var videoTrack = new MediaStreamTrack(videoFormat, MediaStreamStatusEnum.RecvOnly);
                 pc.addTrack(videoTrack);
+                _recvVideoTrackPeers.Add(fromUserId);
                 _logger.LogInformation("ScreenShare: Added RecvOnly video track for {UserId}", fromUserId);
             }
 
@@ -1213,6 +1217,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         foreach (var pc in _peers.Values)
             pc.Dispose();
         _peers.Clear();
+        _recvVideoTrackPeers.Clear();
         _cursorDataChannels.Clear();
         _activeScreenSharers.Clear();
 
