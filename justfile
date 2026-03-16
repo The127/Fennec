@@ -14,7 +14,7 @@ build-native-linux:
     cmake -S native -B native/build-linux -DCMAKE_BUILD_TYPE=Release
     cmake --build native/build-linux
     mkdir -p Fennec.App/runtimes/linux-x64/native/
-    cp native/build-linux/linux/libfennec_video.so Fennec.App/runtimes/linux-x64/native/
+    find native/build-linux/linux -name 'lib*.so*' -not -type l -exec cp {} Fennec.App/runtimes/linux-x64/native/ \;
 
 # build native video library for Windows (x64)
 build-native-windows:
