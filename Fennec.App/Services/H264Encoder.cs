@@ -68,7 +68,7 @@ public sealed class H264Encoder : IDisposable
                 pts, forceKeyframe ? 1 : 0, _nalCallbackDelegate, IntPtr.Zero);
 
             if (status != 0)
-                _logger.LogDebug("H264Encoder: Encode returned {Status}", status);
+                _logger.LogWarning("H264Encoder: Encode returned {Status}", status);
         }
         finally
         {

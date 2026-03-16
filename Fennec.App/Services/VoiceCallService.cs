@@ -359,31 +359,43 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _senderFpsTimestamp = Stopwatch.GetTimestamp();
 
         // Wire video source encoded samples to all peers (H.264 access units in Annex B format)
+        var encodedFrameCount = 0;
         _videoSource.OnVideoSourceEncodedSample += (durationRtpUnits, sample) =>
         {
+            encodedFrameCount++;
             senderMetrics.EncodedSizeKb.Add(sample.Length / 1024.0);
-            foreach (var (_, pc) in _peers)
+
+            if (encodedFrameCount <= 3)
+                _logger.LogInformation("ScreenShare: Encoded frame #{Num}, size={Size}B, peers={PeerCount}",
+                    encodedFrameCount, sample.Length, _peers.Count);
+
+            foreach (var (peerId, pc) in _peers)
             {
+                if (encodedFrameCount <= 3)
+                    _logger.LogInformation("ScreenShare: Sending frame #{Num} to {PeerId}, VideoStream={HasStream}",
+                        encodedFrameCount, peerId, pc.VideoStream != null);
+
                 pc.VideoStream?.SendH264Frame(durationRtpUnits, 96, sample);
             }
         };
 
+        // Mark as sharing early so auto-reconnects and onconnectionstatechange include video
+        IsScreenSharing = true;
+
         // Add H.264 video track to each existing peer and renegotiate
+        // Only renegotiate peers that have finished ICE — renegotiating a 'connecting' peer kills it
         _logger.LogInformation("ScreenShare: Renegotiating with {Count} peers", _peers.Count);
         foreach (var (remoteUserId, pc) in _peers)
         {
             try
             {
-                _logger.LogInformation("ScreenShare: Adding video track for peer {UserId}, connState={State}", remoteUserId, pc.connectionState);
-                await AddVideoTrackAndCursorChannel(remoteUserId, pc);
+                if (pc.connectionState != RTCPeerConnectionState.connected)
+                {
+                    _logger.LogInformation("ScreenShare: Deferring video renegotiation for peer {UserId}, connState={State}", remoteUserId, pc.connectionState);
+                    continue;
+                }
 
-                // Renegotiate
-                var offer = pc.createOffer();
-                var hasVideo = offer.sdp?.Contains("m=video") ?? false;
-                _logger.LogInformation("ScreenShare: Created renegotiation offer for {UserId}, hasVideo={HasVideo}", remoteUserId, hasVideo);
-                await pc.setLocalDescription(offer);
-                await _voiceHub.SendSdpOfferAsync(CurrentServerId.Value, CurrentChannelId.Value, remoteUserId, offer.sdp);
-                _logger.LogInformation("ScreenShare: Sent renegotiation offer to {UserId}", remoteUserId);
+                await RenegotiateVideoTrack(remoteUserId, pc);
             }
             catch (Exception ex)
             {
@@ -427,6 +439,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             if (!macCapture.IsCapturing)
             {
                 _logger.LogError("ScreenShare: Fused capture failed to start, aborting");
+                IsScreenSharing = false;
                 _cursorPosition.OnCursorChanged -= OnCursorChanged;
                 _cursorPosition.Stop();
                 _videoSource?.Dispose();
@@ -448,7 +461,6 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             });
         }
 
-        IsScreenSharing = true;
         await _voiceHub.StartScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);
         _logger.LogInformation("ScreenShare: Started sharing");
     }
@@ -612,6 +624,19 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
     }
 
+    private async Task RenegotiateVideoTrack(Guid remoteUserId, RTCPeerConnection pc)
+    {
+        _logger.LogInformation("ScreenShare: Adding video track for peer {UserId}, connState={State}", remoteUserId, pc.connectionState);
+        await AddVideoTrackAndCursorChannel(remoteUserId, pc);
+
+        var offer = pc.createOffer();
+        var hasVideo = offer.sdp?.Contains("m=video") ?? false;
+        _logger.LogInformation("ScreenShare: Created renegotiation offer for {UserId}, hasVideo={HasVideo}", remoteUserId, hasVideo);
+        await pc.setLocalDescription(offer);
+        await _voiceHub.SendSdpOfferAsync(CurrentServerId!.Value, CurrentChannelId!.Value, remoteUserId, offer.sdp);
+        _logger.LogInformation("ScreenShare: Sent renegotiation offer to {UserId}", remoteUserId);
+    }
+
     private async Task CreatePeerAndOffer(Guid remoteUserId)
     {
         var pc = CreatePeerConnection(remoteUserId);
@@ -703,6 +728,25 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         pc.onconnectionstatechange += state =>
         {
             _logger.LogDebug("Peer {RemoteUser} connection state: {State}", remoteUserId, state);
+
+            // When a peer finishes ICE and we're screen sharing but haven't added video yet, renegotiate now
+            if (state == RTCPeerConnectionState.connected && IsScreenSharing && pc.VideoLocalTrack == null)
+            {
+                _logger.LogInformation("ScreenShare: Peer {RemoteUser} connected, adding deferred video track", remoteUserId);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        if (_peers.TryGetValue(remoteUserId, out var activePc) && activePc == pc)
+                            await RenegotiateVideoTrack(remoteUserId, pc);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "ScreenShare: Failed deferred renegotiation for {RemoteUser}", remoteUserId);
+                    }
+                });
+            }
+
             if (state is RTCPeerConnectionState.failed or RTCPeerConnectionState.closed)
             {
                 if (_peers.Remove(remoteUserId, out var removed))
@@ -804,6 +848,14 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         {
             var answer = new RTCSessionDescriptionInit { type = RTCSdpType.answer, sdp = sdp };
             pc.setRemoteDescription(answer);
+
+            // After SDP answer completes, force a keyframe so the new peer can decode
+            var hasVideo = sdp.Contains("m=video");
+            if (IsScreenSharing && hasVideo)
+            {
+                _logger.LogInformation("ScreenShare: SDP answer from {UserId} has video, requesting keyframe", fromUserId);
+                _videoSource?.RequestKeyFrame();
+            }
         }
     }
 

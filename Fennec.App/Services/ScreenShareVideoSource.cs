@@ -18,6 +18,7 @@ public class ScreenShareVideoSource : IDisposable
     private uint _frameRate;
     private H264Encoder? _encoder;
     private long _pts;
+    private volatile bool _forceNextKeyFrame;
 
     /// <summary>
     /// Fires when an H.264 NAL unit is ready to send via WebRTC.
@@ -63,7 +64,8 @@ public class ScreenShareVideoSource : IDisposable
 
             _encoder ??= new H264Encoder(_logger, frameW, frameH, _bitrateKbps, (int)_frameRate);
 
-            var forceKeyFrame = _pts == 0;
+            var forceKeyFrame = _pts == 0 || _forceNextKeyFrame;
+            _forceNextKeyFrame = false;
             var durationRtpUnits = (uint)(90000 / _frameRate);
 
             // Collect all NAL units for this frame into an Annex B access unit
@@ -84,7 +86,7 @@ public class ScreenShareVideoSource : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "ScreenShareVideo: Encode error");
+            _logger.LogWarning(ex, "ScreenShareVideo: Encode error");
         }
     }
 
@@ -103,6 +105,15 @@ public class ScreenShareVideoSource : IDisposable
         accessUnit[3] = 0x01;
         Buffer.BlockCopy(nalData, 0, accessUnit, 4, nalData.Length);
         OnVideoSourceEncodedSample?.Invoke(durationRtpUnits, accessUnit);
+    }
+
+    /// <summary>
+    /// Forces the next encoded frame to be a keyframe (IDR).
+    /// Call after SDP answer is received so new peers can decode immediately.
+    /// </summary>
+    public void RequestKeyFrame()
+    {
+        _forceNextKeyFrame = true;
     }
 
     /// <summary>
