@@ -701,7 +701,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
         try
         {
-            await _voiceCallService.JoinAsync(ServerId, channel.Id, instanceUrl, _currentUserId);
+            await _voiceCallService.JoinAsync(ServerId, channel.Id, instanceUrl, _currentUserId, _currentUsername);
         }
         catch (Exception ex)
         {

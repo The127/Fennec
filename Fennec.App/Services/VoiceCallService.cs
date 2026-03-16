@@ -13,7 +13,7 @@ public record ActiveScreenSharer(Guid UserId, string Username, string? InstanceU
 
 public interface IVoiceCallService
 {
-    Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl, Guid currentUserId);
+    Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl, Guid currentUserId, string currentUsername);
     Task LeaveAsync();
     void SetMuted(bool muted);
     void SetDeafened(bool deafened);
@@ -50,6 +50,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private PortAudioEndPoint? _audioEndPoint;
     private ScreenShareVideoSource? _videoSource;
     private Guid _currentUserId;
+    private string _currentUsername = "";
     private bool _isSpeaking;
     private long _speakingLastActiveTicks;
     private bool _isLeaving;
@@ -127,7 +128,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         });
     }
 
-    public async Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl, Guid currentUserId)
+    public async Task JoinAsync(Guid serverId, Guid channelId, string instanceUrl, Guid currentUserId, string currentUsername)
     {
         if (IsConnected)
             await LeaveAsync();
@@ -136,6 +137,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         CurrentChannelId = channelId;
         CurrentInstanceUrl = instanceUrl;
         _currentUserId = currentUserId;
+        _currentUsername = currentUsername;
 
         await TryInitAudioEndPointAsync();
 
@@ -388,6 +390,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         // Start cursor tracking (use a dummy target since picker doesn't provide one)
         _cursorPosition.OnCursorChanged += OnCursorChanged;
         _cursorPosition.Start(new CaptureTarget(CaptureTargetKind.Screen, "picker", "Native Picker", maxW, maxH));
+        // Notify local UI immediately — don't rely on hub round-trip (matches StopScreenShareAsync pattern)
+        _messenger.Send(new ScreenShareStartedMessage(CurrentServerId.Value, CurrentChannelId.Value, _currentUserId, _currentUsername, null));
+
         await _voiceHub.StartScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);
         _logger.LogInformation("ScreenShare: Started via native picker");
     }
@@ -534,6 +539,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 OnPreviewFrame(rgba, w, h);
             });
         }
+
+        // Notify local UI immediately — don't rely on hub round-trip (matches StopScreenShareAsync pattern)
+        _messenger.Send(new ScreenShareStartedMessage(CurrentServerId.Value, CurrentChannelId.Value, _currentUserId, _currentUsername, null));
 
         await _voiceHub.StartScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);
         _logger.LogInformation("ScreenShare: Started sharing");
