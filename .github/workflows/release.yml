@@ -21,11 +21,9 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract version
         id: meta
-        run: |
-          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -33,7 +31,7 @@ jobs:
           context: .
           file: Fennec.Api/Dockerfile
           push: true
-          tags: ghcr.io/${{ steps.meta.outputs.OWNER }}/fennec-api:${{ github.ref_name }}
+          tags: ghcr.io/the127/fennec-api:${{ github.ref_name }}
           build-args: VERSION=${{ steps.meta.outputs.VERSION }}
 
   desktop:
