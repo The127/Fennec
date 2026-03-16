@@ -87,6 +87,9 @@ public partial class App : Application
 #else
         builder.SetMinimumLevel(LogLevel.Information);
 #endif
+            // Suppress noisy EF Core and framework debug logs
+            builder.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
+            builder.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
             builder.AddProvider(new ConsoleLoggerProvider());
         });
 
@@ -243,9 +246,39 @@ public partial class App : Application
 
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
+            if (IsHarmlessUnobservedException(e.Exception))
+            {
+                e.SetObserved();
+                return;
+            }
+
             handler.Handle(e.Exception, "Unobserved task exception");
             e.SetObserved();
         };
+    }
+
+    private static bool IsHarmlessUnobservedException(AggregateException aggregate)
+    {
+        var exceptions = aggregate.Flatten().InnerExceptions;
+        if (exceptions.Count == 0)
+            return false;
+        foreach (var inner in exceptions)
+        {
+            switch (inner)
+            {
+                // SIPSorcery ICE transport fires these when peer connections are disposed
+                case System.Net.Sockets.SocketException sock
+                    when sock.SocketErrorCode == System.Net.Sockets.SocketError.OperationAborted
+                      || (int)sock.NativeErrorCode == 125: // ECANCELED on Linux
+                    continue;
+                // DBus service errors from PipeWire/portal on Linux (transitive dep, match by name)
+                case Exception ex when ex.GetType().Name == "DBusException":
+                    continue;
+                default:
+                    return false;
+            }
+        }
+        return true;
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

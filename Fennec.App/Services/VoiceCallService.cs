@@ -69,6 +69,10 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private readonly HashSet<Guid> _rebuildAttempted = new();
     private readonly HashSet<Guid> _recvVideoTrackPeers = new();
 
+    // One-shot diagnostic logging for first video RTP/frame per user
+    private readonly HashSet<Guid> _loggedFirstVideoRtp = new();
+    private readonly HashSet<Guid> _loggedFirstVideoFrame = new();
+
     public bool IsConnected { get; private set; }
     public Guid? CurrentServerId { get; private set; }
     public Guid? CurrentChannelId { get; private set; }
@@ -759,6 +763,54 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         }
     }
 
+    private async Task RebuildPeerForReceiveAsync(Guid remoteUserId, bool remoteHasVideo)
+    {
+        try
+        {
+            if (!IsConnected || CurrentServerId is null || CurrentChannelId is null)
+                return;
+
+            _logger.LogInformation("ScreenShare: Rebuilding peer for receive from {UserId}", remoteUserId);
+
+            // Dispose old peer connection and cursor data channel
+            if (_peers.Remove(remoteUserId, out var oldPc))
+                oldPc.Dispose();
+            _recvVideoTrackPeers.Remove(remoteUserId);
+            _loggedFirstVideoRtp.Remove(remoteUserId);
+            _loggedFirstVideoFrame.Remove(remoteUserId);
+            if (_cursorDataChannels.Remove(remoteUserId, out var oldDc))
+            {
+                try { oldDc.close(); } catch { }
+            }
+            _videoStreamNullSince.Remove(remoteUserId);
+
+            // Create fresh peer with audio + RecvOnly video from the start
+            var pc = CreatePeerConnection(remoteUserId);
+            _peers[remoteUserId] = pc;
+
+            if (IsScreenSharing)
+            {
+                await AddVideoTrackAndCursorChannel(remoteUserId, pc);
+            }
+            else if (remoteHasVideo)
+            {
+                var videoFormat = new SIPSorceryMedia.Abstractions.VideoFormat(VideoCodecsEnum.H264, 96);
+                var videoTrack = new MediaStreamTrack(videoFormat, MediaStreamStatusEnum.RecvOnly);
+                pc.addTrack(videoTrack);
+                _recvVideoTrackPeers.Add(remoteUserId);
+            }
+
+            // We are the offerer this time, matching original roles
+            var offer = pc.createOffer();
+            await pc.setLocalDescription(offer);
+            await _voiceHub.SendSdpOfferAsync(CurrentServerId.Value, CurrentChannelId.Value, remoteUserId, offer.sdp);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ScreenShare: Failed to rebuild peer connection for receive from {UserId}", remoteUserId);
+        }
+    }
+
     private void CheckVideoStreamNull(Guid peerId, RTCPeerConnection pc)
     {
         if (!IsScreenSharing || _rebuildAttempted.Contains(peerId))
@@ -842,6 +894,11 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _audioEndPoint.GotAudioRtp(ep, pkt.Header.SyncSource, pkt.Header.SequenceNumber,
                     pkt.Header.Timestamp, pkt.Header.PayloadType, pkt.Header.MarkerBit == 1, pkt.Payload);
             }
+            else if (media == SDPMediaTypesEnum.video && _loggedFirstVideoRtp.Add(remoteUserId))
+            {
+                _logger.LogInformation("ScreenShare: First video RTP from {UserId}, PT={PayloadType}, len={Length}",
+                    remoteUserId, pkt.Header.PayloadType, pkt.Payload.Length);
+            }
         };
 
         // Handle incoming H.264 video frames (depacketised by SIPSorcery)
@@ -849,6 +906,10 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         {
             if (!_peers.TryGetValue(remoteUserId, out var activePc) || activePc != pc)
                 return;
+
+            if (_loggedFirstVideoFrame.Add(remoteUserId))
+                _logger.LogInformation("ScreenShare: First decoded video frame from {UserId}, len={Length}, format={Format}",
+                    remoteUserId, frame.Length, format.Codec);
 
             HandleIncomingVideoFrame(remoteUserId, frame);
         };
@@ -965,10 +1026,25 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             }
 
             var offer = new RTCSessionDescriptionInit { type = RTCSdpType.offer, sdp = sdp };
-            pc.setRemoteDescription(offer);
+            var setResult = pc.setRemoteDescription(offer);
+            _logger.LogDebug("ScreenShare: setRemoteDescription(offer) from {UserId}: {Result}, reused={Reused}",
+                fromUserId, setResult, reused);
+
+            if (setResult != SetDescriptionResultEnum.OK)
+            {
+                _logger.LogWarning("ScreenShare: setRemoteDescription(offer) failed: {Result} for {UserId}, rebuilding peer for receive",
+                    setResult, fromUserId);
+                _ = Task.Run(() => RebuildPeerForReceiveAsync(fromUserId, hasVideo));
+                return;
+            }
 
             var answer = pc.createAnswer();
             await pc.setLocalDescription(answer);
+
+            var answerHasVideo = answer.sdp?.Contains("m=video") == true;
+            _logger.LogDebug("ScreenShare: Answer to {UserId} hasVideo={AnswerHasVideo}, offerHasVideo={OfferHasVideo}",
+                fromUserId, answerHasVideo, hasVideo);
+
             await _voiceHub.SendSdpAnswerAsync(serverId, channelId, fromUserId, answer.sdp);
 
             // If we're screen sharing but the peer's offer didn't include video,
@@ -1173,6 +1249,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             pc.Dispose();
         _peers.Clear();
         _recvVideoTrackPeers.Clear();
+        _loggedFirstVideoRtp.Clear();
+        _loggedFirstVideoFrame.Clear();
         _cursorDataChannels.Clear();
         _activeScreenSharers.Clear();
 
