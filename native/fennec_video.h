@@ -68,6 +68,7 @@ FENNEC_API fennec_status   fennec_capture_start(fennec_capture* cap);
 FENNEC_API fennec_status   fennec_capture_stop(fennec_capture* cap);
 FENNEC_API fennec_status   fennec_capture_update_bitrate(fennec_capture* cap, int bitrate_kbps);
 FENNEC_API fennec_status   fennec_capture_update_fps(fennec_capture* cap, int fps);
+FENNEC_API fennec_status   fennec_capture_update_size(fennec_capture* cap, int max_w, int max_h);
 FENNEC_API void            fennec_capture_destroy(fennec_capture* cap);
 
 // --- Native picker (macOS 14+) ---
@@ -87,6 +88,7 @@ FENNEC_API fennec_status   fennec_picker_activate(fennec_picker* picker);
 FENNEC_API fennec_status   fennec_picker_stop(fennec_picker* picker);
 FENNEC_API fennec_status   fennec_picker_update_bitrate(fennec_picker* picker, int bitrate_kbps);
 FENNEC_API fennec_status   fennec_picker_update_fps(fennec_picker* picker, int fps);
+FENNEC_API fennec_status   fennec_picker_update_size(fennec_picker* picker, int max_w, int max_h);
 FENNEC_API void            fennec_picker_destroy(fennec_picker* picker);
 
 // --- Decoder ---

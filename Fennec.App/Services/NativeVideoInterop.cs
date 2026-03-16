@@ -75,6 +75,9 @@ internal static class NativeVideoInterop
     public static extern int fennec_capture_update_fps(IntPtr cap, int fps);
 
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int fennec_capture_update_size(IntPtr cap, int maxW, int maxH);
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     public static extern void fennec_capture_destroy(IntPtr cap);
 
     // --- Picker callbacks ---
@@ -108,6 +111,9 @@ internal static class NativeVideoInterop
 
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     public static extern int fennec_picker_update_fps(IntPtr picker, int fps);
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int fennec_picker_update_size(IntPtr picker, int maxW, int maxH);
 
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     public static extern void fennec_picker_destroy(IntPtr picker);

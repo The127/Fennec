@@ -11,6 +11,7 @@ public sealed class H264Encoder : IDisposable
     private int _bitrateKbps;
     private int _fps;
     private readonly ILogger _logger;
+    private readonly object _lock = new();
     private bool _disposed;
 
     // Pin delegates to prevent GC during native callbacks
@@ -49,35 +50,38 @@ public sealed class H264Encoder : IDisposable
         width &= ~1;
         height &= ~1;
 
-        if (width != _width || height != _height)
+        lock (_lock)
         {
-            var result = NativeVideoInterop.fennec_encoder_update_size(_encoder, width, height);
-            if (result != 0)
+            if (width != _width || height != _height)
             {
-                _logger.LogWarning("H264Encoder: Failed to update size to {W}x{H}", width, height);
-                return;
+                var result = NativeVideoInterop.fennec_encoder_update_size(_encoder, width, height);
+                if (result != 0)
+                {
+                    _logger.LogWarning("H264Encoder: Failed to update size to {W}x{H}", width, height);
+                    return;
+                }
+                _width = width;
+                _height = height;
+                _logger.LogInformation("H264Encoder: Resized to {W}x{H}", width, height);
             }
-            _width = width;
-            _height = height;
-            _logger.LogInformation("H264Encoder: Resized to {W}x{H}", width, height);
-        }
 
-        _currentCallback = onNalUnit;
+            _currentCallback = onNalUnit;
 
-        var pin = GCHandle.Alloc(rgbaData, GCHandleType.Pinned);
-        try
-        {
-            var status = NativeVideoInterop.fennec_encoder_encode_rgba(
-                _encoder, pin.AddrOfPinnedObject(), width, height,
-                pts, forceKeyframe ? 1 : 0, _nalCallbackDelegate, IntPtr.Zero);
+            var pin = GCHandle.Alloc(rgbaData, GCHandleType.Pinned);
+            try
+            {
+                var status = NativeVideoInterop.fennec_encoder_encode_rgba(
+                    _encoder, pin.AddrOfPinnedObject(), width, height,
+                    pts, forceKeyframe ? 1 : 0, _nalCallbackDelegate, IntPtr.Zero);
 
-            if (status != 0)
-                _logger.LogWarning("H264Encoder: Encode returned {Status}", status);
-        }
-        finally
-        {
-            pin.Free();
-            _currentCallback = null;
+                if (status != 0)
+                    _logger.LogWarning("H264Encoder: Encode returned {Status}", status);
+            }
+            finally
+            {
+                pin.Free();
+                _currentCallback = null;
+            }
         }
     }
 
@@ -93,27 +97,33 @@ public sealed class H264Encoder : IDisposable
     public void UpdateBitrate(int kbps)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(H264Encoder));
-        var result = NativeVideoInterop.fennec_encoder_update_bitrate(_encoder, kbps);
-        if (result != 0)
+        lock (_lock)
         {
-            _logger.LogWarning("H264Encoder: Failed to update bitrate to {Kbps}", kbps);
-            return;
+            var result = NativeVideoInterop.fennec_encoder_update_bitrate(_encoder, kbps);
+            if (result != 0)
+            {
+                _logger.LogWarning("H264Encoder: Failed to update bitrate to {Kbps}", kbps);
+                return;
+            }
+            _bitrateKbps = kbps;
+            _logger.LogInformation("H264Encoder: Bitrate updated to {Kbps}Kbps", kbps);
         }
-        _bitrateKbps = kbps;
-        _logger.LogInformation("H264Encoder: Bitrate updated to {Kbps}Kbps", kbps);
     }
 
     public void UpdateFps(int fps)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(H264Encoder));
-        var result = NativeVideoInterop.fennec_encoder_update_fps(_encoder, fps);
-        if (result != 0)
+        lock (_lock)
         {
-            _logger.LogWarning("H264Encoder: Failed to update FPS to {Fps}", fps);
-            return;
+            var result = NativeVideoInterop.fennec_encoder_update_fps(_encoder, fps);
+            if (result != 0)
+            {
+                _logger.LogWarning("H264Encoder: Failed to update FPS to {Fps}", fps);
+                return;
+            }
+            _fps = fps;
+            _logger.LogInformation("H264Encoder: FPS updated to {Fps}", fps);
         }
-        _fps = fps;
-        _logger.LogInformation("H264Encoder: FPS updated to {Fps}", fps);
     }
 
     public void Dispose()

@@ -319,6 +319,59 @@ fennec_status fennec_picker_update_fps(fennec_picker* picker, int fps) {
     return result;
 }
 
+fennec_status fennec_picker_update_size(fennec_picker* picker, int max_w, int max_h) {
+    if (!picker || !picker->stream) return FENNEC_ERR_INIT;
+
+    picker->max_w = max_w;
+    picker->max_h = max_h;
+
+    // Size requires stopping SCStream, recreating VT session at new dimensions, and restarting
+    __block fennec_status result = FENNEC_OK;
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+
+    [picker->stream stopCaptureWithCompletionHandler:^(NSError* error) {
+        if (error) { result = FENNEC_ERR_INIT; dispatch_semaphore_signal(sem); return; }
+
+        // Tear down old VT session
+        if (picker->session) {
+            VTCompressionSessionCompleteFrames(picker->session, kCMTimeInvalid);
+            VTCompressionSessionInvalidate(picker->session);
+            CFRelease(picker->session);
+            picker->session = NULL;
+        }
+
+        // Create new VT session at new dimensions
+        OSStatus vtStatus = fennec_vt_create_session(max_w, max_h,
+            picker->bitrate_kbps, picker->fps, picker->delegate, &picker->session);
+        if (vtStatus != noErr) {
+            result = FENNEC_ERR_INIT;
+            dispatch_semaphore_signal(sem);
+            return;
+        }
+        picker->delegate.compressionSession = picker->session;
+
+        SCStreamConfiguration* config = [[SCStreamConfiguration alloc] init];
+        config.width = max_w;
+        config.height = max_h;
+        config.minimumFrameInterval = CMTimeMake(1, picker->fps);
+        config.pixelFormat = kCVPixelFormatType_32BGRA;
+        config.showsCursor = YES;
+        config.queueDepth = 8;
+
+        [picker->stream updateConfiguration:config completionHandler:^(NSError* updateError) {
+            if (updateError) { result = FENNEC_ERR_INIT; dispatch_semaphore_signal(sem); return; }
+
+            [picker->stream startCaptureWithCompletionHandler:^(NSError* startError) {
+                if (startError) result = FENNEC_ERR_INIT;
+                dispatch_semaphore_signal(sem);
+            }];
+        }];
+    }];
+
+    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC));
+    return result;
+}
+
 void fennec_picker_destroy(fennec_picker* picker) {
     if (!picker) return;
 

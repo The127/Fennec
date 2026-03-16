@@ -464,6 +464,59 @@ fennec_status fennec_capture_update_fps(fennec_capture* cap, int fps) {
     return result;
 }
 
+fennec_status fennec_capture_update_size(fennec_capture* cap, int max_w, int max_h) {
+    if (!cap || !cap->stream) return FENNEC_ERR_INIT;
+
+    cap->max_w = max_w;
+    cap->max_h = max_h;
+
+    // Size requires stopping SCStream, recreating VT session at new dimensions, and restarting
+    __block fennec_status result = FENNEC_OK;
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+
+    [cap->stream stopCaptureWithCompletionHandler:^(NSError* error) {
+        if (error) { result = FENNEC_ERR_INIT; dispatch_semaphore_signal(sem); return; }
+
+        // Tear down old VT session
+        if (cap->session) {
+            VTCompressionSessionCompleteFrames(cap->session, kCMTimeInvalid);
+            VTCompressionSessionInvalidate(cap->session);
+            CFRelease(cap->session);
+            cap->session = NULL;
+        }
+
+        // Create new VT session at new dimensions
+        OSStatus vtStatus = fennec_vt_create_session(max_w, max_h,
+            cap->bitrate_kbps, cap->fps, cap->delegate, &cap->session);
+        if (vtStatus != noErr) {
+            result = FENNEC_ERR_INIT;
+            dispatch_semaphore_signal(sem);
+            return;
+        }
+        cap->delegate.compressionSession = cap->session;
+
+        SCStreamConfiguration* config = [[SCStreamConfiguration alloc] init];
+        config.width = max_w;
+        config.height = max_h;
+        config.minimumFrameInterval = CMTimeMake(1, cap->fps);
+        config.pixelFormat = kCVPixelFormatType_32BGRA;
+        config.showsCursor = YES;
+        config.queueDepth = 8;
+
+        [cap->stream updateConfiguration:config completionHandler:^(NSError* updateError) {
+            if (updateError) { result = FENNEC_ERR_INIT; dispatch_semaphore_signal(sem); return; }
+
+            [cap->stream startCaptureWithCompletionHandler:^(NSError* startError) {
+                if (startError) result = FENNEC_ERR_INIT;
+                dispatch_semaphore_signal(sem);
+            }];
+        }];
+    }];
+
+    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC));
+    return result;
+}
+
 void fennec_capture_destroy(fennec_capture* cap) {
     if (!cap) return;
 

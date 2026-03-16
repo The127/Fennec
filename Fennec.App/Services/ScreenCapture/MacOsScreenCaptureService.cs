@@ -197,6 +197,18 @@ public class MacOsScreenCaptureService : IScreenCaptureService
             _logger.LogInformation("MacOsScreenCapture: Fused FPS updated to {Fps}", fps);
     }
 
+    public void UpdateFusedSize(string resolution)
+    {
+        if (_capture == IntPtr.Zero) return;
+        var (w, h) = ScreenShareVideoSource.ResolutionPresetToDimensions(resolution);
+        if (w <= 0 || h <= 0) return; // "Native" — no constraint to apply
+        var result = NativeVideoInterop.fennec_capture_update_size(_capture, w, h);
+        if (result != 0)
+            _logger.LogWarning("MacOsScreenCapture: Failed to update fused size to {W}x{H}", w, h);
+        else
+            _logger.LogInformation("MacOsScreenCapture: Fused size updated to {W}x{H}", w, h);
+    }
+
     /// <summary>
     /// Starts the native macOS picker (macOS 14+). Returns a Task that completes
     /// when the user selects a target or cancels.
@@ -289,6 +301,18 @@ public class MacOsScreenCaptureService : IScreenCaptureService
         var result = NativeVideoInterop.fennec_picker_update_fps(_picker, fps);
         if (result != 0)
             _logger.LogWarning("MacOsScreenCapture: Failed to update picker FPS to {Fps}", fps);
+    }
+
+    public void UpdatePickerSize(string resolution)
+    {
+        if (_picker == IntPtr.Zero) return;
+        var (w, h) = ScreenShareVideoSource.ResolutionPresetToDimensions(resolution);
+        if (w <= 0 || h <= 0) return; // "Native" — no constraint to apply
+        var result = NativeVideoInterop.fennec_picker_update_size(_picker, w, h);
+        if (result != 0)
+            _logger.LogWarning("MacOsScreenCapture: Failed to update picker size to {W}x{H}", w, h);
+        else
+            _logger.LogInformation("MacOsScreenCapture: Picker size updated to {W}x{H}", w, h);
     }
 
     private void OnNativeNalUnit(IntPtr nalData, int nalSize, long pts, int isKeyframe, IntPtr userData)

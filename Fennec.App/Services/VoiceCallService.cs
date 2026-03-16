@@ -561,6 +561,10 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 macCapture.UpdatePickerFps(frameRate);
                 macCapture.UpdateFusedBitrate(bitrateKbps);
                 macCapture.UpdateFusedFps(frameRate);
+                macCapture.UpdatePickerSize(resolution);
+                macCapture.UpdateFusedSize(resolution);
+                // Sync _frameRate for correct RTP duration in FlushNalBuffer
+                _videoSource.UpdateFps(frameRate);
             }
         }
         else
@@ -569,6 +573,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             _videoSource.UpdateBitrate(bitrateKbps);
             _videoSource.UpdateFps(frameRate);
             _videoSource.UpdateResolution(resolution);
+
+            if (_screenCapture is ScreenCapture.LinuxScreenCaptureService linuxCapture)
+                linuxCapture.UpdateTargetFps(frameRate);
         }
 
         return Task.CompletedTask;

@@ -14,6 +14,7 @@ public class LinuxScreenCaptureService : IScreenCaptureService
     private readonly ILogger<LinuxScreenCaptureService> _logger;
     private CancellationTokenSource? _cts;
     private Task? _captureTask;
+    private volatile int _targetFps = 30;
 
     public bool IsCapturing { get; private set; }
 
@@ -173,6 +174,12 @@ public class LinuxScreenCaptureService : IScreenCaptureService
         _logger.LogInformation("ScreenCapture: Stopped");
     }
 
+    public void UpdateTargetFps(int fps)
+    {
+        _targetFps = Math.Max(5, fps);
+        _logger.LogInformation("ScreenCapture: Target FPS updated to {Fps}", _targetFps);
+    }
+
     private Task CaptureX11Async(Action<byte[], int, int> onFrame, CancellationToken ct)
     {
         return Task.Factory.StartNew(() =>
@@ -278,7 +285,6 @@ public class LinuxScreenCaptureService : IScreenCaptureService
         Action<byte[], int, int> onFrame, CancellationToken ct)
     {
         const int minFps = 5;
-        const int maxFps = 30;
         var encoding = 0; // 0 = idle, 1 = busy
 
         while (!ct.IsCancellationRequested)
@@ -332,6 +338,7 @@ public class LinuxScreenCaptureService : IScreenCaptureService
 
             // Adaptive frame interval: slow down if capture itself is heavy
             var captureMs = sw.Elapsed.TotalMilliseconds;
+            var maxFps = _targetFps;
             var targetFps = captureMs > 50 ? minFps : Math.Max(minFps, Math.Min(maxFps, (int)(1000.0 / (captureMs * 2))));
             var frameInterval = 1000.0 / targetFps;
             var remaining = (int)(frameInterval - captureMs);
