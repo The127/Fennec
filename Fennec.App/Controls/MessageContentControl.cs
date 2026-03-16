@@ -32,8 +32,8 @@ public class MessageContentControl : UserControl
     ]));
 
     private static readonly FontFamily MonoFont = new("Cascadia Code, Consolas, Menlo, Monaco, monospace");
-    private static readonly FontFamily ContentFont = new("Inter, fonts:NotoColorEmoji#Noto Color Emoji");
-    private static readonly FontFamily TextOnlyFont = new("Inter");
+    private static readonly FontFamily EmojiFont = new("Inter, fonts:NotoColorEmoji#Noto Color Emoji");
+    private static readonly FontFamily ContentFont = new("Inter");
 
     public string? MessageText
     {
@@ -73,7 +73,7 @@ public class MessageContentControl : UserControl
             {
                 Text = content,
                 FontSize = 30,
-                FontFamily = ContentFont,
+                FontFamily = EmojiFont,
                 TextWrapping = TextWrapping.Wrap,
                 VerticalAlignment = VerticalAlignment.Center,
             };
@@ -151,6 +151,9 @@ public class MessageContentControl : UserControl
                 case PlainTextSegment plain:
                     tb.Inlines!.Add(new Run(plain.Text));
                     break;
+                case EmojiSegment emoji:
+                    tb.Inlines!.Add(new Run(emoji.Text) { FontFamily = EmojiFont });
+                    break;
                 case InlineCodeSegment inline:
                     var codeSpan = new Span
                     {
@@ -179,7 +182,7 @@ public class MessageContentControl : UserControl
         var linkText = new TextBlock
         {
             FontSize = 15,
-            FontFamily = TextOnlyFont,
+            FontFamily = ContentFont,
             Foreground = new SolidColorBrush(Color.FromRgb(88, 166, 255)),
             TextDecorations = TextDecorations.Underline,
             Cursor = new Cursor(StandardCursorType.Hand),

@@ -438,7 +438,7 @@
                                          TextWrapping="Wrap"
                                          AcceptsReturn="True"
                                          FontSize="15"
-                                         FontFamily="{StaticResource EmojiFont}"
+                                         FontFamily="Inter"
                                          Padding="14,8"
                                          shadui:ControlAssist.Height="100" />
                                 <Button x:Name="AttachFileButton"

@@ -1,9 +1,11 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Fennec.App.Helpers;
 
 public abstract partial record MessageSegment;
 public record PlainTextSegment(string Text) : MessageSegment;
+public record EmojiSegment(string Text) : MessageSegment;
 public record InlineCodeSegment(string Code) : MessageSegment;
 public record CodeBlockSegment(string? Language, string Code) : MessageSegment;
 public record LinkSegment(string Text, Uri Url) : MessageSegment;
@@ -104,6 +106,50 @@ public static partial class MessageContentParser
         }
 
         if (pos < text.Length)
-            segments.Add(new PlainTextSegment(text[pos..]));
+            SplitEmojiRuns(text[pos..], segments);
+    }
+
+    private static void SplitEmojiRuns(string text, List<MessageSegment> segments)
+    {
+        var enumerator = StringInfo.GetTextElementEnumerator(text);
+        var currentRun = new System.Text.StringBuilder();
+        var currentIsEmoji = (bool?)null;
+
+        while (enumerator.MoveNext())
+        {
+            var element = enumerator.GetTextElement();
+            var elementIsEmoji = !string.IsNullOrWhiteSpace(element) && EmojiHelper.IsEmoji(element);
+
+            if (currentIsEmoji is not null && elementIsEmoji != currentIsEmoji)
+            {
+                // Flush current run
+                if (currentRun.Length > 0)
+                {
+                    segments.Add(currentIsEmoji.Value
+                        ? new EmojiSegment(currentRun.ToString())
+                        : new PlainTextSegment(currentRun.ToString()));
+                    currentRun.Clear();
+                }
+            }
+
+            // Whitespace attaches to whatever run type is current, or starts a plain run
+            if (string.IsNullOrWhiteSpace(element))
+            {
+                currentRun.Append(element);
+                currentIsEmoji ??= false;
+            }
+            else
+            {
+                currentIsEmoji = elementIsEmoji;
+                currentRun.Append(element);
+            }
+        }
+
+        if (currentRun.Length > 0)
+        {
+            segments.Add(currentIsEmoji == true
+                ? new EmojiSegment(currentRun.ToString())
+                : new PlainTextSegment(currentRun.ToString()));
+        }
     }
 }
