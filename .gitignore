@@ -577,6 +577,7 @@ Temporary Items
 # Native video library build artifacts
 native/build-*/
 native/build/
+**/runtimes/*/
 
 # Local dev secrets
 private.pem

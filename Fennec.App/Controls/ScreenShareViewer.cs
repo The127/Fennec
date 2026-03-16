@@ -231,6 +231,7 @@ public class ScreenShareViewer : Control
         if (metrics.IsSender)
         {
             counterLines.Add(("ENCODER", metrics.EncoderName ?? "?", Brushes.Cyan));
+            counterLines.Add(("VIEWERS", $"{metrics.ViewerCount}", metrics.ViewerCount > 0 ? Brushes.LimeGreen : Brushes.Gray));
             counterLines.Add(("ENCODED", $"{metrics.FramesEncoded}", Brushes.White));
             counterLines.Add(("SENT", $"{metrics.FramesSent}", Brushes.LimeGreen));
             counterLines.Add(("DROPPED", $"{metrics.FramesDropped}", metrics.FramesDropped > 0 ? Brushes.Red : Brushes.Gray));

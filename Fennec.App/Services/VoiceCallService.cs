@@ -373,6 +373,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         var selected = await macCapture.StartWithPickerAsync(maxW, maxH, bitrateKbps, frameRate,
             onNal: (nal, pts, isKf) =>
             {
+                senderMetrics.ViewerCount = _watcherCount;
                 if (_watcherCount > 0)
                     _videoSource!.OnNalUnit(nal, pts, isKf);
             },
@@ -502,6 +503,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 frameRate,
                 onNal: (nal, pts, isKf) =>
                 {
+                    senderMetrics.ViewerCount = _watcherCount;
                     if (_watcherCount > 0)
                         _videoSource!.OnNalUnit(nal, pts, isKf);
                 },
@@ -523,10 +525,13 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         else
         {
             // Standalone mode (Linux): software H.264 encoding
+            senderMetrics.EncoderName = "h264 (pending)";
             await _screenCapture.StartAsync(target, (rgba, w, h) =>
             {
                 // Always deliver preview for local display
                 OnPreviewFrame(rgba, w, h);
+
+                senderMetrics.ViewerCount = _watcherCount;
 
                 // Skip encoding when nobody is watching
                 if (_watcherCount == 0)
@@ -658,6 +663,17 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         await _voiceHub.UnwatchScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value, sharerUserId);
     }
 
+    private int RemoteWatcherCount()
+    {
+        lock (_watcherLock)
+        {
+            var count = _screenShareWatchers.Count;
+            if (_screenShareWatchers.Contains(_currentUserId))
+                count--;
+            return count;
+        }
+    }
+
     private void OnScreenShareWatcherAdded(Guid watcherUserId)
     {
         bool isFirst;
@@ -665,7 +681,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         {
             isFirst = _screenShareWatchers.Count == 0;
             _screenShareWatchers.Add(watcherUserId);
-            _watcherCount = _screenShareWatchers.Count;
+            _watcherCount = RemoteWatcherCount();
         }
 
         _logger.LogInformation("ScreenShare: Watcher added {WatcherUserId}, total={Count}", watcherUserId, _watcherCount);
@@ -709,7 +725,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         lock (_watcherLock)
         {
             _screenShareWatchers.Remove(watcherUserId);
-            _watcherCount = _screenShareWatchers.Count;
+            _watcherCount = RemoteWatcherCount();
         }
 
         _logger.LogInformation("ScreenShare: Watcher removed {WatcherUserId}, total={Count}", watcherUserId, _watcherCount);
@@ -1090,7 +1106,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 lock (_watcherLock)
                 {
                     _screenShareWatchers.Remove(remoteUserId);
-                    _watcherCount = _screenShareWatchers.Count;
+                    _watcherCount = RemoteWatcherCount();
                 }
 
                 // Auto-reconnect if the closure was unexpected (not during LeaveAsync)
