@@ -21,19 +21,30 @@ public class UpdateService(ILogger<UpdateService> logger) : IUpdateService
 
     public async Task<UpdateInfo?> CheckForUpdateAsync()
     {
+        var currentVersion = Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 0, 0);
+        var url = $"https://api.github.com/repos/{Repo}/releases/latest";
+        logger.LogInformation("Checking for updates at {Url} (current version: {CurrentVersion})", url, currentVersion);
+
         try
         {
             using var http = CreateHttpClient();
-            var release = await http.GetFromJsonAsync(
-                $"https://api.github.com/repos/{Repo}/releases/latest",
-                GithubJsonContext.Default.GithubRelease);
+            var release = await http.GetFromJsonAsync(url, GithubJsonContext.Default.GithubRelease);
 
-            if (release is null) return null;
+            if (release is null)
+            {
+                logger.LogWarning("GitHub returned an empty release response");
+                return null;
+            }
 
             var latestVersion = ParseVersion(release.TagName);
-            var currentVersion = Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 0, 0);
+            logger.LogInformation("Latest release: {Tag} (parsed: {LatestVersion}), current: {CurrentVersion}",
+                release.TagName, latestVersion, currentVersion);
 
-            if (latestVersion <= currentVersion) return null;
+            if (latestVersion <= currentVersion)
+            {
+                logger.LogInformation("Already up to date");
+                return null;
+            }
 
             var assetName = GetAssetName();
             var asset = release.Assets.FirstOrDefault(a => a.Name == assetName);
@@ -43,6 +54,8 @@ public class UpdateService(ILogger<UpdateService> logger) : IUpdateService
                 return null;
             }
 
+            logger.LogInformation("Update found: {CurrentVersion} → {LatestVersion}, asset: {AssetName}",
+                currentVersion, latestVersion, assetName);
             return new UpdateInfo(release.TagName.TrimStart('v'), asset.BrowserDownloadUrl);
         }
         catch (Exception ex)
@@ -58,13 +71,19 @@ public class UpdateService(ILogger<UpdateService> logger) : IUpdateService
         var exePath = Environment.ProcessPath
                       ?? throw new InvalidOperationException("Cannot determine current executable path");
         var exeDir = Path.GetDirectoryName(exePath)!;
-        var downloadPath = Path.Combine(exeDir, GetAssetName());
+        var assetName = GetAssetName();
+        var downloadPath = Path.Combine(exeDir, assetName);
+
+        logger.LogInformation("Downloading v{Version} from {Url} to {DownloadPath}",
+            update.Version, update.DownloadUrl, downloadPath);
 
         using var http = CreateHttpClient();
         using var response = await http.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
 
         var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+        logger.LogInformation("Download size: {TotalBytes} bytes", totalBytes < 0 ? "unknown" : totalBytes.ToString());
+
         await using var src = await response.Content.ReadAsStreamAsync(ct);
         await using var dst = File.Create(downloadPath);
 
@@ -79,6 +98,7 @@ public class UpdateService(ILogger<UpdateService> logger) : IUpdateService
         }
 
         dst.Close();
+        logger.LogInformation("Download complete ({BytesRead} bytes), installing", bytesRead);
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -98,6 +118,7 @@ public class UpdateService(ILogger<UpdateService> logger) : IUpdateService
                 UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
         }
 
+        logger.LogInformation("Update installed, restarting");
         Process.Start(new ProcessStartInfo(exePath) { UseShellExecute = true });
         Environment.Exit(0);
     }
@@ -114,7 +135,7 @@ public class UpdateService(ILogger<UpdateService> logger) : IUpdateService
 
     private static HttpClient CreateHttpClient()
     {
-        var http = new HttpClient();
+        var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         http.DefaultRequestHeaders.Add("User-Agent", "Fennec-App");
         return http;
     }

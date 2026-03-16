@@ -2,8 +2,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Fennec.App.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Fennec.App.Views.LoadingView"
+             x:DataType="vm:LoadingViewModel"
              Background="{DynamicResource BackgroundColor}">
 
     <UserControl.Styles>
@@ -130,7 +132,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="*,Auto,Auto,*"
+    <Grid RowDefinitions="*,Auto,Auto,Auto,*"
           HorizontalAlignment="Center"
           VerticalAlignment="Center">
 
@@ -173,6 +175,19 @@
             <Ellipse Classes="dot1" Width="8" Height="8" Fill="#F39C12" />
             <Ellipse Classes="dot2" Width="8" Height="8" Fill="#E67E22" />
             <Ellipse Classes="dot3" Width="8" Height="8" Fill="#F39C12" />
+        </StackPanel>
+
+        <!-- Update status -->
+        <StackPanel Grid.Row="3" HorizontalAlignment="Center" Margin="0,16,0,0" Spacing="8"
+                    IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding Status}"
+                       FontSize="13"
+                       Foreground="{DynamicResource MutedForegroundColor}"
+                       HorizontalAlignment="Center" />
+            <ProgressBar Value="{Binding UpdateProgress}"
+                         Minimum="0" Maximum="1"
+                         Width="200" Height="4"
+                         IsVisible="{Binding IsUpdating}" />
         </StackPanel>
     </Grid>
 </UserControl>

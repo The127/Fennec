@@ -6,6 +6,8 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <!-- Overridden at publish time via -p:Version=x.y.z; 0.0.0 means dev builds always see releases as newer -->
+        <Version>0.0.0</Version>
     </PropertyGroup>
 
     <PropertyGroup>

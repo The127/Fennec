@@ -20,7 +20,7 @@ public class AppShellViewModelTests
     private readonly IAuthStore _authStore = Substitute.For<IAuthStore>();
     private readonly WeakReferenceMessenger _messenger = new();
 
-    private AppShellViewModel CreateShell()
+    private AppShellViewModel CreateShell(IUpdateService? updateService = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton(_authStore);
@@ -43,7 +43,7 @@ public class AppShellViewModelTests
         services.AddLogging();
         var sp = services.BuildServiceProvider();
 
-        return new AppShellViewModel(sp, _authStore, Substitute.For<IDbPathProvider>(), new ToastManager(), new DialogManager(), _messenger, Substitute.For<IUpdateService>());
+        return new AppShellViewModel(sp, _authStore, Substitute.For<IDbPathProvider>(), new ToastManager(), new DialogManager(), _messenger, updateService ?? Substitute.For<IUpdateService>());
     }
 
     private static AuthSession CreateSession(string username = "alice", string url = "fennec.chat") =>
@@ -96,5 +96,61 @@ public class AppShellViewModelTests
         _messenger.Send(new UserLoggedOutMessage());
 
         Assert.True(shell.IsLoggedOut);
+    }
+
+    [Fact]
+    public async Task Clears_loading_status_when_no_update_found()
+    {
+        var updateService = Substitute.For<IUpdateService>();
+        updateService.CheckForUpdateAsync().Returns((UpdateInfo?)null);
+        _authStore.GetCurrentAuthSessionAsync().Returns((AuthSession?)null);
+
+        var shell = CreateShell(updateService);
+        var loadingVm = Assert.IsType<LoadingViewModel>(shell.CurrentViewModel);
+
+        await shell.InitializeAsync();
+
+        Assert.Equal(string.Empty, loadingVm.Status);
+        Assert.False(loadingVm.IsUpdating);
+    }
+
+    [Fact]
+    public async Task Attempts_download_when_update_found()
+    {
+        var update = new UpdateInfo("1.2.3", "https://example.com/fennec");
+        var updateService = Substitute.For<IUpdateService>();
+        updateService.CheckForUpdateAsync().Returns(update);
+        updateService
+            .DownloadAndApplyAsync(Arg.Any<UpdateInfo>(), Arg.Any<IProgress<double>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new HttpRequestException("network error")));
+        _authStore.GetCurrentAuthSessionAsync().Returns((AuthSession?)null);
+
+        var shell = CreateShell(updateService);
+
+        await shell.InitializeAsync();
+
+        await updateService.Received(1)
+            .DownloadAndApplyAsync(update, Arg.Any<IProgress<double>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Falls_back_to_banner_when_download_fails()
+    {
+        var update = new UpdateInfo("1.2.3", "https://example.com/fennec");
+        var updateService = Substitute.For<IUpdateService>();
+        updateService.CheckForUpdateAsync().Returns(update);
+        updateService
+            .DownloadAndApplyAsync(Arg.Any<UpdateInfo>(), Arg.Any<IProgress<double>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new HttpRequestException("network error")));
+        _authStore.GetCurrentAuthSessionAsync().Returns((AuthSession?)null);
+
+        var shell = CreateShell(updateService);
+        var loadingVm = Assert.IsType<LoadingViewModel>(shell.CurrentViewModel);
+
+        await shell.InitializeAsync();
+
+        Assert.Equal(update, shell.AvailableUpdate);
+        Assert.True(shell.IsUpdateAvailable);
+        Assert.False(loadingVm.IsUpdating);
     }
 }

@@ -6,6 +6,7 @@ using Fennec.App.Services;
 using Fennec.App.Services.Auth;
 using Fennec.App.Services.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ShadUI;
 
 namespace Fennec.App.ViewModels;
@@ -41,6 +42,7 @@ public partial class AppShellViewModel
     private readonly IAuthStore _authStore;
     private readonly IDbPathProvider _dbPathProvider;
     private readonly IUpdateService _updateService;
+    private readonly ILogger<AppShellViewModel> _logger;
 
     public bool IsUpdateAvailable => AvailableUpdate is not null;
 
@@ -51,7 +53,8 @@ public partial class AppShellViewModel
         ToastManager toastManager,
         DialogManager dialogManager,
         IMessenger messenger,
-        IUpdateService updateService
+        IUpdateService updateService,
+        ILogger<AppShellViewModel>? logger = null
     ) : base(messenger)
     {
         _serviceProvider = serviceProvider;
@@ -60,6 +63,7 @@ public partial class AppShellViewModel
         _toastManager = toastManager;
         _dialogManager = dialogManager;
         _updateService = updateService;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<AppShellViewModel>.Instance;
         _currentViewModel = ActivatorUtilities.CreateInstance<LoadingViewModel>(_serviceProvider);
 
         Messenger.RegisterAll(this);
@@ -70,9 +74,58 @@ public partial class AppShellViewModel
 
     public async Task InitializeAsync()
     {
-        _ = CheckForUpdateAsync();
+        var loadingVm = _currentViewModel as LoadingViewModel;
+        bool updateDownloaded = false;
 
-        await Task.Delay(1500);
+        if (loadingVm is not null)
+            loadingVm.Status = "Checking for updates\u2026";
+
+        _logger.LogInformation("Checking for updates");
+        var update = await _updateService.CheckForUpdateAsync();
+
+        if (update is not null)
+        {
+            _logger.LogInformation("Update available: v{Version} — downloading", update.Version);
+            if (loadingVm is not null)
+            {
+                loadingVm.IsUpdating = true;
+                loadingVm.Status = $"Downloading update v{update.Version}\u2026";
+            }
+
+            var progress = new Progress<double>(p =>
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (loadingVm is not null) loadingVm.UpdateProgress = p;
+                }));
+
+            try
+            {
+                await _updateService.DownloadAndApplyAsync(update, progress);
+                updateDownloaded = true;
+                _logger.LogInformation("Update applied, restarting");
+                // App restarts inside DownloadAndApplyAsync; code below is unreachable on success.
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Update download failed, falling back to banner");
+                if (loadingVm is not null)
+                {
+                    loadingVm.IsUpdating = false;
+                    loadingVm.Status = string.Empty;
+                }
+                AvailableUpdate = update;
+                OnPropertyChanged(nameof(IsUpdateAvailable));
+            }
+        }
+        else
+        {
+            _logger.LogInformation("No update found");
+            if (loadingVm is not null)
+                loadingVm.Status = string.Empty;
+        }
+
+        if (!updateDownloaded)
+            await Task.Delay(1500);
 
         var currentSession = await _authStore.GetCurrentAuthSessionAsync();
         if (currentSession is not null)
@@ -120,17 +173,6 @@ public partial class AppShellViewModel
             CurrentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
             State = AppShellState.LoggedOut;
         }
-    }
-
-    private async Task CheckForUpdateAsync()
-    {
-        var update = await _updateService.CheckForUpdateAsync();
-        if (update is null) return;
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            AvailableUpdate = update;
-            OnPropertyChanged(nameof(IsUpdateAvailable));
-        });
     }
 
     [RelayCommand]
