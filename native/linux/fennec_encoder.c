@@ -1,5 +1,6 @@
 #include "fennec_video.h"
 #include <libavcodec/avcodec.h>
+#include <libavutil/hwcontext.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
@@ -17,6 +18,8 @@ struct fennec_encoder {
     int bitrate_kbps;
     int fps;
     enum AVPixelFormat target_pix_fmt;
+    AVBufferRef* hw_device_ctx;
+    AVBufferRef* hw_frames_ctx;
 };
 
 // Try codecs in priority order: NVIDIA HW -> VA-API HW -> SW
@@ -27,6 +30,32 @@ static const char* encoder_names[] = {
     "libopenh264",
     NULL
 };
+
+static int init_vaapi_ctx(fennec_encoder* enc) {
+    int ret = av_hwdevice_ctx_create(&enc->hw_device_ctx,
+        AV_HWDEVICE_TYPE_VAAPI, NULL, NULL, 0);
+    if (ret < 0) return ret;
+
+    enc->hw_frames_ctx = av_hwframe_ctx_alloc(enc->hw_device_ctx);
+    if (!enc->hw_frames_ctx) return AVERROR(ENOMEM);
+
+    AVHWFramesContext* fctx = (AVHWFramesContext*)enc->hw_frames_ctx->data;
+    fctx->format    = AV_PIX_FMT_VAAPI;
+    fctx->sw_format = AV_PIX_FMT_NV12;
+    fctx->width     = enc->width;
+    fctx->height    = enc->height;
+    fctx->initial_pool_size = 20;
+
+    ret = av_hwframe_ctx_init(enc->hw_frames_ctx);
+    if (ret < 0) {
+        av_buffer_unref(&enc->hw_frames_ctx);
+        av_buffer_unref(&enc->hw_device_ctx);
+        return ret;
+    }
+
+    enc->ctx->hw_frames_ctx = av_buffer_ref(enc->hw_frames_ctx);
+    return 0;
+}
 
 static void init_frame_and_sws(fennec_encoder* enc) {
     enc->frame = av_frame_alloc();
@@ -65,7 +94,11 @@ static int init_encoder_ctx(fennec_encoder* enc) {
         av_opt_set(enc->ctx->priv_data, "zerolatency", "1", 0);
     } else if (strcmp(enc->codec->name, "h264_vaapi") == 0) {
         enc->ctx->pix_fmt = AV_PIX_FMT_VAAPI;
-        enc->target_pix_fmt = AV_PIX_FMT_NV12; // won't be used — vaapi fails at open2
+        enc->target_pix_fmt = AV_PIX_FMT_NV12;
+        if (init_vaapi_ctx(enc) < 0) {
+            avcodec_free_context(&enc->ctx);
+            return -1;
+        }
     } else if (strcmp(enc->codec->name, "libx264") == 0) {
         enc->ctx->pix_fmt = AV_PIX_FMT_YUV420P;
         enc->target_pix_fmt = AV_PIX_FMT_YUV420P;
@@ -79,6 +112,8 @@ static int init_encoder_ctx(fennec_encoder* enc) {
 
     int ret = avcodec_open2(enc->ctx, enc->codec, NULL);
     if (ret < 0) {
+        if (enc->hw_frames_ctx) { av_buffer_unref(&enc->hw_frames_ctx); enc->hw_frames_ctx = NULL; }
+        if (enc->hw_device_ctx) { av_buffer_unref(&enc->hw_device_ctx); enc->hw_device_ctx = NULL; }
         avcodec_free_context(&enc->ctx);
         return ret;
     }
@@ -147,7 +182,19 @@ fennec_status fennec_encoder_encode_rgba(fennec_encoder* enc, const uint8_t* rgb
         enc->frame->flags &= ~AV_FRAME_FLAG_KEY;
     }
 
-    int ret = avcodec_send_frame(enc->ctx, enc->frame);
+    int ret;
+    if (enc->hw_frames_ctx) {
+        AVFrame* hw_frame = av_frame_alloc();
+        av_hwframe_get_buffer(enc->ctx->hw_frames_ctx, hw_frame, 0);
+        av_hwframe_transfer_data(hw_frame, enc->frame, 0);
+        hw_frame->pts = enc->frame->pts;
+        hw_frame->pict_type = enc->frame->pict_type;
+        hw_frame->flags = enc->frame->flags;
+        ret = avcodec_send_frame(enc->ctx, hw_frame);
+        av_frame_free(&hw_frame);
+    } else {
+        ret = avcodec_send_frame(enc->ctx, enc->frame);
+    }
     if (ret < 0) return FENNEC_ERR_ENCODE;
 
     while (ret >= 0) {
@@ -211,6 +258,8 @@ fennec_status fennec_encoder_update_size(fennec_encoder* enc, int w, int h) {
     if (enc->sws) { sws_freeContext(enc->sws); enc->sws = NULL; }
     if (enc->pkt) { av_packet_free(&enc->pkt); }
     if (enc->frame) { av_frame_free(&enc->frame); }
+    if (enc->hw_frames_ctx) { av_buffer_unref(&enc->hw_frames_ctx); enc->hw_frames_ctx = NULL; }
+    if (enc->hw_device_ctx) { av_buffer_unref(&enc->hw_device_ctx); enc->hw_device_ctx = NULL; }
     if (enc->ctx) { avcodec_free_context(&enc->ctx); }
 
     enc->width = w;
@@ -232,6 +281,8 @@ fennec_status fennec_encoder_update_bitrate(fennec_encoder* enc, int bitrate_kbp
     if (enc->sws) { sws_freeContext(enc->sws); enc->sws = NULL; }
     if (enc->pkt) { av_packet_free(&enc->pkt); }
     if (enc->frame) { av_frame_free(&enc->frame); }
+    if (enc->hw_frames_ctx) { av_buffer_unref(&enc->hw_frames_ctx); enc->hw_frames_ctx = NULL; }
+    if (enc->hw_device_ctx) { av_buffer_unref(&enc->hw_device_ctx); enc->hw_device_ctx = NULL; }
     if (enc->ctx) { avcodec_free_context(&enc->ctx); }
 
     if (init_encoder_ctx(enc) != 0) return FENNEC_ERR_INIT;
@@ -250,6 +301,8 @@ fennec_status fennec_encoder_update_fps(fennec_encoder* enc, int fps) {
     if (enc->sws) { sws_freeContext(enc->sws); enc->sws = NULL; }
     if (enc->pkt) { av_packet_free(&enc->pkt); }
     if (enc->frame) { av_frame_free(&enc->frame); }
+    if (enc->hw_frames_ctx) { av_buffer_unref(&enc->hw_frames_ctx); enc->hw_frames_ctx = NULL; }
+    if (enc->hw_device_ctx) { av_buffer_unref(&enc->hw_device_ctx); enc->hw_device_ctx = NULL; }
     if (enc->ctx) { avcodec_free_context(&enc->ctx); }
 
     if (init_encoder_ctx(enc) != 0) return FENNEC_ERR_INIT;
@@ -269,6 +322,8 @@ void fennec_encoder_destroy(fennec_encoder* enc) {
     if (enc->sws) sws_freeContext(enc->sws);
     if (enc->pkt) av_packet_free(&enc->pkt);
     if (enc->frame) av_frame_free(&enc->frame);
+    if (enc->hw_frames_ctx) av_buffer_unref(&enc->hw_frames_ctx);
+    if (enc->hw_device_ctx) av_buffer_unref(&enc->hw_device_ctx);
     if (enc->ctx) avcodec_free_context(&enc->ctx);
     free(enc);
 }

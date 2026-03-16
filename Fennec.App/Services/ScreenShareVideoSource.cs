@@ -78,6 +78,9 @@ public class ScreenShareVideoSource : IDisposable
             using var accessUnit = new MemoryStream();
             _encoder.Encode(frameData, frameW, frameH, _pts, forceKeyFrame, (nal, pts, isKf) =>
             {
+                var nalType = nal.Length > 0 ? nal[0] & 0x1F : -1;
+                if (forceKeyFrame || nalType is 7 or 8 or 5)
+                    _logger.LogInformation("Encoder: NAL type={Type} size={Size} forceKf={ForceKf}", nalType, nal.Length, forceKeyFrame);
                 // Annex B start code prefix
                 accessUnit.Write([0x00, 0x00, 0x00, 0x01]);
                 accessUnit.Write(nal);

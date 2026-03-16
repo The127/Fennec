@@ -1149,6 +1149,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
             // Parse Annex B NAL units from the access unit
             var nals = ParseAnnexBNals(accessUnit);
+            var hasParameterSets = nals.Any(n => n.Length > 0 && (n[0] & 0x1F) is 7 or 8);
+            if (hasParameterSets || (accessUnit.Length > 0 && (accessUnit[0] & 0x1F) is 7 or 8))
+                _logger.LogInformation("VideoFrame: len={Len} nals={Nals} hasParamSets=true from={User}", accessUnit.Length, nals.Count, fromUserId);
 
             if (nals.Count == 0)
             {

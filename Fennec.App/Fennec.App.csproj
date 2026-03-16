@@ -54,6 +54,30 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         <Link>runtimes/linux-x64/native/%(Filename)%(Extension)</Link>
       </None>
+      <None Include="runtimes\linux-x64\native\libavcodec.so.61.19.101">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>runtimes\linux-x64\native\libavcodec.so.61.19.101</Link>
+      </None>
+      <None Include="runtimes\linux-x64\native\libavcodec.so.61">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>runtimes\linux-x64\native\libavcodec.so.61</Link>
+      </None>
+      <None Include="runtimes\linux-x64\native\libavutil.so.59.39.100">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>runtimes\linux-x64\native\libavutil.so.59.39.100</Link>
+      </None>
+      <None Include="runtimes\linux-x64\native\libavutil.so.59">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>runtimes\linux-x64\native\libavutil.so.59</Link>
+      </None>
+      <None Include="runtimes\linux-x64\native\libswscale.so.8.3.100">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>runtimes\linux-x64\native\libswscale.so.8.3.100</Link>
+      </None>
+      <None Include="runtimes\linux-x64\native\libswscale.so.8">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>runtimes\linux-x64\native\libswscale.so.8</Link>
+      </None>
     </ItemGroup>
 
     <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
