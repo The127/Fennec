@@ -47,6 +47,7 @@ target_link_libraries(fennec_video PRIVATE
     avcodec
     avutil
     swscale
+    swresample
 )
 
 set_target_properties(fennec_video PROPERTIES
