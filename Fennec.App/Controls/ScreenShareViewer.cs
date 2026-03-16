@@ -168,21 +168,23 @@ public class ScreenShareViewer : Control
 
         if (metrics.IsSender)
         {
-            rows.Add(("CAPTURE FPS", metrics.CaptureFps, "", Brushes.LimeGreen));
-            rows.Add(("ENCODE ms", metrics.EncodeTimeMs, "ms", Brushes.Cyan));
-            rows.Add(("NAL KB", metrics.EncodedSizeKb, "KB", Brushes.Cyan));
+            rows.Add(("1 CAPTURE", metrics.CaptureFps, "fps", Brushes.LimeGreen));
+            rows.Add(("2 ENCODE", metrics.EncodeTimeMs, "ms", Brushes.Cyan));
+            rows.Add(("  NAL SIZE", metrics.EncodedSizeKb, "KB", Brushes.Cyan));
+            rows.Add(("3 SENT", metrics.SentFps, "fps", Brushes.LimeGreen));
         }
         else
         {
-            rows.Add(("RECEIVE FPS", metrics.ReceiveFps, "", Brushes.LimeGreen));
-            rows.Add(("DECODE ms", metrics.DecodeTimeMs, "ms", Brushes.Cyan));
-            rows.Add(("SCALE ms", metrics.DownscaleTimeMs, "ms", Brushes.Cyan));
+            rows.Add(("4 TRANSPORT", metrics.TransportFps, "fps", Brushes.LimeGreen));
+            rows.Add(("5 DECODE", metrics.ReceiveFps, "fps", Brushes.LimeGreen));
+            rows.Add(("  DECODE ms", metrics.DecodeTimeMs, "ms", Brushes.Cyan));
+            rows.Add(("  SCALE ms", metrics.DownscaleTimeMs, "ms", Brushes.Cyan));
         }
 
-        rows.Add(("UI FPS", metrics.RenderFps, "", Brushes.LimeGreen));
-        rows.Add(("FRAME LAG", metrics.FrameLagMs, "ms", Brushes.Yellow));
-        rows.Add(("QUEUE", metrics.QueueDepth, "", Brushes.Orange));
-        rows.Add(("COPY ms", metrics.BitmapCopyTimeMs, "ms", Brushes.Cyan));
+        rows.Add(("6 RENDER", metrics.RenderFps, "fps", Brushes.LimeGreen));
+        rows.Add(("  FRAME LAG", metrics.FrameLagMs, "ms", Brushes.Yellow));
+        rows.Add(("  QUEUE", metrics.QueueDepth, "", Brushes.Orange));
+        rows.Add(("  COPY ms", metrics.BitmapCopyTimeMs, "ms", Brushes.Cyan));
 
         const double rowHeight = 18;
         const double padding = 8;

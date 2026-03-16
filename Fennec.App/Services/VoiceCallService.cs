@@ -56,6 +56,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     // Sender FPS tracking
     private int _senderFrameCount;
     private long _senderFpsTimestamp;
+    private int _senderSentCount;
+    private long _senderSentTimestamp;
 
     // Receiver FPS tracking per user
     private readonly Dictionary<Guid, int> _receiverFrameCounts = new();
@@ -143,6 +145,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         {
             _messenger.Send(new VoiceParticipantJoinedMessage(serverId, channelId, participant.UserId, participant.Username, participant.InstanceUrl, participant.IsMuted, participant.IsDeafened, participant.IsScreenSharing));
         }
+
+        // Self has no peer connection — mark as connected immediately
+        _messenger.Send(new VoicePeerStateChangedMessage(serverId, channelId, currentUserId, "connected"));
 
         // Create peer connections to all existing participants except self (joiner offers)
         foreach (var participant in participants.Where(p => p.UserId != currentUserId))
@@ -257,13 +262,32 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _screenShareMetrics[_currentUserId] = senderMetrics;
         _senderFrameCount = 0;
         _senderFpsTimestamp = Stopwatch.GetTimestamp();
+        _senderSentCount = 0;
+        _senderSentTimestamp = Stopwatch.GetTimestamp();
 
         _videoSource.OnVideoSourceEncodedSample += (durationRtpUnits, sample) =>
         {
             senderMetrics.EncodedSizeKb.Add(sample.Length / 1024.0);
+            var sentToPeers = 0;
             foreach (var (_, pc) in _peers)
             {
-                pc.VideoStream?.SendH264Frame(durationRtpUnits, 96, sample);
+                if (pc.VideoStream != null)
+                {
+                    pc.VideoStream.SendH264Frame(durationRtpUnits, 96, sample);
+                    sentToPeers++;
+                }
+            }
+
+            if (sentToPeers > 0)
+            {
+                _senderSentCount++;
+                var sentElapsed = Stopwatch.GetElapsedTime(_senderSentTimestamp);
+                if (sentElapsed.TotalSeconds >= 1.0)
+                {
+                    senderMetrics.SentFps.Add(_senderSentCount / sentElapsed.TotalSeconds);
+                    _senderSentCount = 0;
+                    _senderSentTimestamp = Stopwatch.GetTimestamp();
+                }
             }
         };
 
@@ -357,6 +381,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _screenShareMetrics[_currentUserId] = senderMetrics;
         _senderFrameCount = 0;
         _senderFpsTimestamp = Stopwatch.GetTimestamp();
+        _senderSentCount = 0;
+        _senderSentTimestamp = Stopwatch.GetTimestamp();
 
         // Wire video source encoded samples to all peers (H.264 access units in Annex B format)
         var encodedFrameCount = 0;
@@ -369,13 +395,30 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _logger.LogInformation("ScreenShare: Encoded frame #{Num}, size={Size}B, peers={PeerCount}",
                     encodedFrameCount, sample.Length, _peers.Count);
 
+            var sentToPeers = 0;
             foreach (var (peerId, pc) in _peers)
             {
                 if (encodedFrameCount <= 3)
                     _logger.LogInformation("ScreenShare: Sending frame #{Num} to {PeerId}, VideoStream={HasStream}",
                         encodedFrameCount, peerId, pc.VideoStream != null);
 
-                pc.VideoStream?.SendH264Frame(durationRtpUnits, 96, sample);
+                if (pc.VideoStream != null)
+                {
+                    pc.VideoStream.SendH264Frame(durationRtpUnits, 96, sample);
+                    sentToPeers++;
+                }
+            }
+
+            if (sentToPeers > 0)
+            {
+                _senderSentCount++;
+                var sentElapsed = Stopwatch.GetElapsedTime(_senderSentTimestamp);
+                if (sentElapsed.TotalSeconds >= 1.0)
+                {
+                    senderMetrics.SentFps.Add(_senderSentCount / sentElapsed.TotalSeconds);
+                    _senderSentCount = 0;
+                    _senderSentTimestamp = Stopwatch.GetTimestamp();
+                }
             }
         };
 
@@ -729,6 +772,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         {
             _logger.LogDebug("Peer {RemoteUser} connection state: {State}", remoteUserId, state);
 
+            if (IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
+                _messenger.Send(new VoicePeerStateChangedMessage(CurrentServerId.Value, CurrentChannelId.Value, remoteUserId, state.ToString().ToLowerInvariant()));
+
             // When a peer finishes ICE and we're screen sharing but haven't added video yet, renegotiate now
             if (state == RTCPeerConnectionState.connected && IsScreenSharing && pc.VideoLocalTrack == null)
             {
@@ -880,6 +926,10 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private int _videoFrameCount;
     private int? _cachedViewerDownscalePercent;
 
+    // Transport FPS tracking per user (access units received before decode)
+    private readonly Dictionary<Guid, int> _transportFrameCounts = new();
+    private readonly Dictionary<Guid, long> _transportFpsTimestamps = new();
+
     private void HandleIncomingVideoFrame(Guid fromUserId, byte[] accessUnit)
     {
         try
@@ -889,6 +939,21 @@ public class VoiceCallService : IVoiceCallService, IDisposable
 
             if (!_screenShareMetrics.TryGetValue(fromUserId, out var metrics))
                 _screenShareMetrics[fromUserId] = metrics = new ScreenShareMetrics { IsSender = false };
+
+            // Track access units received from WebRTC (transport stage)
+            if (!_transportFrameCounts.ContainsKey(fromUserId))
+            {
+                _transportFrameCounts[fromUserId] = 0;
+                _transportFpsTimestamps[fromUserId] = Stopwatch.GetTimestamp();
+            }
+            _transportFrameCounts[fromUserId]++;
+            var transportElapsed = Stopwatch.GetElapsedTime(_transportFpsTimestamps[fromUserId]);
+            if (transportElapsed.TotalSeconds >= 1.0)
+            {
+                metrics.TransportFps.Add(_transportFrameCounts[fromUserId] / transportElapsed.TotalSeconds);
+                _transportFrameCounts[fromUserId] = 0;
+                _transportFpsTimestamps[fromUserId] = Stopwatch.GetTimestamp();
+            }
 
             // Parse Annex B NAL units from the access unit
             var nals = ParseAnnexBNals(accessUnit);
@@ -1000,6 +1065,9 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _peers.Clear();
         _cursorDataChannels.Clear();
         _activeScreenSharers.Clear();
+
+        _transportFrameCounts.Clear();
+        _transportFpsTimestamps.Clear();
 
         foreach (var dec in _videoDecoders.Values)
             dec.Dispose();

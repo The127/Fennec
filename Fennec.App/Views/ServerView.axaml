@@ -21,6 +21,7 @@
         <conv:BoolToFontSizeConverter x:Key="EmojiOnlyFontSizeConverter"
                                       TrueSize="30"
                                       FalseSize="15" />
+        <conv:StringEqualsConverter x:Key="StringEqualsConverter" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="Border.selected">
@@ -290,6 +291,28 @@
                                                                         </Button>
                                                                         <TextBlock Text="{Binding Username}" FontSize="12"
                                                                                    Opacity="0.7" />
+                                                                        <!-- Peer connection state indicators -->
+                                                                        <mi:MaterialIcon Kind="Loading" Width="10" Height="10"
+                                                                                         Opacity="0.4"
+                                                                                         ToolTip.Tip="Connecting...">
+                                                                            <mi:MaterialIcon.IsVisible>
+                                                                                <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                                                    <Binding Path="PeerState" Converter="{x:Static StringConverters.IsNullOrEmpty}" FallbackValue="False" />
+                                                                                    <Binding Path="PeerState" ConverterParameter="new" Converter="{StaticResource StringEqualsConverter}" FallbackValue="False" />
+                                                                                    <Binding Path="PeerState" ConverterParameter="connecting" Converter="{StaticResource StringEqualsConverter}" FallbackValue="False" />
+                                                                                </MultiBinding>
+                                                                            </mi:MaterialIcon.IsVisible>
+                                                                        </mi:MaterialIcon>
+                                                                        <mi:MaterialIcon Kind="AlertCircle" Width="10" Height="10"
+                                                                                         Foreground="#E74C3C"
+                                                                                         ToolTip.Tip="Connection failed">
+                                                                            <mi:MaterialIcon.IsVisible>
+                                                                                <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                                                    <Binding Path="PeerState" ConverterParameter="failed" Converter="{StaticResource StringEqualsConverter}" FallbackValue="False" />
+                                                                                    <Binding Path="PeerState" ConverterParameter="disconnected" Converter="{StaticResource StringEqualsConverter}" FallbackValue="False" />
+                                                                                </MultiBinding>
+                                                                            </mi:MaterialIcon.IsVisible>
+                                                                        </mi:MaterialIcon>
                                                                         <mi:MaterialIcon Kind="MicrophoneOff" Width="12" Height="12"
                                                                                          Opacity="0.5"
                                                                                          IsVisible="{Binding IsMuted}" />

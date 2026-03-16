@@ -41,6 +41,9 @@ public partial class VoiceParticipantItem(Guid userId, string username, string? 
 
     [ObservableProperty]
     private bool _isScreenSharing;
+
+    [ObservableProperty]
+    private string _peerState = "new";
 }
 
 public partial class ChannelItem(Guid id, string name, ChannelType channelType, Guid channelGroupId) : ObservableObject
@@ -195,6 +198,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<ScreenShareFrameMessage>,
     IRecipient<ScreenShareCursorMessage>,
     IRecipient<ScreenSharePopOutRequestedMessage>,
+    IRecipient<VoicePeerStateChangedMessage>,
     IRecipient<ScreenSharePopOutClosedMessage>
 {
     private readonly IFennecClient client;
@@ -244,6 +248,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<ScreenShareFrameMessage>(this);
         messenger.Register<ScreenShareCursorMessage>(this);
         messenger.Register<ScreenSharePopOutRequestedMessage>(this);
+        messenger.Register<VoicePeerStateChangedMessage>(this);
         messenger.Register<ScreenSharePopOutClosedMessage>(this);
 
         // Initialize hub status from current state (message may have been sent before registration)
@@ -927,6 +932,19 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
             if (participant is not null)
                 participant.IsSpeaking = message.IsSpeaking;
+        });
+    }
+
+    public void Receive(VoicePeerStateChangedMessage message)
+    {
+        if (message.ServerId != ServerId) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var channel = FindChannel(message.ChannelId);
+            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
+            if (participant is not null)
+                participant.PeerState = message.State;
         });
     }
 

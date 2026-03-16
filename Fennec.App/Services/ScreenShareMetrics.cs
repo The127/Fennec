@@ -77,10 +77,12 @@ public class ScreenShareMetrics
     public MetricSeries CaptureFps { get; } = new();
     public MetricSeries EncodeTimeMs { get; } = new();
     public MetricSeries EncodedSizeKb { get; } = new();
+    public MetricSeries SentFps { get; } = new();
     public int CaptureWidth { get; set; }
     public int CaptureHeight { get; set; }
 
     // Receiver
+    public MetricSeries TransportFps { get; } = new();
     public MetricSeries ReceiveFps { get; } = new();
     public MetricSeries DecodeTimeMs { get; } = new();
     public MetricSeries DownscaleTimeMs { get; } = new();

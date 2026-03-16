@@ -6,6 +6,7 @@ public record VoiceStateChangedMessage(bool IsConnected, Guid? ServerId, Guid? C
 public record VoiceMuteStateChangedMessage(Guid ServerId, Guid ChannelId, Guid UserId, bool IsMuted);
 public record VoiceDeafenStateChangedMessage(Guid ServerId, Guid ChannelId, Guid UserId, bool IsDeafened);
 public record VoiceSpeakingChangedMessage(Guid ServerId, Guid ChannelId, Guid UserId, bool IsSpeaking);
+public record VoicePeerStateChangedMessage(Guid ServerId, Guid ChannelId, Guid UserId, string State);
 public record ScreenShareStartedMessage(Guid ServerId, Guid ChannelId, Guid UserId, string Username, string? InstanceUrl);
 public record ScreenShareStoppedMessage(Guid ServerId, Guid ChannelId, Guid UserId);
 public record ScreenShareFrameMessage(Guid UserId, byte[] RgbaData, int Width, int Height, long Timestamp);
