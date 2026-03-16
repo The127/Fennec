@@ -31,7 +31,7 @@ jobs:
           context: .
           file: Fennec.Api/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/fennec-api:${{ github.ref_name }}
+          tags: ghcr.io/${{ github.repository_owner | lower }}/fennec-api:${{ github.ref_name }}
           build-args: VERSION=${{ steps.version.outputs.VERSION }}
 
   desktop:

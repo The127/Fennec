@@ -21,6 +21,27 @@ build-native-linux:
         [ -n "$soname" ] && ln -sf "$f" "$soname"; \
       done
 
+# create a release tag; bumps patch by default — pass bump=minor or bump=major to bump those instead
+release bump="patch":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    latest=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+    version="${latest:-v0.0.0}"
+    version="${version#v}"
+    major=$(echo "$version" | cut -d. -f1)
+    minor=$(echo "$version" | cut -d. -f2)
+    patch=$(echo "$version" | cut -d. -f3)
+    case "{{bump}}" in
+        major) major=$((major + 1)); minor=0; patch=0 ;;
+        minor) minor=$((minor + 1)); patch=0 ;;
+        patch) patch=$((patch + 1)) ;;
+        *) echo "Unknown bump type: {{bump}} (use patch, minor, or major)"; exit 1 ;;
+    esac
+    new_tag="v${major}.${minor}.${patch}"
+    echo "Tagging $new_tag"
+    git tag "$new_tag"
+    git push origin "$new_tag"
+
 # build native video library for Windows (x64)
 build-native-windows:
     cmake -S native -B native/build-windows -DCMAKE_BUILD_TYPE=Release
