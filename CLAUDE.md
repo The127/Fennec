@@ -17,6 +17,16 @@ dotnet test Fennec.Api.Tests                       # Run API tests only
 dotnet test --filter "FullyQualifiedName~TestName" # Run single test
 ```
 
+## Releasing
+
+```bash
+just release                # bump patch (v0.0.10 → v0.0.11)
+just release bump=minor     # bump minor (v0.0.10 → v0.1.0)
+just release bump=major     # bump major (v0.0.10 → v1.0.0)
+```
+
+Tags the repo and pushes the tag, which triggers the GitHub Actions release workflow to build all platform binaries and create the GitHub Release.
+
 ## Dev Setup
 
 ```bash
