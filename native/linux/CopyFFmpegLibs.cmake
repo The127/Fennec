@@ -1,8 +1,5 @@
 file(GLOB ffmpeg_libs
-    "${FFMPEG_LIB_DIR}/libavcodec.so.*"
-    "${FFMPEG_LIB_DIR}/libavutil.so.*"
-    "${FFMPEG_LIB_DIR}/libswscale.so.*"
-    "${FFMPEG_LIB_DIR}/libswresample.so.*"
+    "${FFMPEG_LIB_DIR}/lib*.so.*"
 )
 
 foreach(lib ${ffmpeg_libs})
