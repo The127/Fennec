@@ -543,7 +543,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 _videoSource!.OnFrame(rgba, w, h);
                 encodeSw.Stop();
                 senderMetrics.EncodeTimeMs.Add(encodeSw.Elapsed.TotalMilliseconds);
-                senderMetrics.EncoderName ??= _videoSource.EncoderName;
+                senderMetrics.EncoderName = _videoSource.EncoderName ?? senderMetrics.EncoderName;
             });
         }
 
