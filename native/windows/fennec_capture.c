@@ -14,6 +14,7 @@
 #include <mferror.h>
 #include <unknwn.h>
 #include <oleauto.h>
+#include <strmif.h>
 #include <codecapi.h>
 #include <shlwapi.h>
 
