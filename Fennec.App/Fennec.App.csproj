@@ -9,6 +9,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Fennec.App.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <AvaloniaResource Include="Assets\**" />
     </ItemGroup>
 
