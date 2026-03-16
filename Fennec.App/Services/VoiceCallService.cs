@@ -1042,8 +1042,19 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             await pc.setLocalDescription(answer);
 
             var answerHasVideo = answer.sdp?.Contains("m=video") == true;
-            _logger.LogDebug("ScreenShare: Answer to {UserId} hasVideo={AnswerHasVideo}, offerHasVideo={OfferHasVideo}",
-                fromUserId, answerHasVideo, hasVideo);
+            _logger.LogDebug("ScreenShare: Answer to {UserId} hasVideo={AnswerHasVideo}, offerHasVideo={OfferHasVideo}, videoStream={VideoStream}, videoRemoteTrack={VideoRemoteTrack}",
+                fromUserId, answerHasVideo, hasVideo, pc.VideoStream != null, pc.VideoRemoteTrack != null);
+            if (answerHasVideo)
+            {
+                // Log video m-line direction from answer SDP
+                var sdpLines = answer.sdp?.Split('\n') ?? [];
+                foreach (var line in sdpLines)
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.StartsWith("m=video") || trimmed.StartsWith("a=recvonly") || trimmed.StartsWith("a=sendrecv") || trimmed.StartsWith("a=sendonly") || trimmed.StartsWith("a=inactive") || trimmed.StartsWith("a=mid"))
+                        _logger.LogDebug("ScreenShare: Answer SDP line: {Line}", trimmed);
+                }
+            }
 
             await _voiceHub.SendSdpAnswerAsync(serverId, channelId, fromUserId, answer.sdp);
 
