@@ -8,8 +8,39 @@
              x:Class="Fennec.App.Views.AppShellView"
              x:DataType="vm:AppShellViewModel">
 
-    <Panel>
-        <ContentControl Content="{Binding CurrentViewModel}" />
-        <shadUi:ToastHost Manager="{Binding ToastManager}" />
-    </Panel>
+    <DockPanel LastChildFill="True">
+
+        <Border DockPanel.Dock="Top"
+                IsVisible="{Binding IsUpdateAvailable}"
+                Background="{DynamicResource ShadPrimaryBrush}"
+                Padding="16,8">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            Spacing="12"
+                            VerticalAlignment="Center">
+                    <ProgressBar IsVisible="{Binding IsUpdating}"
+                                 Value="{Binding UpdateProgress}"
+                                 Maximum="1"
+                                 Width="120"
+                                 Height="6" />
+                    <Button Command="{Binding ApplyUpdateCommand}"
+                            IsEnabled="{Binding !IsUpdating}">
+                        <Panel>
+                            <TextBlock Text="Update now" IsVisible="{Binding !IsUpdating}" />
+                            <TextBlock Text="Updating…" IsVisible="{Binding IsUpdating}" />
+                        </Panel>
+                    </Button>
+                </StackPanel>
+                <TextBlock VerticalAlignment="Center"
+                           Text="{Binding AvailableUpdate.Version, StringFormat='Update available: v{0}'}" />
+            </DockPanel>
+        </Border>
+
+        <Panel>
+            <ContentControl Content="{Binding CurrentViewModel}" />
+            <shadUi:ToastHost Manager="{Binding ToastManager}" />
+        </Panel>
+
+    </DockPanel>
 </UserControl>

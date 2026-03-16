@@ -148,6 +148,7 @@ public partial class App : Application
         }
 
         services.AddSingleton<IVoiceCallService, VoiceCallService>();
+        services.AddSingleton<IUpdateService, UpdateService>();
 
         services.AddSingleton<IEmbedProvider, YouTubeEmbedProvider>();
         services.AddSingleton<IEmbedProvider, SpotifyEmbedProvider>();
@@ -158,6 +159,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        UpdateService.CleanupStaleBinary();
         ApplySavedTheme();
 
         var mainViewModel = ActivatorUtilities.CreateInstance<AppShellViewModel>(_services);

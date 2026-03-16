@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
+using Fennec.App.Services;
 using Fennec.App.Services.Auth;
 using Fennec.App.Services.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,9 +28,21 @@ public partial class AppShellViewModel
     [ObservableProperty]
     private double _zoomLevel = 1.0;
 
+    [ObservableProperty]
+    private UpdateInfo? _availableUpdate;
+
+    [ObservableProperty]
+    private bool _isUpdating;
+
+    [ObservableProperty]
+    private double _updateProgress;
+
     private readonly IServiceProvider _serviceProvider;
     private readonly IAuthStore _authStore;
     private readonly IDbPathProvider _dbPathProvider;
+    private readonly IUpdateService _updateService;
+
+    public bool IsUpdateAvailable => AvailableUpdate is not null;
 
     public AppShellViewModel(
         IServiceProvider serviceProvider,
@@ -36,7 +50,8 @@ public partial class AppShellViewModel
         IDbPathProvider dbPathProvider,
         ToastManager toastManager,
         DialogManager dialogManager,
-        IMessenger messenger
+        IMessenger messenger,
+        IUpdateService updateService
     ) : base(messenger)
     {
         _serviceProvider = serviceProvider;
@@ -44,6 +59,7 @@ public partial class AppShellViewModel
         _dbPathProvider = dbPathProvider;
         _toastManager = toastManager;
         _dialogManager = dialogManager;
+        _updateService = updateService;
         _currentViewModel = ActivatorUtilities.CreateInstance<LoadingViewModel>(_serviceProvider);
 
         Messenger.RegisterAll(this);
@@ -54,8 +70,10 @@ public partial class AppShellViewModel
 
     public async Task InitializeAsync()
     {
+        _ = CheckForUpdateAsync();
+
         await Task.Delay(1500);
-        
+
         var currentSession = await _authStore.GetCurrentAuthSessionAsync();
         if (currentSession is not null)
         {
@@ -71,6 +89,42 @@ public partial class AppShellViewModel
         {
             CurrentViewModel = ActivatorUtilities.CreateInstance<AuthViewModel>(_serviceProvider);
             State = AppShellState.LoggedOut;
+        }
+    }
+
+    private async Task CheckForUpdateAsync()
+    {
+        var update = await _updateService.CheckForUpdateAsync();
+        if (update is null) return;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            AvailableUpdate = update;
+            OnPropertyChanged(nameof(IsUpdateAvailable));
+        });
+    }
+
+    [RelayCommand]
+    private async Task ApplyUpdateAsync()
+    {
+        if (AvailableUpdate is null || IsUpdating) return;
+
+        IsUpdating = true;
+        UpdateProgress = 0;
+
+        var progress = new Progress<double>(p =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => UpdateProgress = p));
+
+        try
+        {
+            await _updateService.DownloadAndApplyAsync(AvailableUpdate, progress);
+        }
+        catch (Exception)
+        {
+            IsUpdating = false;
+            _toastManager.CreateToast("Update failed")
+                .WithContent("Could not download the update. Please try again later.")
+                .WithDelay(5)
+                .ShowError();
         }
     }
 
