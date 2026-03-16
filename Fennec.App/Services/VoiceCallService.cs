@@ -22,6 +22,8 @@ public interface IVoiceCallService
     Task StartScreenShareWithPickerAsync(string resolution, int bitrateKbps, int frameRate);
     Task UpdateScreenShareSettingsAsync(string resolution, int bitrateKbps, int frameRate);
     Task StopScreenShareAsync();
+    Task WatchScreenShareAsync(Guid sharerUserId);
+    Task UnwatchScreenShareAsync(Guid sharerUserId);
     bool IsConnected { get; }
     Guid? CurrentServerId { get; }
     Guid? CurrentChannelId { get; }
@@ -74,6 +76,11 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     private readonly HashSet<Guid> _loggedFirstVideoRtp = new();
     private readonly HashSet<Guid> _loggedFirstVideoFrame = new();
 
+    // Screen share watcher tracking — only encode when someone is watching
+    private readonly HashSet<Guid> _screenShareWatchers = new();
+    private readonly object _watcherLock = new();
+    private volatile int _watcherCount;
+
     public bool IsConnected { get; private set; }
     public Guid? CurrentServerId { get; private set; }
     public Guid? CurrentChannelId { get; private set; }
@@ -125,6 +132,18 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         {
             if (!IsConnected || msg.ServerId != CurrentServerId) return;
             _activeScreenSharers.RemoveAll(s => s.UserId == msg.UserId);
+        });
+
+        _messenger.Register<ScreenShareWatcherAddedMessage>(this, (_, msg) =>
+        {
+            if (!IsConnected || !IsScreenSharing || msg.ServerId != CurrentServerId) return;
+            OnScreenShareWatcherAdded(msg.WatcherUserId);
+        });
+
+        _messenger.Register<ScreenShareWatcherRemovedMessage>(this, (_, msg) =>
+        {
+            if (!IsConnected || !IsScreenSharing || msg.ServerId != CurrentServerId) return;
+            OnScreenShareWatcherRemoved(msg.WatcherUserId);
         });
     }
 
@@ -352,7 +371,11 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         macCapture.OnPickerCancelled += OnPickerCancelled;
 
         var selected = await macCapture.StartWithPickerAsync(maxW, maxH, bitrateKbps, frameRate,
-            onNal: (nal, pts, isKf) => _videoSource!.OnNalUnit(nal, pts, isKf),
+            onNal: (nal, pts, isKf) =>
+            {
+                if (_watcherCount > 0)
+                    _videoSource!.OnNalUnit(nal, pts, isKf);
+            },
             onPreview: OnPreviewFrame);
 
         if (!selected)
@@ -369,23 +392,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         // Mark as sharing early so onconnectionstatechange can trigger deferred renegotiation
         IsScreenSharing = true;
 
-        // User selected a target — renegotiate with peers
-        foreach (var (remoteUserId, pc) in _peers)
-        {
-            try
-            {
-                if (pc.connectionState != RTCPeerConnectionState.connected)
-                {
-                    continue;
-                }
-
-                await RenegotiateVideoTrack(remoteUserId, pc);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "ScreenShare: Failed to renegotiate with {UserId}", remoteUserId);
-            }
-        }
+        // Video track renegotiation is deferred until a watcher signals via WatchScreenShare.
 
         // Start cursor tracking (use a dummy target since picker doesn't provide one)
         _cursorPosition.OnCursorChanged += OnCursorChanged;
@@ -460,24 +467,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         // Mark as sharing early so auto-reconnects and onconnectionstatechange include video
         IsScreenSharing = true;
 
-        // Add H.264 video track to each existing peer and renegotiate
-        // Only renegotiate peers that have finished ICE — renegotiating a 'connecting' peer kills it
-        foreach (var (remoteUserId, pc) in _peers)
-        {
-            try
-            {
-                if (pc.connectionState != RTCPeerConnectionState.connected)
-                {
-                    continue;
-                }
-
-                await RenegotiateVideoTrack(remoteUserId, pc);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "ScreenShare: Failed to renegotiate with {UserId}", remoteUserId);
-            }
-        }
+        // Video track renegotiation is deferred until a watcher signals via WatchScreenShare.
+        // This avoids encoding when nobody is watching.
 
         // Start cursor tracking
         _cursorPosition.OnCursorChanged += OnCursorChanged;
@@ -509,7 +500,11 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             // NAL units go to peers, RGBA preview goes to local display
             await macCapture.StartFusedAsync(target, maxW, maxH, bitrateKbps,
                 frameRate,
-                onNal: (nal, pts, isKf) => _videoSource!.OnNalUnit(nal, pts, isKf),
+                onNal: (nal, pts, isKf) =>
+                {
+                    if (_watcherCount > 0)
+                        _videoSource!.OnNalUnit(nal, pts, isKf);
+                },
                 onPreview: OnPreviewFrame);
 
             if (!macCapture.IsCapturing)
@@ -530,13 +525,18 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             // Standalone mode (Linux): software H.264 encoding
             await _screenCapture.StartAsync(target, (rgba, w, h) =>
             {
+                // Always deliver preview for local display
+                OnPreviewFrame(rgba, w, h);
+
+                // Skip encoding when nobody is watching
+                if (_watcherCount == 0)
+                    return;
+
                 var encodeSw = Stopwatch.StartNew();
                 _videoSource!.OnFrame(rgba, w, h);
                 encodeSw.Stop();
                 senderMetrics.EncodeTimeMs.Add(encodeSw.Elapsed.TotalMilliseconds);
                 senderMetrics.EncoderName ??= _videoSource.EncoderName;
-
-                OnPreviewFrame(rgba, w, h);
             });
         }
 
@@ -604,6 +604,12 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _videoStreamNullSince.Clear();
         _rebuildAttempted.Clear();
 
+        lock (_watcherLock)
+        {
+            _screenShareWatchers.Clear();
+            _watcherCount = 0;
+        }
+
         IsScreenSharing = false;
 
         // Renegotiate each peer to remove the video track, keeping the connection alive.
@@ -636,6 +642,95 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             await _voiceHub.StopScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value);
 
         _logger.LogInformation("ScreenShare: Stopped sharing");
+    }
+
+    public async Task WatchScreenShareAsync(Guid sharerUserId)
+    {
+        if (!IsConnected || CurrentServerId is null || CurrentChannelId is null)
+            return;
+        await _voiceHub.WatchScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value, sharerUserId);
+    }
+
+    public async Task UnwatchScreenShareAsync(Guid sharerUserId)
+    {
+        if (!IsConnected || CurrentServerId is null || CurrentChannelId is null)
+            return;
+        await _voiceHub.UnwatchScreenShareAsync(CurrentServerId.Value, CurrentChannelId.Value, sharerUserId);
+    }
+
+    private void OnScreenShareWatcherAdded(Guid watcherUserId)
+    {
+        bool isFirst;
+        lock (_watcherLock)
+        {
+            isFirst = _screenShareWatchers.Count == 0;
+            _screenShareWatchers.Add(watcherUserId);
+            _watcherCount = _screenShareWatchers.Count;
+        }
+
+        _logger.LogInformation("ScreenShare: Watcher added {WatcherUserId}, total={Count}", watcherUserId, _watcherCount);
+
+        if (isFirst && _peers.TryGetValue(watcherUserId, out var pc) && pc.connectionState == RTCPeerConnectionState.connected)
+        {
+            // First watcher — renegotiate and request keyframe
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await RenegotiateVideoTrack(watcherUserId, pc);
+                    _videoSource?.RequestKeyFrame();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "ScreenShare: Failed to renegotiate for first watcher {UserId}", watcherUserId);
+                }
+            });
+        }
+        else if (_peers.TryGetValue(watcherUserId, out var pc2) && pc2.connectionState == RTCPeerConnectionState.connected)
+        {
+            // Additional watcher — renegotiate for this peer + keyframe
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await RenegotiateVideoTrack(watcherUserId, pc2);
+                    _videoSource?.RequestKeyFrame();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "ScreenShare: Failed to renegotiate for watcher {UserId}", watcherUserId);
+                }
+            });
+        }
+    }
+
+    private void OnScreenShareWatcherRemoved(Guid watcherUserId)
+    {
+        lock (_watcherLock)
+        {
+            _screenShareWatchers.Remove(watcherUserId);
+            _watcherCount = _screenShareWatchers.Count;
+        }
+
+        _logger.LogInformation("ScreenShare: Watcher removed {WatcherUserId}, total={Count}", watcherUserId, _watcherCount);
+
+        // Renegotiate to remove video track from this peer
+        if (_peers.TryGetValue(watcherUserId, out var pc) && pc.connectionState == RTCPeerConnectionState.connected)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var offer = pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    await _voiceHub.SendSdpOfferAsync(CurrentServerId!.Value, CurrentChannelId!.Value, watcherUserId, offer.sdp);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "ScreenShare: Failed to renegotiate video removal for unwatcher {UserId}", watcherUserId);
+                }
+            });
+        }
     }
 
     private void OnCursorChanged(float x, float y, Messages.CursorType type, bool isVisible)
@@ -960,21 +1055,29 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             if (IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
                 _messenger.Send(new VoicePeerStateChangedMessage(CurrentServerId.Value, CurrentChannelId.Value, remoteUserId, state.ToString().ToLowerInvariant()));
 
-            // When a peer finishes ICE and we're screen sharing but haven't added video yet, renegotiate now
+            // When a peer finishes ICE and we're screen sharing and they're a watcher, renegotiate now
             if (state == RTCPeerConnectionState.connected && IsScreenSharing && pc.VideoLocalTrack == null)
             {
-                _ = Task.Run(async () =>
+                bool isWatcher;
+                lock (_watcherLock) { isWatcher = _screenShareWatchers.Contains(remoteUserId); }
+                if (isWatcher)
                 {
-                    try
+                    _ = Task.Run(async () =>
                     {
-                        if (_peers.TryGetValue(remoteUserId, out var activePc) && activePc == pc)
-                            await RenegotiateVideoTrack(remoteUserId, pc);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "ScreenShare: Failed deferred renegotiation for {RemoteUser}", remoteUserId);
-                    }
-                });
+                        try
+                        {
+                            if (_peers.TryGetValue(remoteUserId, out var activePc) && activePc == pc)
+                            {
+                                await RenegotiateVideoTrack(remoteUserId, pc);
+                                _videoSource?.RequestKeyFrame();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "ScreenShare: Failed deferred renegotiation for {RemoteUser}", remoteUserId);
+                        }
+                    });
+                }
             }
 
             if (state is RTCPeerConnectionState.failed or RTCPeerConnectionState.closed)
@@ -982,6 +1085,13 @@ public class VoiceCallService : IVoiceCallService, IDisposable
                 if (_peers.Remove(remoteUserId, out var removed))
                     removed.Dispose();
                 _recvVideoTrackPeers.Remove(remoteUserId);
+
+                // Clean up watcher state for disconnected peer
+                lock (_watcherLock)
+                {
+                    _screenShareWatchers.Remove(remoteUserId);
+                    _watcherCount = _screenShareWatchers.Count;
+                }
 
                 // Auto-reconnect if the closure was unexpected (not during LeaveAsync)
                 if (!_isLeaving && IsConnected && CurrentServerId is not null && CurrentChannelId is not null)
@@ -1282,6 +1392,12 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _loggedFirstVideoFrame.Clear();
         _cursorDataChannels.Clear();
         _activeScreenSharers.Clear();
+
+        lock (_watcherLock)
+        {
+            _screenShareWatchers.Clear();
+            _watcherCount = 0;
+        }
 
         _transportFrameCounts.Clear();
         _transportFpsTimestamps.Clear();

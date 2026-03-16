@@ -264,6 +264,26 @@ public class MessageHub(
             .SendAsync("VoiceSpeakingStateChanged", serverId, channelId, userId, isSpeaking);
     }
 
+    // --- Screen Share Watch ---
+
+    public async Task WatchScreenShare(Guid serverId, Guid channelId, Guid sharerUserId)
+    {
+        var (userId, _, _) = GetCallerIdentity();
+        var connectionId = voiceState.GetConnectionId(serverId, channelId, sharerUserId);
+        if (connectionId is null) return;
+        await Clients.Client(connectionId)
+            .SendAsync("ScreenShareWatcherAdded", serverId, channelId, userId);
+    }
+
+    public async Task UnwatchScreenShare(Guid serverId, Guid channelId, Guid sharerUserId)
+    {
+        var (userId, _, _) = GetCallerIdentity();
+        var connectionId = voiceState.GetConnectionId(serverId, channelId, sharerUserId);
+        if (connectionId is null) return;
+        await Clients.Client(connectionId)
+            .SendAsync("ScreenShareWatcherRemoved", serverId, channelId, userId);
+    }
+
     // --- Screen Share ---
 
     public async Task StartScreenShare(Guid serverId, Guid channelId)

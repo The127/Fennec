@@ -53,8 +53,12 @@ public interface IMessageHubClient : IAsyncDisposable
     // Screen share
     Task StartScreenShareAsync(Guid serverId, Guid channelId);
     Task StopScreenShareAsync(Guid serverId, Guid channelId);
+    Task WatchScreenShareAsync(Guid serverId, Guid channelId, Guid sharerUserId);
+    Task UnwatchScreenShareAsync(Guid serverId, Guid channelId, Guid sharerUserId);
     event Action<Guid, Guid, Guid, string, string?>? ScreenShareStarted;
     event Action<Guid, Guid, Guid>? ScreenShareStopped;
+    event Action<Guid, Guid, Guid>? ScreenShareWatcherAdded;
+    event Action<Guid, Guid, Guid>? ScreenShareWatcherRemoved;
 }
 
 public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubClient
@@ -84,6 +88,8 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     // Screen share events
     public event Action<Guid, Guid, Guid, string, string?>? ScreenShareStarted;
     public event Action<Guid, Guid, Guid>? ScreenShareStopped;
+    public event Action<Guid, Guid, Guid>? ScreenShareWatcherAdded;
+    public event Action<Guid, Guid, Guid>? ScreenShareWatcherRemoved;
 
     public async Task ConnectAsync(string baseUrl, string token)
     {
@@ -168,6 +174,16 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         _connection.On<Guid, Guid, Guid>("ScreenShareStopped", (serverId, channelId, userId) =>
         {
             ScreenShareStopped?.Invoke(serverId, channelId, userId);
+        });
+
+        _connection.On<Guid, Guid, Guid>("ScreenShareWatcherAdded", (serverId, channelId, watcherUserId) =>
+        {
+            ScreenShareWatcherAdded?.Invoke(serverId, channelId, watcherUserId);
+        });
+
+        _connection.On<Guid, Guid, Guid>("ScreenShareWatcherRemoved", (serverId, channelId, watcherUserId) =>
+        {
+            ScreenShareWatcherRemoved?.Invoke(serverId, channelId, watcherUserId);
         });
 
         _connection.Reconnected += _ =>
@@ -348,6 +364,18 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
     {
         if (_connection?.State == HubConnectionState.Connected)
             await _connection.InvokeAsync("StopScreenShare", serverId, channelId);
+    }
+
+    public async Task WatchScreenShareAsync(Guid serverId, Guid channelId, Guid sharerUserId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+            await _connection.InvokeAsync("WatchScreenShare", serverId, channelId, sharerUserId);
+    }
+
+    public async Task UnwatchScreenShareAsync(Guid serverId, Guid channelId, Guid sharerUserId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+            await _connection.InvokeAsync("UnwatchScreenShare", serverId, channelId, sharerUserId);
     }
 
     public async Task DisconnectAsync()

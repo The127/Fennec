@@ -1127,6 +1127,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         WatchedScreenShares.Add(share);
         HasWatchedShares = true;
         FocusedScreenShareUserId = userId;
+
+        // Signal the sharer that we're watching
+        _ = _voiceCallService.WatchScreenShareAsync(userId);
     }
 
     [RelayCommand]
@@ -1134,6 +1137,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     {
         var share = WatchedScreenShares.FirstOrDefault(s => s.UserId == userId);
         if (share is null) return;
+
+        // Signal the sharer that we stopped watching
+        _ = _voiceCallService.UnwatchScreenShareAsync(userId);
 
         WatchedScreenShares.Remove(share);
         HasWatchedShares = WatchedScreenShares.Count > 0;

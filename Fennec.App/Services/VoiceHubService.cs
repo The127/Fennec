@@ -19,6 +19,8 @@ public interface IVoiceHubService
     Task SetSpeakingStateAsync(Guid serverId, Guid channelId, bool isSpeaking);
     Task StartScreenShareAsync(Guid serverId, Guid channelId);
     Task StopScreenShareAsync(Guid serverId, Guid channelId);
+    Task WatchScreenShareAsync(Guid serverId, Guid channelId, Guid sharerUserId);
+    Task UnwatchScreenShareAsync(Guid serverId, Guid channelId, Guid sharerUserId);
 
     event Action<Guid, Guid, Guid, string>? SdpOfferReceived;
     event Action<Guid, Guid, Guid, string>? SdpAnswerReceived;
@@ -99,6 +101,16 @@ public class VoiceHubService : IVoiceHubService
         _hubClient.ScreenShareStopped += (serverId, channelId, userId) =>
         {
             _messenger.Send(new ScreenShareStoppedMessage(serverId, channelId, userId));
+        };
+
+        _hubClient.ScreenShareWatcherAdded += (serverId, channelId, watcherUserId) =>
+        {
+            _messenger.Send(new ScreenShareWatcherAddedMessage(serverId, channelId, watcherUserId));
+        };
+
+        _hubClient.ScreenShareWatcherRemoved += (serverId, channelId, watcherUserId) =>
+        {
+            _messenger.Send(new ScreenShareWatcherRemovedMessage(serverId, channelId, watcherUserId));
         };
     }
 
@@ -188,6 +200,16 @@ public class VoiceHubService : IVoiceHubService
         _directConnection.On<Guid, Guid, Guid>("ScreenShareStopped", (sid, cid, userId) =>
         {
             _messenger.Send(new ScreenShareStoppedMessage(sid, cid, userId));
+        });
+
+        _directConnection.On<Guid, Guid, Guid>("ScreenShareWatcherAdded", (sid, cid, watcherUserId) =>
+        {
+            _messenger.Send(new ScreenShareWatcherAddedMessage(sid, cid, watcherUserId));
+        });
+
+        _directConnection.On<Guid, Guid, Guid>("ScreenShareWatcherRemoved", (sid, cid, watcherUserId) =>
+        {
+            _messenger.Send(new ScreenShareWatcherRemovedMessage(sid, cid, watcherUserId));
         });
 
         _directConnection.Closed += ex =>
@@ -294,5 +316,21 @@ public class VoiceHubService : IVoiceHubService
             await _directConnection.InvokeAsync("StopScreenShare", serverId, channelId);
         else
             await _hubClient.StopScreenShareAsync(serverId, channelId);
+    }
+
+    public async Task WatchScreenShareAsync(Guid serverId, Guid channelId, Guid sharerUserId)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("WatchScreenShare", serverId, channelId, sharerUserId);
+        else
+            await _hubClient.WatchScreenShareAsync(serverId, channelId, sharerUserId);
+    }
+
+    public async Task UnwatchScreenShareAsync(Guid serverId, Guid channelId, Guid sharerUserId)
+    {
+        if (_usingDirect && _directConnection?.State == HubConnectionState.Connected)
+            await _directConnection.InvokeAsync("UnwatchScreenShare", serverId, channelId, sharerUserId);
+        else
+            await _hubClient.UnwatchScreenShareAsync(serverId, channelId, sharerUserId);
     }
 }
