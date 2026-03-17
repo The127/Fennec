@@ -72,14 +72,14 @@ public partial class ServerView : UserControl
 
         if (e.Key == Key.F3 && e.KeyModifiers == KeyModifiers.None)
         {
-            vm.ShowDebugOverlay = !vm.ShowDebugOverlay;
+            vm.ScreenShareWatcher.ShowDebugOverlay = !vm.ScreenShareWatcher.ShowDebugOverlay;
             e.Handled = true;
             return;
         }
 
-        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && vm.IsScreenShareMaximized)
+        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && vm.ScreenShareWatcher.IsScreenShareMaximized)
         {
-            vm.ExitScreenShareMaximizeCommand.Execute(null);
+            vm.ScreenShareWatcher.ExitScreenShareMaximizeCommand.Execute(null);
             e.Handled = true;
             return;
         }
@@ -328,7 +328,7 @@ public partial class ServerView : UserControl
         if (sender is not Border { DataContext: ChannelItem channel }) return;
         if (channel.IsTextOnly) return;
         if (DataContext is ServerViewModel vm)
-            vm.JoinVoiceChannelCommand.Execute(channel);
+            vm.VoiceCall.JoinVoiceChannelCommand.Execute(channel);
     }
 
     private void RenameChannelGroup_KeyDown(object? sender, KeyEventArgs e)

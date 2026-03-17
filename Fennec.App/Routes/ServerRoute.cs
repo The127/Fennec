@@ -15,7 +15,8 @@ public record ServerRoute(IFennecClient Client, DialogManager DialogManager, ISe
     public ObservableObject GetViewModel(IServiceProvider serviceProvider)
     {
         var logger = serviceProvider.GetRequiredService<ILogger<ServerViewModel>>();
-        var vm = new ServerViewModel(Client, DialogManager, ServerStore, MessageHubService, VoiceCallService, Messenger, ToastManager, logger, SettingsStore, ServerId, ServerName, InstanceUrl, CurrentUserId, CurrentUsername);
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var vm = new ServerViewModel(Client, DialogManager, ServerStore, MessageHubService, VoiceCallService, Messenger, ToastManager, logger, SettingsStore, loggerFactory, ServerId, ServerName, InstanceUrl, CurrentUserId, CurrentUsername);
         _ = vm.LoadAsync();
         return vm;
     }

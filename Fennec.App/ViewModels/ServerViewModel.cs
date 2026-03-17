@@ -1,7 +1,5 @@
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
-using System.Threading;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,7 +15,6 @@ using HubStatus = Fennec.Client.HubConnectionStatus;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
 using Microsoft.Extensions.Logging;
-using Avalonia.Media.Imaging;
 using NodaTime;
 using NodaTime.Text;
 using ShadUI;
@@ -120,82 +117,58 @@ public partial class MessageItem : ObservableObject
     public bool IsEmojiOnly => !string.IsNullOrWhiteSpace(Content) && EmojiHelper.IsAllEmoji(Content);
 }
 
+public class ScreenShareInfo(Guid userId, string username, string? instanceUrl)
+{
+    public Guid UserId { get; } = userId;
+    public string Username { get; } = username;
+    public string? InstanceUrl { get; } = instanceUrl;
+}
+
 public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISearchableRoute,
     IRecipient<ChannelMessageReceivedMessage>,
-    IRecipient<VoiceParticipantJoinedMessage>,
-    IRecipient<VoiceParticipantLeftMessage>,
-    IRecipient<VoiceStateChangedMessage>,
-    IRecipient<HubConnectionStateChangedMessage>,
-    IRecipient<UserOnlineMessage>,
-    IRecipient<UserOfflineMessage>,
-    IRecipient<VoiceMuteStateChangedMessage>,
-    IRecipient<VoiceDeafenStateChangedMessage>,
-    IRecipient<VoiceSpeakingChangedMessage>,
-    IRecipient<VoiceMuteToggledMessage>,
-    IRecipient<VoiceDeafenToggledMessage>,
-    IRecipient<ScreenShareStartedMessage>,
-    IRecipient<ScreenShareStoppedMessage>,
-    IRecipient<ScreenShareFrameMessage>,
-    IRecipient<ScreenShareCursorMessage>,
-    IRecipient<ScreenSharePopOutRequestedMessage>,
-    IRecipient<VoicePeerStateChangedMessage>,
-    IRecipient<ScreenSharePopOutClosedMessage>,
-    IRecipient<ControlWatchScreenShareMessage>,
-    IRecipient<ControlUnwatchScreenShareMessage>
+    IRecipient<HubConnectionStateChangedMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
     private readonly IServerStore serverStore;
     private readonly IMessageHubService _messageHubService;
-    private readonly IVoiceCallService _voiceCallService;
     private readonly IMessenger _messenger;
     private readonly ILogger<ServerViewModel> _logger;
-    private readonly ToastManager _toastManager;
-    private readonly ISettingsStore _settingsStore;
     private readonly string instanceUrl;
-    private readonly string _currentUsername;
     private readonly Guid _currentUserId;
 
-    public ServerViewModel(IFennecClient client, DialogManager dialogManager, IServerStore serverStore, IMessageHubService messageHubService, IVoiceCallService voiceCallService, IMessenger messenger, ToastManager toastManager, ILogger<ServerViewModel> logger, ISettingsStore settingsStore, Guid serverId, string serverName, string instanceUrl, Guid currentUserId, string currentUsername)
+    public ServerViewModel(
+        IFennecClient client,
+        DialogManager dialogManager,
+        IServerStore serverStore,
+        IMessageHubService messageHubService,
+        IVoiceCallService voiceCallService,
+        IMessenger messenger,
+        ToastManager toastManager,
+        ILogger<ServerViewModel> logger,
+        ISettingsStore settingsStore,
+        ILoggerFactory loggerFactory,
+        Guid serverId,
+        string serverName,
+        string instanceUrl,
+        Guid currentUserId,
+        string currentUsername)
     {
         this.client = client;
         this.dialogManager = dialogManager;
         this.serverStore = serverStore;
         _messageHubService = messageHubService;
-        _voiceCallService = voiceCallService;
         _messenger = messenger;
-        _toastManager = toastManager;
         _logger = logger;
-        _settingsStore = settingsStore;
         ServerId = serverId;
         _serverName = serverName;
         this.instanceUrl = instanceUrl;
         _currentUserId = currentUserId;
-        _currentUsername = currentUsername;
 
         messenger.Register<ChannelMessageReceivedMessage>(this);
-        messenger.Register<VoiceParticipantJoinedMessage>(this);
-        messenger.Register<VoiceParticipantLeftMessage>(this);
-        messenger.Register<VoiceStateChangedMessage>(this);
         messenger.Register<HubConnectionStateChangedMessage>(this);
-        messenger.Register<UserOnlineMessage>(this);
-        messenger.Register<UserOfflineMessage>(this);
-        messenger.Register<VoiceMuteStateChangedMessage>(this);
-        messenger.Register<VoiceDeafenStateChangedMessage>(this);
-        messenger.Register<VoiceSpeakingChangedMessage>(this);
-        messenger.Register<VoiceMuteToggledMessage>(this);
-        messenger.Register<VoiceDeafenToggledMessage>(this);
-        messenger.Register<ScreenShareStartedMessage>(this);
-        messenger.Register<ScreenShareStoppedMessage>(this);
-        messenger.Register<ScreenShareFrameMessage>(this);
-        messenger.Register<ScreenShareCursorMessage>(this);
-        messenger.Register<ScreenSharePopOutRequestedMessage>(this);
-        messenger.Register<VoicePeerStateChangedMessage>(this);
-        messenger.Register<ScreenSharePopOutClosedMessage>(this);
-        messenger.Register<ControlWatchScreenShareMessage>(this);
-        messenger.Register<ControlUnwatchScreenShareMessage>(this);
 
-        // Initialize hub status from current state (message may have been sent before registration)
+        // Initialize hub status from current state
         (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
         {
             HubStatus.Connected => ("Connected", "#4CAF50"),
@@ -205,21 +178,30 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             _ => ("Unknown", "#808080"),
         };
 
-        // Restore voice state if already in a call on this server
-        if (voiceCallService.IsConnected && voiceCallService.CurrentServerId == serverId)
-        {
-            IsInVoiceChannel = true;
-            CurrentVoiceChannelId = voiceCallService.CurrentChannelId;
-            IsMuted = voiceCallService.IsMuted;
-            IsDeafened = voiceCallService.IsDeafened;
-            IsScreenSharing = voiceCallService.IsScreenSharing;
-
-            foreach (var sharer in voiceCallService.ActiveScreenSharers)
-            {
-                ActiveScreenShares.Add(new ScreenShareInfo(sharer.UserId, sharer.Username, sharer.InstanceUrl));
-            }
-        }
+        // Instantiate sub-VMs in dependency order
+        VoiceParticipants = new VoiceParticipantsViewModel(serverId, messenger, ChannelGroups);
+        VoiceCall = new VoiceCallViewModel(serverId, instanceUrl, currentUserId, currentUsername,
+            voiceCallService, messenger, loggerFactory.CreateLogger<VoiceCallViewModel>(), VoiceParticipants);
+        ScreenShareBroadcast = new ScreenShareBroadcastViewModel(serverId, currentUserId,
+            voiceCallService, settingsStore, dialogManager, messenger,
+            loggerFactory.CreateLogger<ScreenShareBroadcastViewModel>());
+        ScreenShareWatcher = new ScreenShareWatcherViewModel(serverId, currentUserId,
+            voiceCallService, messenger, loggerFactory.CreateLogger<ScreenShareWatcherViewModel>(),
+            VoiceParticipants.FindChannel);
+        Presence = new ServerPresenceViewModel(serverId, messenger, toastManager);
     }
+
+    // --- Sub-ViewModels ---
+
+    public VoiceParticipantsViewModel VoiceParticipants { get; }
+    public VoiceCallViewModel VoiceCall { get; }
+    public ScreenShareBroadcastViewModel ScreenShareBroadcast { get; }
+    public ScreenShareWatcherViewModel ScreenShareWatcher { get; }
+    public ServerPresenceViewModel Presence { get; }
+
+    // Forwarded for code-behind autocomplete
+    public List<string> ServerMembers => Presence.ServerMembers;
+
     [ObservableProperty]
     private string _serverName;
 
@@ -244,17 +226,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     }
 
     public Guid ServerId { get; }
-
-    public List<string> ServerMembers { get; private set; } = [];
-
-    public ObservableCollection<MemberItem> OnlineMembers { get; } = [];
-    public ObservableCollection<MemberItem> OfflineMembers { get; } = [];
-
-    [ObservableProperty]
-    private int _onlineMemberCount;
-
-    [ObservableProperty]
-    private int _offlineMemberCount;
 
     public ShortcutContext ShortcutContext => ShortcutContext.Server;
 
@@ -286,7 +257,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     {
         if (isShift && _lastClickedMessage is not null)
         {
-            // Range select from last clicked to current
             var startIdx = Messages.IndexOf(_lastClickedMessage);
             var endIdx = Messages.IndexOf(message);
             if (startIdx < 0 || endIdx < 0) return;
@@ -383,7 +353,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
             await LoadAsync();
 
-            // Start renaming the newly created group
             var newGroup = ChannelGroups.LastOrDefault();
             if (newGroup is not null)
             {
@@ -502,7 +471,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 Content = content,
             });
 
-            // SignalR may have already delivered the real message
             var alreadyDelivered = Messages.FirstOrDefault(m => m.MessageId == response.MessageId);
             if (alreadyDelivered is not null)
             {
@@ -522,6 +490,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             MessageText = content;
         }
     }
+
+    private readonly string _currentUsername;
 
     private MessageItem BuildMessageItem(Guid messageId, string content, Guid authorId, string authorName, string? authorInstanceUrl, string createdAt)
     {
@@ -571,7 +541,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
         Dispatcher.UIThread.Post(() =>
         {
-            // Dedup: skip if this message was already added (e.g. optimistic send)
             if (Messages.Any(m => m.MessageId == dto.MessageId))
                 return;
 
@@ -608,767 +577,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         });
     }
 
-    // --- Presence ---
-
-    private readonly Dictionary<Guid, (string Username, string? InstanceUrl)> _onlineUsers = new();
-    private List<ListServerMembersResponseItemDto> _allMembers = [];
-
-    public void Receive(UserOnlineMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            _onlineUsers[message.UserId] = (message.Username, message.InstanceUrl);
-            RebuildMemberLists();
-        });
-    }
-
-    public void Receive(UserOfflineMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            _onlineUsers.Remove(message.UserId);
-            RebuildMemberLists();
-        });
-    }
-
-    private void RebuildMemberLists()
-    {
-        OnlineMembers.Clear();
-        OfflineMembers.Clear();
-
-        var onlineKeys = new HashSet<string>(_onlineUsers.Values.Select(p => MemberKey(p.Username, p.InstanceUrl)));
-
-        foreach (var member in _allMembers)
-        {
-            var key = MemberKey(member.Name, member.InstanceUrl);
-            if (onlineKeys.Contains(key))
-                OnlineMembers.Add(new MemberItem(member.Name, member.InstanceUrl, true));
-            else
-                OfflineMembers.Add(new MemberItem(member.Name, member.InstanceUrl, false));
-        }
-
-        OnlineMemberCount = OnlineMembers.Count;
-        OfflineMemberCount = OfflineMembers.Count;
-    }
-
-    private static string MemberKey(string name, string? instanceUrl) =>
-        instanceUrl is not null ? $"{name}@{instanceUrl}" : name;
-
-    // --- User Profile Actions ---
-
-    [RelayCommand]
-    private void AddFriend()
-    {
-        _toastManager.CreateToast("Not Implemented")
-            .WithContent("Adding friends is not yet available.")
-            .WithDelay(3)
-            .ShowWarning();
-    }
-
-    [RelayCommand]
-    private void SendDirectMessage()
-    {
-        _toastManager.CreateToast("Not Implemented")
-            .WithContent("Direct messages are not yet available.")
-            .WithDelay(3)
-            .ShowWarning();
-    }
-
-    // --- Voice ---
-
-    [ObservableProperty]
-    private bool _isInVoiceChannel;
-
-    [ObservableProperty]
-    private Guid? _currentVoiceChannelId;
-
-    [ObservableProperty]
-    private string? _currentVoiceChannelName;
-
-    [ObservableProperty]
-    private bool _isMuted;
-
-    [ObservableProperty]
-    private bool _isDeafened;
-
-    [RelayCommand]
-    private async Task JoinVoiceChannel(ChannelItem channel)
-    {
-        if (channel.IsTextOnly) return;
-
-        // If already in this channel, do nothing
-        if (IsInVoiceChannel && CurrentVoiceChannelId == channel.Id) return;
-
-        try
-        {
-            await _voiceCallService.JoinAsync(ServerId, channel.Id, instanceUrl, _currentUserId, _currentUsername);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to join voice channel");
-        }
-    }
-
-    [RelayCommand]
-    private async Task LeaveVoiceChannel()
-    {
-        try
-        {
-            await _voiceCallService.LeaveAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to leave voice channel");
-        }
-    }
-
-    [RelayCommand]
-    private void ToggleMute()
-    {
-        IsMuted = !IsMuted;
-        _voiceCallService.SetMuted(IsMuted);
-        UpdateLocalParticipantMuteState();
-    }
-
-    [RelayCommand]
-    private void ToggleDeafen()
-    {
-        IsDeafened = !IsDeafened;
-        _voiceCallService.SetDeafened(IsDeafened);
-        if (IsDeafened)
-            IsMuted = true;
-        UpdateLocalParticipantMuteState();
-    }
-
-    public void Receive(VoiceParticipantJoinedMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            var channel = FindChannel(message.ChannelId);
-            if (channel is null) return;
-
-            // Avoid duplicates
-            if (channel.VoiceParticipants.Any(p => p.UserId == message.UserId))
-                return;
-
-            channel.VoiceParticipants.Add(new VoiceParticipantItem(message.UserId, message.Username, message.InstanceUrl)
-            {
-                IsMuted = message.IsMuted,
-                IsDeafened = message.IsDeafened,
-                IsScreenSharing = message.IsScreenSharing,
-            });
-        });
-    }
-
-    public void Receive(VoiceParticipantLeftMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            var channel = FindChannel(message.ChannelId);
-            if (channel is null) return;
-
-            var participant = channel.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
-            if (participant is not null)
-                channel.VoiceParticipants.Remove(participant);
-        });
-    }
-
-    public void Receive(VoiceStateChangedMessage message)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            IsInVoiceChannel = message.IsConnected;
-            CurrentVoiceChannelId = message.ChannelId;
-
-            if (message.IsConnected && message.ChannelId is not null)
-            {
-                var channel = FindChannel(message.ChannelId.Value);
-                CurrentVoiceChannelName = channel?.Name;
-            }
-            else
-            {
-                CurrentVoiceChannelName = null;
-                IsMuted = false;
-                IsDeafened = false;
-
-                // Reset screen share state
-                ActiveScreenShares.Clear();
-                WatchedScreenShares.Clear();
-                HasWatchedShares = false;
-                FocusedScreenShareUserId = null;
-                IsScreenSharing = false;
-                IsScreenShareMaximized = false;
-                ScreenShareFrame = null;
-                _poppedOutUserIds.Clear();
-
-                // Reset all speaking indicators
-                foreach (var group in ChannelGroups)
-                    foreach (var ch in group.Channels)
-                        foreach (var p in ch.VoiceParticipants)
-                            p.IsSpeaking = false;
-            }
-        });
-    }
-
-    private ChannelItem? FindChannel(Guid channelId)
-    {
-        foreach (var group in ChannelGroups)
-        {
-            var channel = group.Channels.FirstOrDefault(c => c.Id == channelId);
-            if (channel is not null) return channel;
-        }
-        return null;
-    }
-
-    private void UpdateLocalParticipantMuteState()
-    {
-        if (CurrentVoiceChannelId is null) return;
-        var channel = FindChannel(CurrentVoiceChannelId.Value);
-        var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == _currentUserId);
-        if (participant is not null)
-        {
-            participant.IsMuted = IsMuted;
-            participant.IsDeafened = IsDeafened;
-        }
-    }
-
-    public void Receive(VoiceMuteStateChangedMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            var channel = FindChannel(message.ChannelId);
-            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
-            if (participant is not null)
-                participant.IsMuted = message.IsMuted;
-        });
-    }
-
-    public void Receive(VoiceDeafenStateChangedMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            var channel = FindChannel(message.ChannelId);
-            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
-            if (participant is not null)
-                participant.IsDeafened = message.IsDeafened;
-        });
-    }
-
-    public void Receive(VoiceSpeakingChangedMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            var channel = FindChannel(message.ChannelId);
-            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
-            if (participant is not null)
-                participant.IsSpeaking = message.IsSpeaking;
-        });
-    }
-
-    public void Receive(VoicePeerStateChangedMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            var channel = FindChannel(message.ChannelId);
-            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
-            if (participant is not null)
-                participant.PeerState = message.State;
-        });
-    }
-
-    public void Receive(VoiceMuteToggledMessage message)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            IsMuted = message.IsMuted;
-            if (message.IsMuted && IsDeafened)
-            {
-                // Muting while deafened is fine, state is already consistent
-            }
-            UpdateLocalParticipantMuteState();
-        });
-    }
-
-    public void Receive(VoiceDeafenToggledMessage message)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            IsDeafened = message.IsDeafened;
-            if (message.IsDeafened)
-                IsMuted = true;
-            UpdateLocalParticipantMuteState();
-        });
-    }
-
-    // --- Screen Share ---
-
-    public class ScreenShareInfo(Guid userId, string username, string? instanceUrl)
-    {
-        public Guid UserId { get; } = userId;
-        public string Username { get; } = username;
-        public string? InstanceUrl { get; } = instanceUrl;
-    }
-
-    public ObservableCollection<ScreenShareInfo> ActiveScreenShares { get; } = [];
-    public ObservableCollection<ScreenShareInfo> WatchedScreenShares { get; } = [];
-
-    [ObservableProperty]
-    private bool _hasWatchedShares;
-
-    private readonly HashSet<Guid> _poppedOutUserIds = [];
-
-    [ObservableProperty]
-    private Guid? _focusedScreenShareUserId;
-
-    [ObservableProperty]
-    private bool _showOwnScreenShare;
-
-    [ObservableProperty]
-    private bool _showDebugOverlay;
-
-    public ScreenShareMetrics? DebugMetrics => FocusedScreenShareUserId is { } uid ? _voiceCallService.GetMetrics(uid) : null;
-
-    private int _queueDepth;
-
-    partial void OnFocusedScreenShareUserIdChanged(Guid? value)
-    {
-        OnPropertyChanged(nameof(DebugMetrics));
-    }
-
-    [ObservableProperty]
-    private bool _isScreenSharing;
-
-    [ObservableProperty]
-    private bool _showTileView;
-
-    [ObservableProperty]
-    private WriteableBitmap? _screenShareFrame;
-
-    [ObservableProperty]
-    private double _cursorX;
-
-    [ObservableProperty]
-    private double _cursorY;
-
-    [ObservableProperty]
-    private CursorType _cursorShape;
-
-    [ObservableProperty]
-    private bool _cursorVisible = true;
-
-    public List<string> ShareResolutionOptions { get; } = ["720p", "1080p", "1440p", "Native"];
-    public List<int> ShareFrameRateOptions { get; } = [15, 30, 60];
-
-    [ObservableProperty]
-    private string _shareResolution = "1080p";
-
-    [ObservableProperty]
-    private int _shareBitrateKbps = 1500;
-
-    [ObservableProperty]
-    private int _shareFrameRate = 30;
-
-    [RelayCommand]
-    private async Task StartScreenShare()
-    {
-        try
-        {
-            if (_voiceCallService.IsNativePickerAvailable)
-            {
-                // macOS 14+: use native picker with saved settings
-                var settings = await _settingsStore.LoadAsync();
-                ShareResolution = settings.ScreenShareResolution;
-                ShareBitrateKbps = settings.ScreenShareBitrateKbps;
-                ShareFrameRate = settings.ScreenShareFrameRate;
-                await _voiceCallService.StartScreenShareWithPickerAsync(
-                    ShareResolution, ShareBitrateKbps, ShareFrameRate);
-            }
-            else
-            {
-                // Fallback: custom picker dialog
-                var targets = await _voiceCallService.GetScreenShareTargetsAsync();
-                if (targets.Count == 0)
-                {
-                    _logger.LogWarning("No screen share targets available");
-                    return;
-                }
-
-                var settings = await _settingsStore.LoadAsync();
-                var vm = new ScreenSharePickerViewModel(dialogManager, _settingsStore, settings, targets);
-                dialogManager.CreateDialog(vm)
-                    .Dismissible()
-                    .WithSuccessCallback<ScreenSharePickerViewModel>(async ctx =>
-                    {
-                        if (ctx.Result is not null)
-                        {
-                            ShareResolution = ctx.Result.Resolution;
-                            ShareBitrateKbps = ctx.Result.BitrateKbps;
-                            ShareFrameRate = ctx.Result.FrameRate;
-                            await _voiceCallService.StartScreenShareAsync(
-                                ctx.Result.Target, ctx.Result.Resolution, ctx.Result.BitrateKbps, ctx.Result.FrameRate);
-                        }
-                    })
-                    .Show();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to start screen share");
-        }
-    }
-
-    [RelayCommand]
-    private async Task UpdateScreenShareSettings()
-    {
-        try
-        {
-            await _voiceCallService.UpdateScreenShareSettingsAsync(ShareResolution, ShareBitrateKbps, ShareFrameRate);
-
-            // Persist as new defaults
-            var settings = await _settingsStore.LoadAsync();
-            settings.ScreenShareResolution = ShareResolution;
-            settings.ScreenShareBitrateKbps = ShareBitrateKbps;
-            settings.ScreenShareFrameRate = ShareFrameRate;
-            await _settingsStore.SaveAsync(settings);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to update screen share settings");
-        }
-    }
-
-    [RelayCommand]
-    private async Task StopScreenShare()
-    {
-        try
-        {
-            await _voiceCallService.StopScreenShareAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to stop screen share");
-        }
-    }
-
-    [ObservableProperty]
-    private bool _isScreenShareMaximized;
-
-    [RelayCommand]
-    private void ToggleTileView()
-    {
-        ShowTileView = !ShowTileView;
-    }
-
-    [RelayCommand]
-    private void ToggleScreenShareMaximize()
-    {
-        IsScreenShareMaximized = !IsScreenShareMaximized;
-    }
-
-    [RelayCommand]
-    private void ExitScreenShareMaximize()
-    {
-        IsScreenShareMaximized = false;
-    }
-
-    [RelayCommand]
-    private void PopOutScreenShare()
-    {
-        if (FocusedScreenShareUserId is null) return;
-        var share = ActiveScreenShares.FirstOrDefault(s => s.UserId == FocusedScreenShareUserId);
-        if (share is null) return;
-        _messenger.Send(new ScreenSharePopOutRequestedMessage(share.UserId, share.Username));
-    }
-
-    [RelayCommand]
-    private void ToggleShowOwnScreenShare()
-    {
-        ShowOwnScreenShare = !ShowOwnScreenShare;
-
-        if (ShowOwnScreenShare)
-        {
-            // If own share is active and nothing focused, focus it
-            if (FocusedScreenShareUserId is null && WatchedScreenShares.Any(s => s.UserId == _currentUserId))
-                FocusedScreenShareUserId = _currentUserId;
-        }
-        else
-        {
-            // If own share is focused, move to next and clear stale frame
-            if (FocusedScreenShareUserId == _currentUserId)
-            {
-                FocusedScreenShareUserId = FindNextFocusableShare(null);
-                if (FocusedScreenShareUserId is null)
-                    ScreenShareFrame = null;
-            }
-        }
-    }
-
-    [RelayCommand]
-    private void WatchScreenShare(Guid userId)
-    {
-        if (WatchedScreenShares.Any(s => s.UserId == userId))
-            return;
-
-        var share = ActiveScreenShares.FirstOrDefault(s => s.UserId == userId);
-
-        // If the ViewModel missed the ScreenShareStarted broadcast (e.g. late joiner),
-        // sync from VoiceCallService which tracks sharers at the transport level.
-        if (share is null)
-        {
-            var voiceSharer = _voiceCallService.ActiveScreenSharers.FirstOrDefault(s => s.UserId == userId);
-            if (voiceSharer is not null)
-            {
-                share = new ScreenShareInfo(voiceSharer.UserId, voiceSharer.Username, voiceSharer.InstanceUrl);
-                ActiveScreenShares.Add(share);
-            }
-        }
-
-        if (share is null) return;
-
-        WatchedScreenShares.Add(share);
-        HasWatchedShares = true;
-        FocusedScreenShareUserId = userId;
-
-        // Signal the sharer that we're watching
-        _ = _voiceCallService.WatchScreenShareAsync(userId);
-    }
-
-    [RelayCommand]
-    private void UnwatchScreenShare(Guid userId)
-    {
-        var share = WatchedScreenShares.FirstOrDefault(s => s.UserId == userId);
-        if (share is null) return;
-
-        // Signal the sharer that we stopped watching
-        _ = _voiceCallService.UnwatchScreenShareAsync(userId);
-
-        WatchedScreenShares.Remove(share);
-        HasWatchedShares = WatchedScreenShares.Count > 0;
-
-        if (FocusedScreenShareUserId == userId)
-        {
-            FocusedScreenShareUserId = FindNextFocusableShare(null);
-            if (FocusedScreenShareUserId is null)
-                ScreenShareFrame = null;
-        }
-
-        if (WatchedScreenShares.Count == 0)
-            IsScreenShareMaximized = false;
-    }
-
-    public void Receive(ControlWatchScreenShareMessage message)
-    {
-        Dispatcher.UIThread.Post(() => WatchScreenShare(message.UserId));
-    }
-
-    public void Receive(ControlUnwatchScreenShareMessage message)
-    {
-        Dispatcher.UIThread.Post(() => UnwatchScreenShare(message.UserId));
-    }
-
-    [RelayCommand]
-    private void FocusScreenShare(Guid userId)
-    {
-        FocusedScreenShareUserId = userId;
-    }
-
-    private Guid? FindNextFocusableShare(Guid? excludeUserId)
-    {
-        return WatchedScreenShares
-            .Where(s => s.UserId != excludeUserId)
-            .Where(s => !_poppedOutUserIds.Contains(s.UserId))
-            .Where(s => s.UserId != _currentUserId || ShowOwnScreenShare)
-            .FirstOrDefault()?.UserId;
-    }
-
-    public void Receive(ScreenSharePopOutRequestedMessage message)
-    {
-        _poppedOutUserIds.Add(message.UserId);
-
-        if (FocusedScreenShareUserId == message.UserId)
-        {
-            FocusedScreenShareUserId = FindNextFocusableShare(message.UserId);
-            ScreenShareFrame = null;
-        }
-    }
-
-    public void Receive(ScreenSharePopOutClosedMessage message)
-    {
-        _poppedOutUserIds.Remove(message.UserId);
-
-        // Re-focus if nothing is focused and this share is still watched
-        if (FocusedScreenShareUserId is null && WatchedScreenShares.Any(s => s.UserId == message.UserId))
-            FocusedScreenShareUserId = message.UserId;
-    }
-
-    public void Receive(ScreenShareStartedMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (ActiveScreenShares.Any(s => s.UserId == message.UserId))
-                return;
-
-            ActiveScreenShares.Add(new ScreenShareInfo(message.UserId, message.Username, message.InstanceUrl));
-
-            if (message.UserId == _currentUserId)
-                IsScreenSharing = true;
-
-            // Update participant indicator
-            var channel = FindChannel(message.ChannelId);
-            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
-            if (participant is not null)
-                participant.IsScreenSharing = true;
-        });
-    }
-
-    public void Receive(ScreenShareStoppedMessage message)
-    {
-        if (message.ServerId != ServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            var share = ActiveScreenShares.FirstOrDefault(s => s.UserId == message.UserId);
-            if (share != null)
-                ActiveScreenShares.Remove(share);
-
-            // Clean up watched + popped-out state for stopped share
-            var watched = WatchedScreenShares.FirstOrDefault(s => s.UserId == message.UserId);
-            if (watched != null)
-            {
-                WatchedScreenShares.Remove(watched);
-                HasWatchedShares = WatchedScreenShares.Count > 0;
-            }
-            _poppedOutUserIds.Remove(message.UserId);
-
-            if (FocusedScreenShareUserId == message.UserId)
-                FocusedScreenShareUserId = FindNextFocusableShare(null);
-
-            if (message.UserId == _currentUserId)
-                IsScreenSharing = false;
-
-            if (WatchedScreenShares.Count == 0)
-            {
-                ScreenShareFrame = null;
-                IsScreenShareMaximized = false;
-            }
-
-            // Update participant indicator
-            var channel = FindChannel(message.ChannelId);
-            var participant = channel?.VoiceParticipants.FirstOrDefault(p => p.UserId == message.UserId);
-            if (participant is not null)
-                participant.IsScreenSharing = false;
-        });
-    }
-
-    public void Receive(ScreenShareFrameMessage message)
-    {
-        // Only render frames from the focused share
-        if (FocusedScreenShareUserId != message.UserId)
-            return;
-
-        // Don't render popped-out or own stream (when toggled off)
-        if (_poppedOutUserIds.Contains(message.UserId))
-            return;
-        if (message.UserId == _currentUserId && !ShowOwnScreenShare)
-            return;
-
-        var metrics = DebugMetrics;
-        Interlocked.Increment(ref _queueDepth);
-        metrics?.QueueDepth.Add(Interlocked.CompareExchange(ref _queueDepth, 0, 0));
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            Interlocked.Decrement(ref _queueDepth);
-
-            try
-            {
-                var sw = Stopwatch.StartNew();
-
-                if (ScreenShareFrame is null
-                    || ScreenShareFrame.PixelSize.Width != message.Width
-                    || ScreenShareFrame.PixelSize.Height != message.Height)
-                {
-                    ScreenShareFrame = new WriteableBitmap(
-                        new Avalonia.PixelSize(message.Width, message.Height),
-                        new Avalonia.Vector(96, 96),
-                        Avalonia.Platform.PixelFormat.Rgba8888,
-                        Avalonia.Platform.AlphaFormat.Unpremul);
-                }
-
-                using (var frameBuffer = ScreenShareFrame.Lock())
-                {
-                    var srcStride = message.Width * 4;
-                    var dstStride = frameBuffer.RowBytes;
-
-                    if (srcStride == dstStride)
-                    {
-                        System.Runtime.InteropServices.Marshal.Copy(
-                            message.RgbaData, 0, frameBuffer.Address, message.RgbaData.Length);
-                    }
-                    else
-                    {
-                        // Copy row-by-row to handle stride padding
-                        for (int y = 0; y < message.Height; y++)
-                        {
-                            System.Runtime.InteropServices.Marshal.Copy(
-                                message.RgbaData, y * srcStride,
-                                frameBuffer.Address + y * dstStride, srcStride);
-                        }
-                    }
-                }
-
-                sw.Stop();
-                metrics?.BitmapCopyTimeMs.Add(sw.Elapsed.TotalMilliseconds);
-                metrics?.FrameLagMs.Add(Stopwatch.GetElapsedTime(message.Timestamp).TotalMilliseconds);
-
-                // Force re-render — writing pixels doesn't change the property reference
-                OnPropertyChanged(nameof(ScreenShareFrame));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Failed to render screen share frame");
-            }
-        });
-    }
-
-    public void Receive(ScreenShareCursorMessage message)
-    {
-        if (FocusedScreenShareUserId != message.UserId)
-            return;
-
-        if (_poppedOutUserIds.Contains(message.UserId))
-            return;
-        if (message.UserId == _currentUserId && !ShowOwnScreenShare)
-            return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            CursorX = message.X;
-            CursorY = message.Y;
-            CursorShape = message.Type;
-            CursorVisible = message.IsVisible;
-        });
-    }
-
-    // --- End Voice ---
+    // --- Messages ---
 
     private async Task LoadMessagesAsync()
     {
@@ -1513,15 +722,13 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         try
         {
             var membersResponse = await client.Server.ListMembersAsync(instanceUrl, ServerId);
-            _allMembers = membersResponse.Members;
-            ServerMembers = membersResponse.Members.Select(m => m.Name).ToList();
+            Presence.SetMembers(membersResponse.Members);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to load server members");
         }
 
-        // Subscribe to server-level events (voice presence)
         try
         {
             await _messageHubService.SubscribeToServerAsync(ServerId);
@@ -1531,20 +738,15 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             _logger.LogWarning(ex, "Failed to subscribe to server group");
         }
 
-        // Fetch initial presence
         try
         {
             var presence = await _messageHubService.GetServerPresenceAsync(ServerId);
-            _onlineUsers.Clear();
-            foreach (var entry in presence)
-                _onlineUsers[entry.UserId] = (entry.Username, entry.InstanceUrl);
-            RebuildMemberLists();
+            Presence.SetPresence(presence);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to load server presence");
-            // Show all members as offline
-            RebuildMemberLists();
+            Presence.SetPresence([]);
         }
 
         var groups = await serverStore.GetChannelGroupsAsync(instanceUrl, client, ServerId);
@@ -1560,15 +762,13 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 ChannelGroups.Add(new ChannelGroupItem(group.ChannelGroupId, group.Name, channelItems));
             }
 
-            // Populate existing voice participants
             try
             {
                 var voiceState = await _messageHubService.GetServerVoiceStateAsync(ServerId, instanceUrl);
-                var screenSharerIds = _voiceCallService.ActiveScreenSharers
-                    .Select(s => s.UserId).ToHashSet();
+                var screenSharerIds = ScreenShareWatcher.ActiveScreenShares.Select(s => s.UserId).ToHashSet();
                 foreach (var (channelId, participants) in voiceState)
                 {
-                    var channel = FindChannel(channelId);
+                    var channel = VoiceParticipants.FindChannel(channelId);
                     if (channel is null) continue;
                     foreach (var p in participants)
                     {
@@ -1584,20 +784,13 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 _logger.LogWarning(ex, "Failed to fetch voice state");
             }
 
-            // Restore voice channel name now that channels are loaded
-            if (IsInVoiceChannel && CurrentVoiceChannelId is not null && CurrentVoiceChannelName is null)
-            {
-                var voiceChannel = FindChannel(CurrentVoiceChannelId.Value);
-                CurrentVoiceChannelName = voiceChannel?.Name;
-            }
+            VoiceCall.RestoreVoiceChannelName();
 
             if (SelectedChannel is null)
             {
                 var firstChannel = ChannelGroups.FirstOrDefault()?.Channels.FirstOrDefault();
                 if (firstChannel is not null)
-                {
                     await SelectChannel(firstChannel);
-                }
             }
         }
     }
