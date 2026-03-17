@@ -220,6 +220,7 @@ public class ControlServer : IDisposable
                 username = s.Username,
                 instanceUrl = s.InstanceUrl,
             }).ToList(),
+            peerStates = voice.PeerStates.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
         });
     }
 

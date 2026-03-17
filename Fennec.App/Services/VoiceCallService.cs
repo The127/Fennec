@@ -32,6 +32,7 @@ public interface IVoiceCallService
     bool IsScreenSharing { get; }
     bool IsNativePickerAvailable { get; }
     IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers { get; }
+    IReadOnlyDictionary<Guid, string> PeerStates { get; }
     ScreenShareMetrics GetMetrics(Guid userId);
 }
 
@@ -92,6 +93,8 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _screenCapture is ScreenCapture.MacOsScreenCaptureService &&
         ScreenCapture.MacOsScreenCaptureService.IsNativePickerAvailable;
     public IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers => _activeScreenSharers;
+    public IReadOnlyDictionary<Guid, string> PeerStates =>
+        _peers.ToDictionary(kv => kv.Key, kv => kv.Value.connectionState.ToString());
 
     public ScreenShareMetrics GetMetrics(Guid userId)
     {
