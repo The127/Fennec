@@ -122,6 +122,10 @@ public class ControlServer : IDisposable
             return await HandleVoiceJoinAsync(request);
         if (method == "POST" && path == "/voice/leave")
             return await HandleVoiceLeaveAsync();
+        if (method == "POST" && path == "/voice/mute")
+            return await HandleVoiceMuteAsync(request);
+        if (method == "POST" && path == "/voice/deafen")
+            return await HandleVoiceDeafenAsync(request);
 
         // Screen share
         if (method == "GET" && path == "/screen-share/targets")
@@ -131,9 +135,17 @@ public class ControlServer : IDisposable
         if (method == "POST" && path == "/screen-share/stop")
             return await HandleScreenShareStopAsync();
         if (method == "POST" && path.StartsWith("/screen-share/watch/"))
-            return HandleScreenShareWatch(path);
+            return await HandleScreenShareWatchAsync(path);
         if (method == "POST" && path.StartsWith("/screen-share/unwatch/"))
-            return HandleScreenShareUnwatch(path);
+            return await HandleScreenShareUnwatchAsync(path);
+        if (method == "POST" && path == "/screen-share/update")
+            return await HandleScreenShareUpdateAsync(request);
+        if (method == "POST" && path == "/screen-share/change-target")
+            return await HandleScreenShareChangeTargetAsync(request);
+        if (method == "GET" && path.StartsWith("/screen-share/metrics/"))
+            return HandleGetScreenShareMetrics(path);
+        if (method == "GET" && path.StartsWith("/screen-share/receiving/"))
+            return HandleGetScreenShareReceiving(path);
 
         // Navigation
         if (method == "POST" && path.StartsWith("/navigate/server/"))
@@ -258,6 +270,30 @@ public class ControlServer : IDisposable
         return (200, new { ok = true });
     }
 
+    private async Task<(int, object)> HandleVoiceMuteAsync(HttpListenerRequest request)
+    {
+        var voice = _services.GetRequiredService<IVoiceCallService>();
+        if (!voice.IsConnected)
+            return (400, new { error = "Not in a voice channel" });
+
+        var body = await ReadBodyAsync<MuteRequest>(request);
+        var muted = body?.Muted ?? !voice.IsMuted;
+        voice.SetMuted(muted);
+        return (200, new { isMuted = voice.IsMuted });
+    }
+
+    private async Task<(int, object)> HandleVoiceDeafenAsync(HttpListenerRequest request)
+    {
+        var voice = _services.GetRequiredService<IVoiceCallService>();
+        if (!voice.IsConnected)
+            return (400, new { error = "Not in a voice channel" });
+
+        var body = await ReadBodyAsync<DeafenRequest>(request);
+        var deafened = body?.Deafened ?? !voice.IsDeafened;
+        voice.SetDeafened(deafened);
+        return (200, new { isDeafened = voice.IsDeafened, isMuted = voice.IsMuted });
+    }
+
     // --- Screen Share ---
 
     private async Task<(int, object)> HandleGetScreenShareTargetsAsync()
@@ -288,6 +324,9 @@ public class ControlServer : IDisposable
         var bitrateKbps = body?.BitrateKbps ?? 1500;
         var frameRate = body?.FrameRate ?? 30;
 
+        if (voice.IsScreenSharing)
+            return (409, new { error = "Already screen sharing" });
+
         if (body?.TargetId is not null)
         {
             var targets = await voice.GetScreenShareTargetsAsync();
@@ -307,7 +346,10 @@ public class ControlServer : IDisposable
             await voice.StartScreenShareAsync(target, resolution, bitrateKbps, frameRate);
         }
 
-        return (200, new { ok = true });
+        if (!voice.IsScreenSharing)
+            return (500, new { error = "Screen share failed to start" });
+
+        return (200, new { ok = true, isScreenSharing = true });
     }
 
     private async Task<(int, object)> HandleScreenShareStopAsync()
@@ -317,28 +359,152 @@ public class ControlServer : IDisposable
         return (200, new { ok = true });
     }
 
-    private (int, object) HandleScreenShareWatch(string path)
+    private async Task<(int, object)> HandleScreenShareUpdateAsync(HttpListenerRequest request)
+    {
+        var voice = _services.GetRequiredService<IVoiceCallService>();
+        if (!voice.IsScreenSharing)
+            return (400, new { error = "Not screen sharing" });
+
+        var body = await ReadBodyAsync<ScreenShareUpdateRequest>(request);
+        if (body is null)
+            return (400, new { error = "Request body required" });
+
+        var resolution = body.Resolution ?? "1080p";
+        var bitrateKbps = body.BitrateKbps ?? 1500;
+        var frameRate = body.FrameRate ?? 30;
+
+        await voice.UpdateScreenShareSettingsAsync(resolution, bitrateKbps, frameRate);
+        return (200, new { ok = true, resolution, bitrateKbps, frameRate });
+    }
+
+    private async Task<(int, object)> HandleScreenShareChangeTargetAsync(HttpListenerRequest request)
+    {
+        var voice = _services.GetRequiredService<IVoiceCallService>();
+        if (!voice.IsScreenSharing)
+            return (400, new { error = "Not screen sharing" });
+
+        var body = await ReadBodyAsync<ScreenShareStartRequest>(request);
+        var resolution = body?.Resolution ?? "1080p";
+        var bitrateKbps = body?.BitrateKbps ?? 1500;
+        var frameRate = body?.FrameRate ?? 30;
+
+        // Stop current share and start with new target
+        await voice.StopScreenShareAsync();
+        // Brief delay to let cleanup complete
+        await Task.Delay(500);
+
+        if (body?.TargetId is not null)
+        {
+            var targets = await voice.GetScreenShareTargetsAsync();
+            var target = targets.FirstOrDefault(t => t.Id == body.TargetId);
+            if (target is null)
+                return (404, new { error = $"Target '{body.TargetId}' not found" });
+            await voice.StartScreenShareAsync(target, resolution, bitrateKbps, frameRate);
+        }
+        else
+        {
+            var targets = await voice.GetScreenShareTargetsAsync();
+            var target = targets.FirstOrDefault(t => t.Kind == CaptureTargetKind.Screen)
+                         ?? targets.FirstOrDefault();
+            if (target is null)
+                return (404, new { error = "No capture targets available" });
+            await voice.StartScreenShareAsync(target, resolution, bitrateKbps, frameRate);
+        }
+
+        return (200, new { ok = true });
+    }
+
+    private async Task<(int, object)> HandleScreenShareWatchAsync(string path)
     {
         // /screen-share/watch/{userId}
         var segment = path["/screen-share/watch/".Length..];
         if (!Guid.TryParse(segment, out var userId))
             return (400, new { error = "Invalid userId" });
 
+        var voice = _services.GetRequiredService<IVoiceCallService>();
+        if (!voice.IsConnected)
+            return (400, new { error = "Not in a voice channel" });
+
+        // Call VoiceCallService directly to avoid depending on ViewModel state
+        await voice.WatchScreenShareAsync(userId);
+
+        // Also notify the UI so the ViewModel updates its watched shares list
         var messenger = _services.GetRequiredService<IMessenger>();
         Dispatcher.UIThread.Post(() => messenger.Send(new ControlWatchScreenShareMessage(userId)));
         return (200, new { ok = true });
     }
 
-    private (int, object) HandleScreenShareUnwatch(string path)
+    private async Task<(int, object)> HandleScreenShareUnwatchAsync(string path)
     {
         // /screen-share/unwatch/{userId}
         var segment = path["/screen-share/unwatch/".Length..];
         if (!Guid.TryParse(segment, out var userId))
             return (400, new { error = "Invalid userId" });
 
+        var voice = _services.GetRequiredService<IVoiceCallService>();
+        if (!voice.IsConnected)
+            return (400, new { error = "Not in a voice channel" });
+
+        await voice.UnwatchScreenShareAsync(userId);
+
         var messenger = _services.GetRequiredService<IMessenger>();
         Dispatcher.UIThread.Post(() => messenger.Send(new ControlUnwatchScreenShareMessage(userId)));
         return (200, new { ok = true });
+    }
+
+    private (int, object) HandleGetScreenShareMetrics(string path)
+    {
+        // /screen-share/metrics/{userId}
+        var segment = path["/screen-share/metrics/".Length..];
+        if (!Guid.TryParse(segment, out var userId))
+            return (400, new { error = "Invalid userId" });
+
+        var voice = _services.GetRequiredService<IVoiceCallService>();
+        var m = voice.GetMetrics(userId);
+        return (200, new
+        {
+            isSender = m.IsSender,
+            // Sender metrics
+            captureFps = m.CaptureFps.Latest,
+            encodeTimeMs = m.EncodeTimeMs.Latest,
+            encodedSizeKb = m.EncodedSizeKb.Latest,
+            sentFps = m.SentFps.Latest,
+            captureWidth = m.CaptureWidth,
+            captureHeight = m.CaptureHeight,
+            framesEncoded = m.FramesEncoded,
+            framesSent = m.FramesSent,
+            framesDropped = m.FramesDropped,
+            encoderName = m.EncoderName,
+            viewerCount = m.ViewerCount,
+            // Receiver metrics
+            transportFps = m.TransportFps.Latest,
+            receiveFps = m.ReceiveFps.Latest,
+            decodeTimeMs = m.DecodeTimeMs.Latest,
+            framesReceived = m.FramesReceived,
+            framesDecoded = m.FramesDecoded,
+            // UI metrics
+            renderFps = m.RenderFps.Latest,
+            queueDepth = m.QueueDepth.Latest,
+            frameLagMs = m.FrameLagMs.Latest,
+        });
+    }
+
+    private (int, object) HandleGetScreenShareReceiving(string path)
+    {
+        // /screen-share/receiving/{userId}
+        var segment = path["/screen-share/receiving/".Length..];
+        if (!Guid.TryParse(segment, out var userId))
+            return (400, new { error = "Invalid userId" });
+
+        var voice = _services.GetRequiredService<IVoiceCallService>();
+        var m = voice.GetMetrics(userId);
+        var isReceiving = m.FramesReceived > 0 && m.ReceiveFps.Latest > 0;
+        return (200, new
+        {
+            isReceiving,
+            framesReceived = m.FramesReceived,
+            receiveFps = m.ReceiveFps.Latest,
+        });
     }
 
     // --- Navigation ---
@@ -415,9 +581,26 @@ file record VoiceJoinRequest
     public string? InstanceUrl { get; init; }
 }
 
+file record MuteRequest
+{
+    public bool? Muted { get; init; }
+}
+
+file record DeafenRequest
+{
+    public bool? Deafened { get; init; }
+}
+
 file record ScreenShareStartRequest
 {
     public string? TargetId { get; init; }
+    public string? Resolution { get; init; }
+    public int? BitrateKbps { get; init; }
+    public int? FrameRate { get; init; }
+}
+
+file record ScreenShareUpdateRequest
+{
     public string? Resolution { get; init; }
     public int? BitrateKbps { get; init; }
     public int? FrameRate { get; init; }

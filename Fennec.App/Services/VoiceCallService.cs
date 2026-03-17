@@ -93,8 +93,20 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         _screenCapture is ScreenCapture.MacOsScreenCaptureService &&
         ScreenCapture.MacOsScreenCaptureService.IsNativePickerAvailable;
     public IReadOnlyList<ActiveScreenSharer> ActiveScreenSharers => _activeScreenSharers;
-    public IReadOnlyDictionary<Guid, string> PeerStates =>
-        _peers.ToDictionary(kv => kv.Key, kv => kv.Value.connectionState.ToString());
+    public IReadOnlyDictionary<Guid, string> PeerStates
+    {
+        get
+        {
+            try
+            {
+                return _peers.ToArray().ToDictionary(kv => kv.Key, kv => kv.Value.connectionState.ToString());
+            }
+            catch
+            {
+                return new Dictionary<Guid, string>();
+            }
+        }
+    }
 
     public ScreenShareMetrics GetMetrics(Guid userId)
     {
@@ -1194,7 +1206,34 @@ public class VoiceCallService : IVoiceCallService, IDisposable
             }
             else
             {
-                reused = true;
+                // Check if the remote rebuilt its peer (new ICE credentials).
+                // If the offer's ice-ufrag differs from the existing peer's remote ufrag,
+                // we must also create a fresh peer — otherwise ICE will never complete.
+                var offerUfrag = ExtractIceUfrag(sdp);
+                var existingRemoteUfrag = pc.RemoteDescription != null ? ExtractIceUfrag(pc.RemoteDescription.ToString()) : null;
+                if (offerUfrag != null && existingRemoteUfrag != null && offerUfrag != existingRemoteUfrag)
+                {
+                    _logger.LogInformation("ScreenShare: Remote {UserId} rebuilt peer (ufrag {Old} → {New}), creating fresh peer",
+                        fromUserId, existingRemoteUfrag, offerUfrag);
+                    if (_peers.Remove(fromUserId, out var staleReusePc))
+                        staleReusePc.Dispose();
+                    _recvVideoTrackPeers.Remove(fromUserId);
+                    _loggedFirstVideoRtp.Remove(fromUserId);
+                    _loggedFirstVideoFrame.Remove(fromUserId);
+                    if (_cursorDataChannels.Remove(fromUserId, out var staleReuseDc))
+                    {
+                        try { staleReuseDc.close(); } catch { }
+                    }
+                    _videoStreamNullSince.Remove(fromUserId);
+
+                    pc = CreatePeerConnection(fromUserId);
+                    _peers[fromUserId] = pc;
+                    reused = false;
+                }
+                else
+                {
+                    reused = true;
+                }
             }
 
             var hasVideo = sdp.Contains("m=video");
@@ -1430,6 +1469,17 @@ public class VoiceCallService : IVoiceCallService, IDisposable
     /// <summary>
     /// Parses Annex B formatted data into individual NAL units (without start codes).
     /// </summary>
+    private static string? ExtractIceUfrag(string sdp)
+    {
+        foreach (var line in sdp.Split('\n'))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith("a=ice-ufrag:"))
+                return trimmed["a=ice-ufrag:".Length..];
+        }
+        return null;
+    }
+
     private static List<byte[]> ParseAnnexBNals(byte[] data)
     {
         var nals = new List<byte[]>();

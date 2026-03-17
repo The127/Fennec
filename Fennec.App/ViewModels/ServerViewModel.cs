@@ -1126,6 +1126,19 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             return;
 
         var share = ActiveScreenShares.FirstOrDefault(s => s.UserId == userId);
+
+        // If the ViewModel missed the ScreenShareStarted broadcast (e.g. late joiner),
+        // sync from VoiceCallService which tracks sharers at the transport level.
+        if (share is null)
+        {
+            var voiceSharer = _voiceCallService.ActiveScreenSharers.FirstOrDefault(s => s.UserId == userId);
+            if (voiceSharer is not null)
+            {
+                share = new ScreenShareInfo(voiceSharer.UserId, voiceSharer.Username, voiceSharer.InstanceUrl);
+                ActiveScreenShares.Add(share);
+            }
+        }
+
         if (share is null) return;
 
         WatchedScreenShares.Add(share);
