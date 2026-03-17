@@ -581,3 +581,6 @@ native/build/
 
 # Local dev secrets
 private.pem
+
+# Smoke test environment (contains IPs, hostnames, etc.)
+k8s/smoke.env

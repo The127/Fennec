@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: smoke-test-template
+  namespace: fennec-test
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: smoke-test
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: test-runner
+          image: fennec-test-runner:latest
+          imagePullPolicy: Never
+          env:
+            - name: LOCAL
+              value: "http://fennec-app-local:8310"
+            - name: MINI
+              value: "http://fennec-app-mini:8310"
+            - name: RESTART_MODE
+              value: "k8s"
+            - name: EXIT_ON_FAIL
+              value: "0"

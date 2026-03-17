@@ -42,6 +42,62 @@ release bump="patch":
     git tag "$new_tag"
     git push origin "$new_tag"
 
+# build smoke test container images and import into k3s
+smoke-build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source k8s/smoke.env
+    docker build -t fennec-api -f Fennec.Api/Dockerfile .
+    docker build -t fennec-app-linux -f Fennec.App.Desktop/Dockerfile.smoke .
+    docker build -t fennec-test-runner -f smoke-tests/Dockerfile .
+    docker build -t fennec-mac-launcher -f k8s/mac-launcher/Dockerfile .
+    echo "Importing images into k3s on ${SMOKE_K3S_HOST}..."
+    docker save fennec-api fennec-app-linux fennec-test-runner fennec-mac-launcher | ssh "$SMOKE_K3S_HOST" 'sudo k3s ctr images import -'
+
+# deploy and run smoke tests on k3s
+smoke-test: smoke-build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source k8s/smoke.env
+    export SMOKE_NODE_IP SMOKE_DOMAIN SMOKE_MINI_IP SMOKE_MINI_SSH_USER SMOKE_SOURCE_PATH
+    NS=fennec-test
+
+    # Sync source to k3s node for mac-launcher hostPath mount
+    rsync -az --delete --exclude .git/ --exclude bin/ --exclude obj/ . "${SMOKE_K3S_HOST}:${SMOKE_SOURCE_PATH}/"
+
+    # Apply static manifests
+    kubectl apply -f k8s/namespace.yaml
+    kubectl apply -f k8s/postgres-seed-configmap.yaml
+    kubectl apply -f k8s/postgres.yaml
+
+    # Apply templated manifests via envsubst
+    envsubst < k8s/fennec-api.yaml | kubectl apply -f -
+    envsubst < k8s/fennec-app-local.yaml | kubectl apply -f -
+    envsubst < k8s/fennec-app-mini.yaml | kubectl apply -f -
+    envsubst < k8s/ingress.yaml | kubectl apply -f -
+
+    # Wait for core services
+    kubectl wait --for=condition=available deployment/postgres -n $NS --timeout=60s
+    kubectl wait --for=condition=available deployment/fennec-api -n $NS --timeout=120s
+
+    # Run seed job (idempotent — skips if data exists)
+    kubectl delete job seed-db -n $NS --ignore-not-found
+    kubectl apply -f k8s/seed-job.yaml
+    kubectl wait --for=condition=complete job/seed-db -n $NS --timeout=120s
+
+    # Wait for app instances
+    kubectl wait --for=condition=available deployment/fennec-app-local -n $NS --timeout=120s
+
+    # Run smoke tests
+    kubectl delete job smoke-test-template -n $NS --ignore-not-found
+    kubectl apply -f k8s/test-runner.yaml
+    kubectl wait --for=condition=complete job/smoke-test-template -n $NS --timeout=600s || true
+    kubectl logs job/smoke-test-template -n $NS
+
+# tear down the smoke test k3s environment
+smoke-teardown:
+    kubectl delete namespace fennec-test --ignore-not-found
+
 # build native video library for Windows (x64)
 build-native-windows:
     cmake -S native -B native/build-windows -DCMAKE_BUILD_TYPE=Release

@@ -1,0 +1,85 @@
+# Mac Mini app is launched via SSH from the mac-launcher Job.
+# The Service + Endpoints route cluster traffic to the Mac Mini's real IP.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mac-launcher
+  namespace: fennec-test
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: mac-launcher
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mac-launcher
+          image: fennec-mac-launcher:latest
+          imagePullPolicy: Never
+          env:
+            - name: MINI_HOST
+              value: "${SMOKE_MINI_IP}"
+            - name: MINI_USER
+              value: "${SMOKE_MINI_SSH_USER}"
+            - name: FENNEC_NO_UPDATE
+              value: "1"
+            - name: FENNEC_AUTO_LOGIN
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: FENNEC_AUTO_LOGIN_MINI
+            - name: FENNEC_AUTO_LOGIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: FENNEC_AUTO_LOGIN_PASSWORD_MINI
+            - name: FENNEC_AUTO_JOIN_SERVER
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: FENNEC_AUTO_JOIN_SERVER
+            - name: FENNEC_AUTO_JOIN_CHANNEL
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: FENNEC_AUTO_JOIN_CHANNEL
+          volumeMounts:
+            - name: ssh-key
+              mountPath: /ssh
+              readOnly: true
+            - name: source
+              mountPath: /src
+              readOnly: true
+      volumes:
+        - name: ssh-key
+          secret:
+            secretName: mac-mini-ssh
+            defaultMode: 0400
+        - name: source
+          hostPath:
+            path: ${SMOKE_SOURCE_PATH}
+            type: Directory
+---
+# Headless service pointing to the Mac Mini's real IP
+apiVersion: v1
+kind: Service
+metadata:
+  name: fennec-app-mini
+  namespace: fennec-test
+spec:
+  clusterIP: None
+  ports:
+    - port: 8310
+      targetPort: 8310
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: fennec-app-mini
+  namespace: fennec-test
+subsets:
+  - addresses:
+      - ip: ${SMOKE_MINI_IP}
+    ports:
+      - port: 8310

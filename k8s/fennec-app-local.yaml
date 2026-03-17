@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fennec-app-local
+  namespace: fennec-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fennec-app-local
+  template:
+    metadata:
+      labels:
+        app: fennec-app-local
+    spec:
+      hostAliases:
+        - ip: "${SMOKE_NODE_IP}"
+          hostnames:
+            - ${SMOKE_DOMAIN}
+      containers:
+        - name: fennec-app
+          image: fennec-app-linux:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8310
+            - containerPort: 5900
+            - containerPort: 6080
+          volumeMounts:
+            - name: extra-certs
+              mountPath: /extra-certs
+              readOnly: true
+          env:
+            - name: FENNEC_PROFILE
+              value: default
+            - name: FENNEC_NO_UPDATE
+              value: "1"
+            - name: FENNEC_AUTO_LOGIN
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: FENNEC_AUTO_LOGIN_LOCAL
+            - name: FENNEC_AUTO_LOGIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: FENNEC_AUTO_LOGIN_PASSWORD_LOCAL
+            - name: FENNEC_AUTO_JOIN_SERVER
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: FENNEC_AUTO_JOIN_SERVER
+            - name: FENNEC_AUTO_JOIN_CHANNEL
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: FENNEC_AUTO_JOIN_CHANNEL
+      volumes:
+        - name: extra-certs
+          configMap:
+            name: fennec-api-ca
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fennec-app-local
+  namespace: fennec-test
+spec:
+  selector:
+    app: fennec-app-local
+  ports:
+    - name: control
+      port: 8310
+      targetPort: 8310
+    - name: vnc
+      port: 5900
+      targetPort: 5900
+    - name: novnc
+      port: 6080
+      targetPort: 6080
+      nodePort: 30608
+  type: NodePort

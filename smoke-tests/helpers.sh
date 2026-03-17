@@ -3,7 +3,7 @@ set -euo pipefail
 
 # --- Host configuration ---
 LOCAL=${LOCAL:-http://localhost:8310}
-MINI=${MINI:-http://192.168.1.41:8310}
+MINI=${MINI:-http://localhost:8310}
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -12,9 +12,16 @@ YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# --- Mac Mini notification ---
+# --- Restart mode ---
+RESTART_MODE=${RESTART_MODE:-systemd}
+K8S_NAMESPACE=${K8S_NAMESPACE:-fennec-test}
 MINI_SSH=${MINI_SSH:-p-mini}
+
+# --- Mac Mini notification ---
 notify_mini() {
+    if [[ "$RESTART_MODE" == "k8s" ]]; then
+        return 0
+    fi
     ssh "$MINI_SSH" "osascript -e 'display notification \"$1\" with title \"Fennec Test\"'" 2>/dev/null &
 }
 
@@ -150,7 +157,18 @@ frames_received() {
 # --- Setup / teardown ---
 restart_services() {
     step "Restarting test services"
-    systemctl --user restart fennec-test-app@local fennec-test-app-mac-mini
+    if [[ "$RESTART_MODE" == "k8s" ]]; then
+        kubectl rollout restart deployment/fennec-app-local -n "$K8S_NAMESPACE"
+        # Restart Mac Mini app via the launcher pod
+        local launcher_pod
+        launcher_pod=$(kubectl get pods -n "$K8S_NAMESPACE" -l app=mac-launcher -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+        if [[ -n "$launcher_pod" ]]; then
+            kubectl exec -n "$K8S_NAMESPACE" "$launcher_pod" -- bash -c 'kill $APP_PID 2>/dev/null || true' || true
+        fi
+        kubectl rollout status deployment/fennec-app-local -n "$K8S_NAMESPACE" --timeout=60s
+    else
+        systemctl --user restart fennec-test-app@local fennec-test-app-mac-mini
+    fi
     poll "local healthy" "get $LOCAL/health"
     poll "mini healthy" "get $MINI/health"
     poll "local logged in" "is_logged_in $LOCAL" 30

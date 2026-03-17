@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fennec-api
+  namespace: fennec-test
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: fennec-api
+  template:
+    metadata:
+      labels:
+        app: fennec-api
+    spec:
+      hostAliases:
+        - ip: "${SMOKE_NODE_IP}"
+          hostnames:
+            - ${SMOKE_DOMAIN}
+      initContainers:
+        - name: trust-ca
+          image: fennec-api:latest
+          imagePullPolicy: Never
+          command: ["sh", "-c"]
+          args:
+            - |
+              cp /extra-certs/*.crt /usr/local/share/ca-certificates/ 2>/dev/null || true
+              update-ca-certificates
+              cp /etc/ssl/certs/ca-certificates.crt /shared-certs/ca-certificates.crt
+          volumeMounts:
+            - name: extra-certs
+              mountPath: /extra-certs
+              readOnly: true
+            - name: shared-certs
+              mountPath: /shared-certs
+      containers:
+        - name: fennec-api
+          image: fennec-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 7014
+              hostPort: 7014
+          env:
+            - name: ASPNETCORE_URLS
+              value: "https://+:7014"
+            - name: ASPNETCORE_Kestrel__Certificates__Default__Path
+              value: /certs/tls.pfx
+            - name: ASPNETCORE_Kestrel__Certificates__Default__Password
+              value: ""
+            - name: ConnectionStrings__FennecDb
+              value: "Host=postgres;Port=5432;Database=fennec;Username=fennec;Password=fennec;"
+            - name: KeySettings__PrivateKeyPath
+              value: /keys/private.pem
+            - name: FennecSettings__IssuerUrl
+              value: "https://${SMOKE_DOMAIN}"
+            - name: SSL_CERT_FILE
+              value: /shared-certs/ca-certificates.crt
+          volumeMounts:
+            - name: keys
+              mountPath: /keys
+              readOnly: true
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+            - name: shared-certs
+              mountPath: /shared-certs
+              readOnly: true
+      volumes:
+        - name: keys
+          secret:
+            secretName: fennec-keys
+        - name: certs
+          secret:
+            secretName: fennec-api-tls
+        - name: extra-certs
+          configMap:
+            name: fennec-api-ca
+        - name: shared-certs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fennec-api
+  namespace: fennec-test
+spec:
+  type: NodePort
+  selector:
+    app: fennec-api
+  ports:
+    - port: 7014
+      targetPort: 7014
+      nodePort: 30714

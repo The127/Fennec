@@ -1,0 +1,46 @@
+# Runs after the API has migrated the database.
+# The justfile target waits for the API deployment to be available before creating this job.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-db
+  namespace: fennec-test
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed
+          image: postgres:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              # Wait for the API to have migrated (tables must exist)
+              for i in $(seq 1 60); do
+                if psql "$PGCONNSTR" -c "SELECT 1 FROM \"user\" LIMIT 1" >/dev/null 2>&1; then
+                  break
+                fi
+                echo "Waiting for schema..."
+                sleep 2
+              done
+
+              # Skip if users already exist
+              COUNT=$(psql "$PGCONNSTR" -t -c "SELECT count(*) FROM \"user\" WHERE name IN ('kris','mini')")
+              if [ "$(echo $COUNT | tr -d ' ')" -ge 2 ]; then
+                echo "Seed data already exists, skipping."
+                exit 0
+              fi
+
+              psql "$PGCONNSTR" -f /seed/seed.sql
+              echo "Seed data inserted."
+          env:
+            - name: PGCONNSTR
+              value: "postgresql://fennec:fennec@postgres:5432/fennec"
+          volumeMounts:
+            - name: seed
+              mountPath: /seed
+      volumes:
+        - name: seed
+          configMap:
+            name: postgres-seed
