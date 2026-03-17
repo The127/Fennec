@@ -14,6 +14,7 @@ using Fennec.App.Services.Auth;
 using Fennec.App.Services.ScreenCapture;
 using Fennec.App.Shortcuts;
 using Fennec.Client;
+using Fennec.App.Services.ControlServer;
 using Fennec.App.Services.Storage;
 using Fennec.App.Themes;
 using Fennec.App.ViewModels;
@@ -152,6 +153,7 @@ public partial class App : Application
 
         services.AddSingleton<IVoiceCallService, VoiceCallService>();
         services.AddSingleton<IUpdateService, UpdateService>();
+        services.AddSingleton<ControlServer>();
 
         services.AddSingleton<IEmbedProvider, YouTubeEmbedProvider>();
         services.AddSingleton<IEmbedProvider, SpotifyEmbedProvider>();
@@ -189,6 +191,8 @@ public partial class App : Application
         }
 
         SetupGlobalExceptionHandlers();
+
+        _services.GetRequiredService<ControlServer>().Start();
 
         _ = mainViewModel.InitializeAsync();
 

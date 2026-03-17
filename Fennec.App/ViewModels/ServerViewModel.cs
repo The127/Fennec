@@ -139,7 +139,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     IRecipient<ScreenShareCursorMessage>,
     IRecipient<ScreenSharePopOutRequestedMessage>,
     IRecipient<VoicePeerStateChangedMessage>,
-    IRecipient<ScreenSharePopOutClosedMessage>
+    IRecipient<ScreenSharePopOutClosedMessage>,
+    IRecipient<ControlWatchScreenShareMessage>,
+    IRecipient<ControlUnwatchScreenShareMessage>
 {
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
@@ -190,6 +192,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<ScreenSharePopOutRequestedMessage>(this);
         messenger.Register<VoicePeerStateChangedMessage>(this);
         messenger.Register<ScreenSharePopOutClosedMessage>(this);
+        messenger.Register<ControlWatchScreenShareMessage>(this);
+        messenger.Register<ControlUnwatchScreenShareMessage>(this);
 
         // Initialize hub status from current state (message may have been sent before registration)
         (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
@@ -1153,6 +1157,16 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
         if (WatchedScreenShares.Count == 0)
             IsScreenShareMaximized = false;
+    }
+
+    public void Receive(ControlWatchScreenShareMessage message)
+    {
+        Dispatcher.UIThread.Post(() => WatchScreenShare(message.UserId));
+    }
+
+    public void Receive(ControlUnwatchScreenShareMessage message)
+    {
+        Dispatcher.UIThread.Post(() => UnwatchScreenShare(message.UserId));
     }
 
     [RelayCommand]

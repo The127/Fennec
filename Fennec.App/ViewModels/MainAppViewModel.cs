@@ -30,7 +30,7 @@ public partial class SidebarServer(Guid id, string name, string instanceUrl) : O
     public string AvatarFallback { get; } = name[..1].ToUpperInvariant();
 }
 
-public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>, IRecipient<VoiceStateChangedMessage>, IRecipient<VoiceMuteToggledMessage>, IRecipient<VoiceDeafenToggledMessage>, IRecipient<ScreenShareStartedMessage>, IRecipient<ScreenShareStoppedMessage>, IRecipient<ScreenShareFrameMessage>, IRecipient<ScreenShareCursorMessage>, IRecipient<ScreenSharePopOutRequestedMessage>, IRecipient<ScreenSharePopOutClosedMessage>
+public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>, IRecipient<VoiceStateChangedMessage>, IRecipient<VoiceMuteToggledMessage>, IRecipient<VoiceDeafenToggledMessage>, IRecipient<ScreenShareStartedMessage>, IRecipient<ScreenShareStoppedMessage>, IRecipient<ScreenShareFrameMessage>, IRecipient<ScreenShareCursorMessage>, IRecipient<ScreenSharePopOutRequestedMessage>, IRecipient<ScreenSharePopOutClosedMessage>, IRecipient<ControlNavigateToServerMessage>
 {
     private readonly IRouter _routerField;
     private readonly IMessenger _messenger;
@@ -90,6 +90,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         messenger.Register<ScreenShareCursorMessage>(this);
         messenger.Register<ScreenSharePopOutRequestedMessage>(this);
         messenger.Register<ScreenSharePopOutClosedMessage>(this);
+        messenger.Register<ControlNavigateToServerMessage>(this);
 
         // Initialize voice state from service (handles case where VM is created after call started)
         IsInVoiceCall = voiceCallService.IsConnected;
@@ -317,6 +318,13 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     public void Receive(ServerJoinedMessage message)
     {
         _ = LoadServersAsync(waitForRefresh: true);
+    }
+
+    public void Receive(ControlNavigateToServerMessage message)
+    {
+        var server = Servers.FirstOrDefault(s => s.Id == message.ServerId);
+        if (server is not null)
+            _ = NavigateToServerAsync(server);
     }
 
     public void ApplySession(AuthSession session)
