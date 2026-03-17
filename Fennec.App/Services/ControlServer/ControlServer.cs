@@ -17,6 +17,7 @@ public class ControlServer : IDisposable
     private readonly ILogger<ControlServer> _logger;
     private readonly HttpListener _listener;
     private readonly CancellationTokenSource _cts = new();
+    private readonly int _port;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -30,10 +31,10 @@ public class ControlServer : IDisposable
         _logger = logger;
         _listener = new HttpListener();
 
-        var port = Environment.GetEnvironmentVariable("FENNEC_CONTROL_PORT") is { } p
+        _port = Environment.GetEnvironmentVariable("FENNEC_CONTROL_PORT") is { } p
             ? int.Parse(p)
             : 8310;
-        _listener.Prefixes.Add($"http://localhost:{port}/");
+        _listener.Prefixes.Add($"http://*:{_port}/");
     }
 
     public void Start()
@@ -41,7 +42,7 @@ public class ControlServer : IDisposable
         try
         {
             _listener.Start();
-            _logger.LogInformation("Control server listening on {Prefix}", _listener.Prefixes.First());
+            _logger.LogInformation("Control server listening on http://*:{Port}/", _port);
             Task.Run(() => ListenLoop(_cts.Token));
         }
         catch (Exception ex)
@@ -77,6 +78,7 @@ public class ControlServer : IDisposable
         try
         {
             var path = request.Url?.AbsolutePath.TrimEnd('/') ?? "";
+            if (path == "") path = "/";
             var method = request.HttpMethod;
 
             var (status, body) = await RouteAsync(method, path, request);
