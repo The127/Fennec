@@ -55,6 +55,16 @@ kubectl create configmap fennec-api-ca \
   --from-file=ca.crt=./ca.crt -n fennec-test
 ```
 
+### 4. Mac Mini setup
+
+The Mac Mini runs the second app instance headlessly over SSH. One-time setup:
+
+1. **Enable auto-login** — System Settings → Users & Groups → Automatic login. Needed so the GUI session (and its display server) is running after a reboot.
+2. **Enable Remote Login (SSH)** — System Settings → General → Sharing → Remote Login.
+3. **Install [BetterDisplay](https://github.com/waydabber/BetterDisplay)** — creates a virtual display so the app has a screen to render to when no physical monitor is attached. The mac-launcher script calls `betterdisplaycli` to auto-create one.
+4. **Install .NET SDK and just** — `brew install dotnet just cmake` (used by the launcher to build and run the app on the Mini).
+5. **Copy your SSH public key** — `ssh-copy-id user@mini-ip` so the k8s launcher job can connect without a password.
+
 ## Run
 
 ```bash
