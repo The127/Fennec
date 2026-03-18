@@ -22,8 +22,8 @@
                                       TrueSize="30"
                                       FalseSize="15" />
         <conv:StringEqualsConverter x:Key="StringEqualsConverter" />
-        <conv:HubConnectionStatusToBrushConverter x:Key="HubStatusColorConverter" />
-        <conv:HubConnectionStatusToTextConverter  x:Key="HubStatusTextConverter" />
+        <conv:ConnectionStatusToBrushConverter x:Key="HubStatusColorConverter" />
+        <conv:ConnectionStatusToTextConverter  x:Key="HubStatusTextConverter" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="Border.selected">

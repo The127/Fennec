@@ -37,9 +37,9 @@ public class AppShellViewModelTests
         services.AddSingleton(settingsStore);
         services.AddSingleton(new ToastManager());
         services.AddSingleton(new DialogManager());
-        services.AddSingleton(Substitute.For<IMessageHubService>());
+        services.AddSingleton(Substitute.For<IChannelSubscriptionService>());
         services.AddSingleton(Substitute.For<IVoiceCallService>());
-        services.AddSingleton(Substitute.For<IVoiceHubService>());
+        services.AddSingleton(Substitute.For<IVoicePresenceService>());
         services.AddDbContextFactory<AppDbContext>(opts => opts.UseSqlite("DataSource=:memory:"));
         services.AddLogging();
         var sp = services.BuildServiceProvider();

@@ -28,9 +28,9 @@ public class MainAppViewModelTests
     private readonly IServerStore _serverStore = Substitute.For<IServerStore>();
     private readonly IKeymapService _keymapService = new KeymapService();
     private readonly ISettingsStore _settingsStore = Substitute.For<ISettingsStore>();
-    private readonly IMessageHubService _messageHubService = Substitute.For<IMessageHubService>();
+    private readonly IChannelSubscriptionService _messageHubService = Substitute.For<IChannelSubscriptionService>();
     private readonly IVoiceCallService _voiceCallService = Substitute.For<IVoiceCallService>();
-    private readonly IVoiceHubService _voiceHubService = Substitute.For<IVoiceHubService>();
+    private readonly IVoicePresenceService _voiceHubService = Substitute.For<IVoicePresenceService>();
     private readonly IAuthStore _authStore = Substitute.For<IAuthStore>();
     private readonly IAuthClient _authClient = Substitute.For<IAuthClient>();
 

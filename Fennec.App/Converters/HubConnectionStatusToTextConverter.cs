@@ -5,16 +5,16 @@ using Fennec.Client;
 
 namespace Fennec.App.Converters;
 
-public class HubConnectionStatusToTextConverter : IValueConverter
+public class ConnectionStatusToTextConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is HubConnectionStatus status
+        => value is ConnectionStatus status
             ? status switch
             {
-                HubConnectionStatus.Connected    => "Connected",
-                HubConnectionStatus.Connecting   => "Connecting...",
-                HubConnectionStatus.Reconnecting => "Reconnecting...",
-                HubConnectionStatus.Disconnected => "Disconnected",
+                ConnectionStatus.Connected    => "Connected",
+                ConnectionStatus.Connecting   => "Connecting...",
+                ConnectionStatus.Reconnecting => "Reconnecting...",
+                ConnectionStatus.Disconnected => "Disconnected",
                 _                                => "Unknown",
             }
             : AvaloniaProperty.UnsetValue;

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.Services;
 
-public interface IVoiceHubService
+public interface IVoicePresenceService
 {
     Task<List<VoiceParticipantDto>> JoinVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl);
     Task LeaveVoiceChannelAsync(Guid serverId, Guid channelId, string instanceUrl);
@@ -30,12 +30,12 @@ public interface IVoiceHubService
     void Initialize();
 }
 
-public class VoiceHubService : IVoiceHubService
+public class VoicePresenceService : IVoicePresenceService
 {
     private readonly IMessageHubClient _hubClient;
     private readonly IMessenger _messenger;
     private readonly ITokenStore _tokenStore;
-    private readonly ILogger<VoiceHubService> _logger;
+    private readonly ILogger<VoicePresenceService> _logger;
 
     private HubConnection? _directConnection;
     private bool _usingDirect;
@@ -44,7 +44,7 @@ public class VoiceHubService : IVoiceHubService
     public event Action<Guid, Guid, Guid, string>? SdpAnswerReceived;
     public event Action<Guid, Guid, Guid, string, string?, int?>? IceCandidateReceived;
 
-    public VoiceHubService(IMessageHubClient hubClient, IMessenger messenger, ITokenStore tokenStore, ILogger<VoiceHubService> logger)
+    public VoicePresenceService(IMessageHubClient hubClient, IMessenger messenger, ITokenStore tokenStore, ILogger<VoicePresenceService> logger)
     {
         _hubClient = hubClient;
         _messenger = messenger;

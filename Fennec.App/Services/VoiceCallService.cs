@@ -39,7 +39,7 @@ public interface IVoiceCallService
 
 public class VoiceCallService : IVoiceCallService, IDisposable
 {
-    private readonly IVoiceHubService _voiceHub;
+    private readonly IVoicePresenceService _voiceHub;
     private readonly IMessenger _messenger;
     private readonly ILogger<VoiceCallService> _logger;
     private readonly ISettingsStore _settingsStore;
@@ -124,7 +124,7 @@ public class VoiceCallService : IVoiceCallService, IDisposable
         new RTCIceServer { urls = "stun:stun.l.google.com:19302" }
     ];
 
-    public VoiceCallService(IVoiceHubService voiceHub, IMessenger messenger, ILogger<VoiceCallService> logger, ISettingsStore settingsStore, ISoundEffectService soundEffects, IScreenCaptureService screenCapture, ICursorPositionService cursorPosition)
+    public VoiceCallService(IVoicePresenceService voiceHub, IMessenger messenger, ILogger<VoiceCallService> logger, ISettingsStore settingsStore, ISoundEffectService soundEffects, IScreenCaptureService screenCapture, ICursorPositionService cursorPosition)
     {
         _voiceHub = voiceHub;
         _messenger = messenger;

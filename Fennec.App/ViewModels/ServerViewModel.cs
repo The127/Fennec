@@ -164,7 +164,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     private readonly IFennecClient client;
     private readonly DialogManager dialogManager;
     private readonly IServerStore serverStore;
-    private readonly IMessageHubService _messageHubService;
+    private readonly IChannelSubscriptionService _messageHubService;
     private readonly IMessenger _messenger;
     private readonly ILogger<ServerViewModel> _logger;
     private readonly string instanceUrl;
@@ -175,7 +175,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         IFennecClient client,
         DialogManager dialogManager,
         IServerStore serverStore,
-        IMessageHubService messageHubService,
+        IChannelSubscriptionService messageHubService,
         IVoiceCallService voiceCallService,
         IMessenger messenger,
         ToastManager toastManager,
@@ -538,7 +538,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     // --- Hub connection status ---
 
     [ObservableProperty]
-    private HubConnectionStatus _hubStatus = HubConnectionStatus.Disconnected;
+    private ConnectionStatus _hubStatus = ConnectionStatus.Disconnected;
 
     [ObservableProperty]
     private string? _subscribedChannelName;

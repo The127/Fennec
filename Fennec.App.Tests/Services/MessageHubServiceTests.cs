@@ -6,13 +6,13 @@ using NSubstitute;
 
 namespace Fennec.App.Tests.Services;
 
-public class MessageHubServiceTests
+public class ChannelSubscriptionServiceTests
 {
     private readonly IMessageHubClient _hubClient = Substitute.For<IMessageHubClient>();
     private readonly WeakReferenceMessenger _messenger = new();
-    private readonly ILogger<MessageHubService> _logger = Substitute.For<ILogger<MessageHubService>>();
+    private readonly ILogger<ChannelSubscriptionService> _logger = Substitute.For<ILogger<ChannelSubscriptionService>>();
 
-    private MessageHubService CreateService() => new(_hubClient, _messenger, _logger);
+    private ChannelSubscriptionService CreateService() => new(_hubClient, _messenger, _logger);
 
     [Fact]
     public async Task Reconnect_resubscribes_to_server_groups()
@@ -30,7 +30,7 @@ public class MessageHubServiceTests
         _hubClient.ClearReceivedCalls();
 
         // Simulate reconnect by raising ConnectionStateChanged with Connected
-        _hubClient.ConnectionStateChanged += Raise.Event<Action<HubConnectionStatus>>(HubConnectionStatus.Connected);
+        _hubClient.ConnectionStateChanged += Raise.Event<Action<ConnectionStatus>>(ConnectionStatus.Connected);
 
         // Verify re-subscription
         await _hubClient.Received().SubscribeToServerAsync(serverId1);
@@ -49,7 +49,7 @@ public class MessageHubServiceTests
 
         _hubClient.ClearReceivedCalls();
 
-        _hubClient.ConnectionStateChanged += Raise.Event<Action<HubConnectionStatus>>(HubConnectionStatus.Connected);
+        _hubClient.ConnectionStateChanged += Raise.Event<Action<ConnectionStatus>>(ConnectionStatus.Connected);
 
         await _hubClient.Received().SubscribeToChannelAsync(serverId, channelId);
     }
@@ -66,7 +66,7 @@ public class MessageHubServiceTests
 
         _hubClient.ClearReceivedCalls();
 
-        _hubClient.ConnectionStateChanged += Raise.Event<Action<HubConnectionStatus>>(HubConnectionStatus.Connected);
+        _hubClient.ConnectionStateChanged += Raise.Event<Action<ConnectionStatus>>(ConnectionStatus.Connected);
 
         // Should NOT re-subscribe since we unsubscribed
         await _hubClient.DidNotReceive().SubscribeToServerAsync(serverId);

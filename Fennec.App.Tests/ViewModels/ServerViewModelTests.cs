@@ -21,7 +21,7 @@ public class ServerViewModelTests
     private readonly IFennecClient _client = Substitute.For<IFennecClient>();
     private readonly IServerClient _serverClient = Substitute.For<IServerClient>();
     private readonly IServerStore _serverStore = Substitute.For<IServerStore>();
-    private readonly IMessageHubService _messageHubService = Substitute.For<IMessageHubService>();
+    private readonly IChannelSubscriptionService _messageHubService = Substitute.For<IChannelSubscriptionService>();
     private readonly IVoiceCallService _voiceCallService = Substitute.For<IVoiceCallService>();
     private readonly IMessenger _messenger = new WeakReferenceMessenger();
     private readonly Guid _serverId = Guid.NewGuid();
@@ -122,11 +122,11 @@ public class ServerViewModelTests
     }
 
     [Theory]
-    [InlineData(HubConnectionStatus.Connected)]
-    [InlineData(HubConnectionStatus.Connecting)]
-    [InlineData(HubConnectionStatus.Reconnecting)]
-    [InlineData(HubConnectionStatus.Disconnected)]
-    public void GivenInitialHubStatus_HubStatusPropertyReflectsIt(HubConnectionStatus status)
+    [InlineData(ConnectionStatus.Connected)]
+    [InlineData(ConnectionStatus.Connecting)]
+    [InlineData(ConnectionStatus.Reconnecting)]
+    [InlineData(ConnectionStatus.Disconnected)]
+    public void GivenInitialHubStatus_HubStatusPropertyReflectsIt(ConnectionStatus status)
     {
         _messageHubService.CurrentStatus.Returns(status);
         var vm = CreateViewModel();
@@ -134,11 +134,11 @@ public class ServerViewModelTests
     }
 
     [AvaloniaTheory]
-    [InlineData(HubConnectionStatus.Connected)]
-    [InlineData(HubConnectionStatus.Connecting)]
-    [InlineData(HubConnectionStatus.Reconnecting)]
-    [InlineData(HubConnectionStatus.Disconnected)]
-    public void GivenHubStatusChanges_HubStatusPropertyUpdates(HubConnectionStatus status)
+    [InlineData(ConnectionStatus.Connected)]
+    [InlineData(ConnectionStatus.Connecting)]
+    [InlineData(ConnectionStatus.Reconnecting)]
+    [InlineData(ConnectionStatus.Disconnected)]
+    public void GivenHubStatusChanges_HubStatusPropertyUpdates(ConnectionStatus status)
     {
         var vm = CreateViewModel();
         _messenger.Send(new HubConnectionStateChangedMessage(status));

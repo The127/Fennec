@@ -118,8 +118,8 @@ public partial class App : Application
         services.AddSingleton<IKeymapService, KeymapService>();
         services.AddSingleton<IMessenger>(_ => WeakReferenceMessenger.Default);
         services.AddSingleton<IMessageHubClient, MessageHubClient>();
-        services.AddSingleton<IMessageHubService, MessageHubService>();
-        services.AddSingleton<IVoiceHubService, VoiceHubService>();
+        services.AddSingleton<IChannelSubscriptionService, ChannelSubscriptionService>();
+        services.AddSingleton<IVoicePresenceService, VoicePresenceService>();
         services.AddSingleton<ISoundEffectService, SoundEffectService>();
 
         // Screen capture + cursor — platform-specific

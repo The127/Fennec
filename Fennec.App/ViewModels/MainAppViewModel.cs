@@ -37,7 +37,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IVoi
     private readonly IServerStore _serverStore;
     private readonly IKeymapService _keymapService;
     private readonly ISettingsStore _settingsStore;
-    private readonly IMessageHubService _messageHubService;
+    private readonly IChannelSubscriptionService _messageHubService;
     private readonly IVoiceCallService _voiceCallService;
     private readonly IAuthStore _authStore;
 
@@ -52,9 +52,9 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IVoi
         IServerStore serverStore,
         IKeymapService keymapService,
         ISettingsStore settingsStore,
-        IMessageHubService messageHubService,
+        IChannelSubscriptionService messageHubService,
         IVoiceCallService voiceCallService,
-        IVoiceHubService voiceHubService,
+        IVoicePresenceService voiceHubService,
         IAuthStore authStore)
     {
         _routerField = router;

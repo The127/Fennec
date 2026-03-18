@@ -10,13 +10,13 @@ using ShadUI;
 
 namespace Fennec.App.Routes;
 
-public record ServerRoute(IFennecClient Client, DialogManager DialogManager, IServerStore ServerStore, IMessageHubService MessageHubService, IVoiceCallService VoiceCallService, IMessenger Messenger, ToastManager ToastManager, ISettingsStore SettingsStore, Guid ServerId, string ServerName, string InstanceUrl, Guid CurrentUserId, string CurrentUsername) : IRoute
+public record ServerRoute(IFennecClient Client, DialogManager DialogManager, IServerStore ServerStore, IChannelSubscriptionService ChannelSubscriptionService, IVoiceCallService VoiceCallService, IMessenger Messenger, ToastManager ToastManager, ISettingsStore SettingsStore, Guid ServerId, string ServerName, string InstanceUrl, Guid CurrentUserId, string CurrentUsername) : IRoute
 {
     public ObservableObject GetViewModel(IServiceProvider serviceProvider)
     {
         var logger = serviceProvider.GetRequiredService<ILogger<ServerViewModel>>();
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-        var vm = new ServerViewModel(Client, DialogManager, ServerStore, MessageHubService, VoiceCallService, Messenger, ToastManager, logger, SettingsStore, loggerFactory, ServerId, ServerName, InstanceUrl, CurrentUserId, CurrentUsername);
+        var vm = new ServerViewModel(Client, DialogManager, ServerStore, ChannelSubscriptionService, VoiceCallService, Messenger, ToastManager, logger, SettingsStore, loggerFactory, ServerId, ServerName, InstanceUrl, CurrentUserId, CurrentUsername);
         _ = vm.LoadAsync();
         return vm;
     }

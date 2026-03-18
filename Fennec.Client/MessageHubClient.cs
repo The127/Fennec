@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fennec.Client;
 
-public enum HubConnectionStatus
+public enum ConnectionStatus
 {
     Disconnected,
     Connecting,
@@ -25,7 +25,7 @@ public interface IMessageHubClient : IAsyncDisposable
     Task DisconnectAsync();
     event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
     event Action? Reconnected;
-    event Action<HubConnectionStatus>? ConnectionStateChanged;
+    event Action<ConnectionStatus>? ConnectionStateChanged;
 
     // Presence
     event Action<Guid, Guid, string, string?>? UserOnline;
@@ -69,7 +69,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
 
     public event Action<Guid, Guid, MessageReceivedDto>? MessageReceived;
     public event Action? Reconnected;
-    public event Action<HubConnectionStatus>? ConnectionStateChanged;
+    public event Action<ConnectionStatus>? ConnectionStateChanged;
 
     // Presence events
     public event Action<Guid, Guid, string, string?>? UserOnline;
@@ -98,7 +98,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
 
         baseUrl = UrlUtils.NormalizeBaseUrl(baseUrl);
         logger.LogInformation("SignalR: Connecting to {Url}/hubs/messages", baseUrl);
-        ConnectionStateChanged?.Invoke(HubConnectionStatus.Connecting);
+        ConnectionStateChanged?.Invoke(ConnectionStatus.Connecting);
 
         _connection = new HubConnectionBuilder()
             .WithUrl($"{baseUrl}/hubs/messages", options =>
@@ -190,7 +190,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
         {
             logger.LogInformation("SignalR: Reconnected");
             _connectedTcs.TrySetResult();
-            ConnectionStateChanged?.Invoke(HubConnectionStatus.Connected);
+            ConnectionStateChanged?.Invoke(ConnectionStatus.Connected);
             Reconnected?.Invoke();
             return Task.CompletedTask;
         };
@@ -200,21 +200,21 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
             logger.LogWarning(ex, "SignalR: Connection closed");
             _connectedTcs.TrySetCanceled();
             _connectedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            ConnectionStateChanged?.Invoke(HubConnectionStatus.Disconnected);
+            ConnectionStateChanged?.Invoke(ConnectionStatus.Disconnected);
             return Task.CompletedTask;
         };
 
         _connection.Reconnecting += ex =>
         {
             logger.LogWarning(ex, "SignalR: Reconnecting...");
-            ConnectionStateChanged?.Invoke(HubConnectionStatus.Reconnecting);
+            ConnectionStateChanged?.Invoke(ConnectionStatus.Reconnecting);
             return Task.CompletedTask;
         };
 
         await _connection.StartAsync();
         logger.LogInformation("SignalR: Connected (state={State})", _connection.State);
         _connectedTcs.TrySetResult();
-        ConnectionStateChanged?.Invoke(HubConnectionStatus.Connected);
+        ConnectionStateChanged?.Invoke(ConnectionStatus.Connected);
     }
 
     public async Task SubscribeToChannelAsync(Guid serverId, Guid channelId)
@@ -386,7 +386,7 @@ public class MessageHubClient(ILogger<MessageHubClient> logger) : IMessageHubCli
             _connection = null;
             _connectedTcs.TrySetCanceled();
             _connectedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            ConnectionStateChanged?.Invoke(HubConnectionStatus.Disconnected);
+            ConnectionStateChanged?.Invoke(ConnectionStatus.Disconnected);
         }
     }
 

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fennec.App.Services;
 
-public interface IMessageHubService
+public interface IChannelSubscriptionService
 {
     Task ConnectAsync(string baseUrl, string token);
     Task SubscribeToChannelAsync(Guid serverId, Guid channelId);
@@ -16,14 +16,14 @@ public interface IMessageHubService
     Task DisconnectAsync();
     Guid? CurrentServerId { get; }
     Guid? CurrentChannelId { get; }
-    HubConnectionStatus CurrentStatus { get; }
+    ConnectionStatus CurrentStatus { get; }
 }
 
-public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger, ILogger<MessageHubService> logger) : IMessageHubService
+public class ChannelSubscriptionService(IMessageHubClient hubClient, IMessenger messenger, ILogger<ChannelSubscriptionService> logger) : IChannelSubscriptionService
 {
     public Guid? CurrentServerId => _currentServerId;
     public Guid? CurrentChannelId => _currentChannelId;
-    public HubConnectionStatus CurrentStatus { get; private set; } = HubConnectionStatus.Disconnected;
+    public ConnectionStatus CurrentStatus { get; private set; } = ConnectionStatus.Disconnected;
 
     private Guid? _currentServerId;
     private Guid? _currentChannelId;
@@ -31,7 +31,7 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
 
     public async Task ConnectAsync(string baseUrl, string token)
     {
-        logger.LogInformation("MessageHubService: Connecting to {BaseUrl}", baseUrl);
+        logger.LogInformation("ChannelSubscriptionService: Connecting to {BaseUrl}", baseUrl);
         hubClient.MessageReceived += OnMessageReceived;
         hubClient.Reconnected += OnReconnected;
         hubClient.ConnectionStateChanged += OnConnectionStateChanged;
@@ -44,14 +44,14 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
     {
         if (_currentServerId is not null && _currentChannelId is not null)
         {
-            logger.LogInformation("MessageHubService: Unsubscribing from previous server={ServerId} channel={ChannelId}",
+            logger.LogInformation("ChannelSubscriptionService: Unsubscribing from previous server={ServerId} channel={ChannelId}",
                 _currentServerId, _currentChannelId);
             await hubClient.UnsubscribeFromChannelAsync(_currentServerId.Value, _currentChannelId.Value);
         }
 
         _currentServerId = serverId;
         _currentChannelId = channelId;
-        logger.LogInformation("MessageHubService: Subscribing to server={ServerId} channel={ChannelId}", serverId, channelId);
+        logger.LogInformation("ChannelSubscriptionService: Subscribing to server={ServerId} channel={ChannelId}", serverId, channelId);
         await hubClient.SubscribeToChannelAsync(serverId, channelId);
     }
 
@@ -75,7 +75,7 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
 
     public async Task DisconnectAsync()
     {
-        logger.LogInformation("MessageHubService: Disconnecting");
+        logger.LogInformation("ChannelSubscriptionService: Disconnecting");
         hubClient.MessageReceived -= OnMessageReceived;
         hubClient.Reconnected -= OnReconnected;
         hubClient.ConnectionStateChanged -= OnConnectionStateChanged;
@@ -98,7 +98,7 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
 
     private void OnMessageReceived(Guid serverId, Guid channelId, Fennec.Shared.Dtos.Server.MessageReceivedDto message)
     {
-        logger.LogInformation("MessageHubService: Message received on server={ServerId} channel={ChannelId} messageId={MessageId}",
+        logger.LogInformation("ChannelSubscriptionService: Message received on server={ServerId} channel={ChannelId} messageId={MessageId}",
             serverId, channelId, message.MessageId);
         messenger.Send(new ChannelMessageReceivedMessage(serverId, channelId, message));
     }
@@ -108,17 +108,17 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
         // Re-subscription is handled by OnConnectionStateChanged when status becomes Connected.
     }
 
-    private void OnConnectionStateChanged(HubConnectionStatus status)
+    private void OnConnectionStateChanged(ConnectionStatus status)
     {
         CurrentStatus = status;
         messenger.Send(new HubConnectionStateChangedMessage(status));
 
-        if (status == HubConnectionStatus.Connected)
+        if (status == ConnectionStatus.Connected)
         {
             // Re-subscribe to channel if we had one
             if (_currentServerId is not null && _currentChannelId is not null)
             {
-                logger.LogInformation("MessageHubService: Connection established, subscribing to server={ServerId} channel={ChannelId}",
+                logger.LogInformation("ChannelSubscriptionService: Connection established, subscribing to server={ServerId} channel={ChannelId}",
                     _currentServerId, _currentChannelId);
                 _ = hubClient.SubscribeToChannelAsync(_currentServerId.Value, _currentChannelId.Value);
             }
@@ -126,7 +126,7 @@ public class MessageHubService(IMessageHubClient hubClient, IMessenger messenger
             // Re-subscribe to all server groups
             foreach (var serverId in _subscribedServerIds)
             {
-                logger.LogInformation("MessageHubService: Re-subscribing to server group server={ServerId}", serverId);
+                logger.LogInformation("ChannelSubscriptionService: Re-subscribing to server group server={ServerId}", serverId);
                 _ = hubClient.SubscribeToServerAsync(serverId);
             }
         }
