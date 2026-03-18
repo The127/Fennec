@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
+using Fennec.App.Domain;
 using Fennec.App.Services.Storage.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Fennec.App.Services.Storage;
 
@@ -24,6 +25,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IDbPathProvide
 
         modelBuilder.Entity<LocalServer>(builder =>
         {
+            builder.Property(x => x.InstanceUrl)
+                .HasConversion(v => v.ToString(), v => new InstanceUrl(v));
             builder.HasIndex(x => x.InstanceUrl);
             builder.HasIndex(x => x.SortOrder);
             builder.HasMany(x => x.ChannelGroups)

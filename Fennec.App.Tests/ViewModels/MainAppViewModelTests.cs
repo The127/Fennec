@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain;
 using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Routes;
@@ -54,7 +55,7 @@ public class MainAppViewModelTests
         vm.ApplySession(new AuthSession
         {
             Username = "alice",
-            Url = "https://fennec.chat",
+            Url = new InstanceUrl("https://fennec.chat"),
             SessionToken = "token",
             UserId = Guid.NewGuid(),
         });
@@ -185,10 +186,10 @@ public class MainAppViewModelTests
         await vm.InitializeAsync();
 
         await _authClient.Received().GetPublicTokenAsync(
-            "https://fennec.chat",
-            Arg.Is<GetPublicTokenRequestDto>(r => r.Audience == "https://fennec.chat"),
+            "fennec.chat",
+            Arg.Is<GetPublicTokenRequestDto>(r => r.Audience == "fennec.chat"),
             Arg.Any<CancellationToken>());
-        await _messageHubService.Received().ConnectAsync("https://fennec.chat", "jwt-token");
+        await _messageHubService.Received().ConnectAsync("fennec.chat", "jwt-token");
     }
 
     [Fact]

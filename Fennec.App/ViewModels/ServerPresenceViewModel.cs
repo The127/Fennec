@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Domain;
 using Fennec.App.Messages;
+using AppInstanceUrl = Fennec.App.Domain.InstanceUrl;
 using Fennec.Shared.Dtos.Server;
 using ShadUI;
 
@@ -75,7 +76,7 @@ public partial class ServerPresenceViewModel : ObservableObject,
     }
 
     private static string MemberKey(string name, string? instanceUrl) =>
-        new FederatedAddress(name, instanceUrl).ToString();
+        new FederatedAddress(name, AppInstanceUrl.From(instanceUrl)).ToString();
 
     [RelayCommand]
     private void AddFriend()

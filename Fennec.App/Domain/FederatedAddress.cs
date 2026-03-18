@@ -1,6 +1,6 @@
 namespace Fennec.App.Domain;
 
-public record FederatedAddress(string Username, string? InstanceUrl)
+public record FederatedAddress(string Username, InstanceUrl? InstanceUrl)
 {
     public static FederatedAddress Parse(string input)
     {
@@ -9,12 +9,12 @@ public record FederatedAddress(string Username, string? InstanceUrl)
             throw new ArgumentException("Expected format: username@instance.url", nameof(input));
 
         var username = input[..atIndex];
-        var instanceUrl = input[(atIndex + 1)..];
+        var instanceUrlStr = input[(atIndex + 1)..];
 
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(instanceUrl))
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(instanceUrlStr))
             throw new ArgumentException("Username and instance URL must not be empty", nameof(input));
 
-        return new FederatedAddress(username, instanceUrl);
+        return new FederatedAddress(username, new InstanceUrl(instanceUrlStr));
     }
 
     public static bool TryParse(string input, out FederatedAddress? result)
@@ -24,11 +24,12 @@ public record FederatedAddress(string Username, string? InstanceUrl)
         if (atIndex < 0) return false;
 
         var username = input[..atIndex];
-        var instanceUrl = input[(atIndex + 1)..];
+        var instanceUrlStr = input[(atIndex + 1)..];
 
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(instanceUrl)) return false;
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(instanceUrlStr)) return false;
+        if (instanceUrlStr.Contains('@')) return false;
 
-        result = new FederatedAddress(username, instanceUrl);
+        result = new FederatedAddress(username, new InstanceUrl(instanceUrlStr));
         return true;
     }
 

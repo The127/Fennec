@@ -25,7 +25,7 @@ public class AuthService(
 
         var authSession = new AuthSession
         {
-            Url = instanceUrl,
+            Url = new Domain.InstanceUrl(instanceUrl),
             SessionToken = response.SessionToken,
             UserId = response.UserId,
             Username = username,

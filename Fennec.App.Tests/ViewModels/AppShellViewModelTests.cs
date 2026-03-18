@@ -1,3 +1,4 @@
+using Fennec.App.Domain;
 using Fennec.App.Exceptions;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Messages;
@@ -50,7 +51,7 @@ public class AppShellViewModelTests
         new()
         {
             Username = username,
-            Url = url,
+            Url = new InstanceUrl(url),
             SessionToken = "token",
             UserId = Guid.NewGuid(),
         };

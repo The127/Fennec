@@ -1,3 +1,4 @@
+using Fennec.App.Domain;
 using Fennec.App.Services.Storage;
 using Fennec.App.Services.Storage.Models;
 using Fennec.Shared.Dtos.Server;
@@ -34,7 +35,7 @@ public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) 
             if (existing.TryGetValue(s.Id, out var local))
             {
                 local.Name = s.Name;
-                local.InstanceUrl = s.InstanceUrl;
+                local.InstanceUrl = new InstanceUrl(s.InstanceUrl);
                 local.SortOrder = i;
                 existing.Remove(s.Id);
             }
@@ -44,7 +45,7 @@ public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) 
                 {
                     Id = s.Id,
                     Name = s.Name,
-                    InstanceUrl = s.InstanceUrl,
+                    InstanceUrl = new InstanceUrl(s.InstanceUrl),
                     SortOrder = i
                 });
             }
@@ -67,7 +68,7 @@ public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) 
         {
             Id = server.Id,
             Name = server.Name,
-            InstanceUrl = server.InstanceUrl,
+            InstanceUrl = new InstanceUrl(server.InstanceUrl),
             SortOrder = maxSortOrder + 1
         };
 

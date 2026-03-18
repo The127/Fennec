@@ -8,11 +8,9 @@ public class UsernameFormatAttribute : ValidationAttribute
     public override bool IsValid(object? value)
     {
         if (value is not string str) return false;
-        if (!FederatedAddress.TryParse(str, out var address)) return false;
-        if (address!.InstanceUrl!.Contains('@')) return false;
-        if (address.InstanceUrl.Contains("://")) return false;
-
-        return true;
+        var rawInstanceUrl = str.Contains('@') ? str[(str.IndexOf('@') + 1)..] : null;
+        if (rawInstanceUrl is null || rawInstanceUrl.Contains("://")) return false;
+        return FederatedAddress.TryParse(str, out _);
     }
 
     public override string FormatErrorMessage(string name)

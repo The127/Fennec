@@ -1,3 +1,4 @@
+using Fennec.App.Domain;
 using Fennec.App.Exceptions;
 using Fennec.App.Services.Auth;
 using Fennec.App.Services.Storage;
@@ -21,7 +22,7 @@ public class AuthServiceTests
     private AuthSession CreateSession() => new()
     {
         Username = "alice",
-        Url = "fennec.chat",
+        Url = new InstanceUrl("fennec.chat"),
         SessionToken = "token",
         UserId = Guid.NewGuid(),
     };
@@ -39,7 +40,7 @@ public class AuthServiceTests
         await service.LoginAsync("kris", "pass", "https://localhost:7014", CancellationToken.None);
 
         await _authStore.Received(1).SaveSessionAsync(
-            Arg.Is<AuthSession>(s => s.Url == "https://localhost:7014"),
+            Arg.Is<AuthSession>(s => s.Url == new InstanceUrl("https://localhost:7014")),
             Arg.Any<CancellationToken>());
     }
 
