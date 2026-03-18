@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Fennec.App.Models;
 
-namespace Fennec.App.Domain;
+namespace Fennec.App.Formatting;
 
 public static class ShortcodeReplacer
 {

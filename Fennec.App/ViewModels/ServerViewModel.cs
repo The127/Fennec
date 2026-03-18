@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Domain;
+using Fennec.App.Formatting;
 using Fennec.App.Helpers;
 using Fennec.App.Messages;
 using Fennec.App.Models;
