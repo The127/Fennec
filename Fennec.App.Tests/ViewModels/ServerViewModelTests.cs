@@ -1,4 +1,7 @@
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Messages;
 using Fennec.App.Services;
 using Fennec.App.ViewModels;
 using Fennec.Client;
@@ -121,6 +124,31 @@ public class ServerViewModelTests
 
         Assert.NotNull(vm.SelectedChannel);
         Assert.Equal("general", vm.SelectedChannel!.Name);
+    }
+
+    [Theory]
+    [InlineData(HubConnectionStatus.Connected)]
+    [InlineData(HubConnectionStatus.Connecting)]
+    [InlineData(HubConnectionStatus.Reconnecting)]
+    [InlineData(HubConnectionStatus.Disconnected)]
+    public void GivenInitialHubStatus_HubStatusPropertyReflectsIt(HubConnectionStatus status)
+    {
+        _messageHubService.CurrentStatus.Returns(status);
+        var vm = CreateViewModel();
+        Assert.Equal(status, vm.HubStatus);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(HubConnectionStatus.Connected)]
+    [InlineData(HubConnectionStatus.Connecting)]
+    [InlineData(HubConnectionStatus.Reconnecting)]
+    [InlineData(HubConnectionStatus.Disconnected)]
+    public void GivenHubStatusChanges_HubStatusPropertyUpdates(HubConnectionStatus status)
+    {
+        var vm = CreateViewModel();
+        _messenger.Send(new HubConnectionStateChangedMessage(status));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(status, vm.HubStatus);
     }
 
     [Fact]

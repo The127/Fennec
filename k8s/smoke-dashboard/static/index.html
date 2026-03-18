@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fennec Smoke Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  header h1 { font-size: 15px; color: #58a6ff; font-weight: bold; }
+
+  #run-select {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #c9d1d9;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    max-width: 220px;
+  }
+  #run-select:focus { outline: none; border-color: #58a6ff; }
+  #run-select option { background: #161b22; }
+
+  #job-status {
+    margin-left: auto;
+    font-size: 12px;
+    color: #8b949e;
+  }
+
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Left panel ── */
+  .left {
+    width: 380px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #30363d;
+  }
+
+  .panel-header {
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #test-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+
+  .test-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.1s;
+  }
+
+  .test-item:hover { background: #21262d; }
+  .test-item.selected { background: #1c2940; }
+
+  .test-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: #30363d;
+  }
+
+  .test-dot.running { background: #d29922; animation: pulse 1s infinite; }
+  .test-dot.pass    { background: #3fb950; }
+  .test-dot.fail    { background: #f85149; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  .test-name { flex: 1; color: #c9d1d9; }
+  .test-btn {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    border-radius: 4px;
+    cursor: pointer;
+    display: none;
+  }
+  .test-item:hover .test-btn { display: block; }
+  .test-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+
+  .controls {
+    border-top: 1px solid #30363d;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #161b22;
+    flex-shrink: 0;
+  }
+
+  .btn {
+    padding: 5px 14px;
+    border-radius: 5px;
+    border: 1px solid #30363d;
+    background: #21262d;
+    color: #c9d1d9;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  .btn:hover { border-color: #58a6ff; color: #58a6ff; }
+  .btn.primary { background: #238636; border-color: #2ea043; color: #fff; }
+  .btn.primary:hover { background: #2ea043; }
+  .btn.danger { border-color: #f85149; color: #f85149; }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  #summary {
+    margin-left: auto;
+    font-size: 12px;
+    color: #8b949e;
+  }
+
+  /* ── Log pane ── */
+  .log-pane {
+    height: 260px;
+    overflow-y: auto;
+    padding: 6px 10px;
+    background: #0d1117;
+    font-size: 12px;
+    line-height: 1.5;
+    flex-shrink: 0;
+    border-top: 1px solid #30363d;
+  }
+
+  .log-pane .log-pass { color: #3fb950; }
+  .log-pane .log-fail { color: #f85149; }
+  .log-pane .log-step { color: #58a6ff; font-weight: bold; }
+  .log-pane .log-warn { color: #d29922; }
+
+  /* ── Right panel ── */
+  .right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .vnc-row {
+    flex: 1;
+    display: flex;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .vnc-cell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #30363d;
+  }
+
+  .vnc-cell .vnc-screen {
+    flex: 1;
+    background: #000;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .state-bar {
+    background: #161b22;
+    border-top: 1px solid #30363d;
+    padding: 6px 12px;
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .state-item { display: flex; gap: 4px; }
+  .state-label { color: #8b949e; }
+  .state-val   { color: #c9d1d9; }
+  .state-ok    { color: #3fb950; }
+  .state-bad   { color: #f85149; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Fennec Smoke Dashboard</h1>
+  <select id="run-select"><option value="">no runs</option></select>
+  <span id="job-status">no job running</span>
+</header>
+
+<div class="main">
+  <!-- Left: test list + log -->
+  <div class="left">
+    <div class="panel-header">
+      <span>Tests</span>
+      <span id="sse-indicator" style="color:#30363d">●</span>
+    </div>
+
+    <div id="test-list"></div>
+
+    <div class="controls">
+      <button class="btn primary" id="btn-run-all">Run All</button>
+      <button class="btn danger"  id="btn-cancel">Cancel</button>
+      <span id="summary"></span>
+    </div>
+
+    <div class="panel-header" style="border-top:1px solid #30363d; justify-content:space-between">
+      <span id="log-header-filter">Logs</span>
+      <button class="btn" id="btn-copy-logs" style="font-size:11px;padding:2px 8px">Copy</button>
+    </div>
+    <div class="log-pane" id="log"></div>
+  </div>
+
+  <!-- Right: noVNC viewers + state bars -->
+  <div class="right">
+    <div class="vnc-row">
+      <div class="vnc-cell">
+        <div class="panel-header">Local <span id="vnc-status-local" style="font-size:11px;margin-left:8px;color:#8b949e"></span></div>
+        <div class="vnc-screen" id="screen-local"></div>
+        <div class="state-bar" id="state-local">
+          <span class="state-item"><span class="state-label">peers:</span><span class="state-val" id="local-peers">–</span></span>
+          <span class="state-item"><span class="state-label">sharing:</span><span class="state-val" id="local-sharing">–</span></span>
+          <span class="state-item"><span class="state-label">fps:</span><span class="state-val" id="local-fps">–</span></span>
+        </div>
+      </div>
+
+      <div class="vnc-cell">
+        <div class="panel-header" style="justify-content:space-between">
+          <span>Mac Mini <span id="vnc-status-mini" style="font-size:11px;margin-left:8px;color:#8b949e"></span></span>
+          <button class="btn" id="btn-unlock-mini" style="font-size:11px;padding:2px 8px">Unlock</button>
+        </div>
+        <div class="vnc-screen" id="screen-mini"></div>
+        <div class="state-bar" id="state-mini">
+          <span class="state-item"><span class="state-label">peers:</span><span class="state-val" id="mini-peers">–</span></span>
+          <span class="state-item"><span class="state-label">sharing:</span><span class="state-val" id="mini-sharing">–</span></span>
+          <span class="state-item"><span class="state-label">fps:</span><span class="state-val" id="mini-fps">–</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+<script type="module">
+  import RFB from '/novnc/core/rfb.js';
+
+  const cfg = await fetch('/api/config').then(r => r.json()).catch(() => ({}));
+
+  function connectVnc(containerId, wsPath, creds, statusId) {
+    const el = document.getElementById(containerId);
+    const statusEl = statusId ? document.getElementById(statusId) : null;
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${proto}//${location.host}/${wsPath}`;
+
+    function setStatus(msg, color) {
+      if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || '#8b949e'; }
+    }
+
+    function connect() {
+      setStatus('connecting…');
+      try {
+        const rfb = new RFB(el, url);
+        rfb.scaleViewport = true;
+        rfb.resizeSession = false;
+        rfb.addEventListener('connect', () => setStatus('connected', '#3fb950'));
+        rfb.addEventListener('disconnect', (e) => {
+          setStatus('disconnected: ' + (e.detail?.reason || 'unknown'), '#f85149');
+          setTimeout(connect, 3000);
+        });
+        rfb.addEventListener('credentialsrequired', (e) => {
+          setStatus('authenticating…', '#d29922');
+          const types = e.detail?.types || [];
+          const send = { password: creds.password || '' };
+          if (types.includes('username')) send.username = creds.username || '';
+          if (types.includes('target'))   send.target   = '';
+          rfb.sendCredentials(send);
+        });
+        rfb.addEventListener('securityfailure', (e) => {
+          setStatus('auth failed: ' + (e.detail?.reason || e.detail?.status), '#f85149');
+        });
+      } catch (e) {
+        setStatus('error: ' + e.message, '#f85149');
+        setTimeout(connect, 3000);
+      }
+    }
+    connect();
+  }
+
+  connectVnc('screen-local', 'ws/local', {}, 'vnc-status-local');
+  connectVnc('screen-mini', 'ws/mini', {
+    password: cfg.miniVncPassword || '',
+    username: cfg.miniVncUsername || '',
+  }, 'vnc-status-mini');
+</script>
+</body>
+</html>

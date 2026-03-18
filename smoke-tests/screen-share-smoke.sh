@@ -179,9 +179,15 @@ test_change_target_mid_share() {
     assert wait_peers_reconnected "$MINI" "mini"
     assert poll "receiving" "is_receiving_frames $MINI $LOCAL_USER" 10
 
-    # Switch target (stop+start internally)
+    # Switch target (stop+start internally — may restart the app process)
     assert post "$LOCAL/screen-share/change-target"
-    assert poll "sharing again" "is_screen_sharing $LOCAL" 15
+    assert poll "local healthy" "get $LOCAL/health" 60
+    assert poll "local voice connected" "is_voice_connected $LOCAL" 60
+    assert poll "local peers reconnected" "all_peers_connected $LOCAL" 60
+    assert poll "mini peers reconnected" "all_peers_connected $MINI" 60
+    # If the app restarted during change-target it won't be sharing anymore — start explicitly
+    is_screen_sharing "$LOCAL" || assert post "$LOCAL/screen-share/start"
+    assert poll "sharing again" "is_screen_sharing $LOCAL" 30
 
     assert post "$MINI/screen-share/watch/$LOCAL_USER"
     assert wait_peers_reconnected "$MINI" "mini"
@@ -279,10 +285,14 @@ test_dual_share_one_stops() {
     assert poll "mini receiving" "is_receiving_frames $MINI $LOCAL_USER" 10
 
     assert post "$LOCAL/screen-share/stop"
-    assert poll "local stopped" "is_not_screen_sharing $LOCAL" 10
-    sleep 2
+    assert poll "local stopped" "is_not_screen_sharing $LOCAL" 15
+    # Stopping disposes all peers (SIPSorcery has no removeTrack).
+    # Wait for auto-reconnect, then re-watch mini's ongoing share.
+    assert poll "local peers reconnected" "all_peers_connected $LOCAL" 30
     assert assert_sharer_count "$MINI" 1
-    assert is_receiving_frames "$LOCAL" "$MINI_USER"
+    assert post "$LOCAL/screen-share/watch/$MINI_USER"
+    assert wait_peers_reconnected "$LOCAL" "local"
+    assert poll "local still receiving" "is_receiving_frames $LOCAL $MINI_USER" 10
     log "local still receiving from mini after local stopped sharing"
 
     assert post "$LOCAL/screen-share/unwatch/$MINI_USER"
@@ -338,7 +348,15 @@ test_mini_shares_local_watches() {
 # ============================================================
 test_late_joiner_watches_existing_share() {
     # Stop MINI entirely so LOCAL is alone
-    systemctl --user stop fennec-test-app-mac-mini
+    if [[ "$RESTART_MODE" == "k8s" ]]; then
+        local launcher_pod
+        launcher_pod=$(kubectl get pods -n "$K8S_NAMESPACE" -l app=mac-launcher -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+        if [[ -n "$launcher_pod" ]]; then
+            kubectl exec -n "$K8S_NAMESPACE" "$launcher_pod" -- bash -c 'kill $APP_PID 2>/dev/null || true'
+        fi
+    else
+        systemctl --user stop fennec-test-app-mac-mini
+    fi
     sleep 2
 
     # LOCAL starts sharing while alone in voice
@@ -346,7 +364,12 @@ test_late_joiner_watches_existing_share() {
     assert poll "local sharing" "is_screen_sharing $LOCAL" 10
 
     # Now bring MINI back up — it will auto-login and auto-join voice
-    systemctl --user start fennec-test-app-mac-mini
+    if [[ "$RESTART_MODE" == "k8s" ]]; then
+        # The launcher pod auto-restarts the app after the process exits
+        true
+    else
+        systemctl --user start fennec-test-app-mac-mini
+    fi
     poll "mini healthy" "get $MINI/health" 60
     poll "mini logged in" "is_logged_in $MINI" 60
     poll "mini voice connected" "is_voice_connected $MINI" 30

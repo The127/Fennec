@@ -17,6 +17,23 @@ spec:
         - ip: "${SMOKE_NODE_IP}"
           hostnames:
             - ${SMOKE_DOMAIN}
+      initContainers:
+        - name: trust-ca
+          image: fennec-app-linux:latest
+          imagePullPolicy: Never
+          command:
+            - sh
+            - -c
+            - |
+              cp /extra-certs/*.crt /usr/local/share/ca-certificates/
+              update-ca-certificates
+              cp /etc/ssl/certs/ca-certificates.crt /shared-certs/ca-certificates.crt
+          volumeMounts:
+            - name: extra-certs
+              mountPath: /extra-certs
+              readOnly: true
+            - name: shared-certs
+              mountPath: /shared-certs
       containers:
         - name: fennec-app
           image: fennec-app-linux:latest
@@ -29,7 +46,12 @@ spec:
             - name: extra-certs
               mountPath: /extra-certs
               readOnly: true
+            - name: shared-certs
+              mountPath: /shared-certs
+              readOnly: true
           env:
+            - name: SSL_CERT_FILE
+              value: /shared-certs/ca-certificates.crt
             - name: FENNEC_PROFILE
               value: default
             - name: FENNEC_NO_UPDATE
@@ -58,6 +80,8 @@ spec:
         - name: extra-certs
           configMap:
             name: fennec-api-ca
+        - name: shared-certs
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

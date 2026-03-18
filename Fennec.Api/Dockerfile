@@ -18,8 +18,7 @@ COPY Fennec.Shared/ Fennec.Shared/
 RUN dotnet publish Fennec.Api/Fennec.Api.csproj \
     -c Release \
     -p:Version=${VERSION} \
-    -o /app/publish \
-    --no-restore
+    -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 
