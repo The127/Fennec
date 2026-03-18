@@ -73,6 +73,41 @@ public partial class ChannelGroupItem(Guid id, string name, List<ChannelItem> ch
 
     [ObservableProperty]
     private string _renamingText = name;
+
+    public void BeginRename()
+    {
+        RenamingText = Name;
+        IsRenaming = true;
+    }
+
+    public string? CommitRename()
+    {
+        if (string.IsNullOrWhiteSpace(RenamingText))
+        {
+            IsRenaming = false;
+            return null;
+        }
+
+        var newName = RenamingText.Trim();
+        if (newName == Name)
+        {
+            IsRenaming = false;
+            return null;
+        }
+
+        return newName;
+    }
+
+    public void ApplyRename(string newName)
+    {
+        Name = newName;
+        IsRenaming = false;
+    }
+
+    public void CancelRename()
+    {
+        IsRenaming = false;
+    }
 }
 
 public class MemberItem(string username, string? instanceUrl, bool isOnline)
@@ -346,7 +381,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             if (newGroup is not null)
             {
                 newGroup.RenamingText = "";
-                newGroup.IsRenaming = true;
+                newGroup.BeginRename();
             }
         }
         catch
@@ -358,25 +393,14 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     [RelayCommand]
     private void StartRenameChannelGroup(ChannelGroupItem group)
     {
-        group.RenamingText = group.Name;
-        group.IsRenaming = true;
+        group.BeginRename();
     }
 
     [RelayCommand]
     private async Task ConfirmRenameChannelGroup(ChannelGroupItem group)
     {
-        if (string.IsNullOrWhiteSpace(group.RenamingText))
-        {
-            group.IsRenaming = false;
-            return;
-        }
-
-        var newName = group.RenamingText.Trim();
-        if (newName == group.Name)
-        {
-            group.IsRenaming = false;
-            return;
-        }
+        var newName = group.CommitRename();
+        if (newName is null) return;
 
         try
         {
@@ -385,22 +409,19 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 Name = newName,
             });
 
-            group.Name = newName;
+            group.ApplyRename(newName);
         }
         catch
         {
             // Failed to rename.
-        }
-        finally
-        {
-            group.IsRenaming = false;
+            group.CancelRename();
         }
     }
 
     [RelayCommand]
     private void CancelRenameChannelGroup(ChannelGroupItem group)
     {
-        group.IsRenaming = false;
+        group.CancelRename();
     }
 
     [RelayCommand]
