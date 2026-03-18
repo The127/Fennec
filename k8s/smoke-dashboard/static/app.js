@@ -110,8 +110,12 @@ const ANSI_COLORS = [
   [/\x1b\[[0-9;]+m/g,  ''],
 ];
 
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function renderAnsi(raw) {
-  let s = raw;
+  let s = escapeHtml(raw);
   for (const [re, rep] of ANSI_COLORS) s = s.replace(re, rep);
   return s;
 }
