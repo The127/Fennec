@@ -68,8 +68,16 @@ _smoke-dashboard-build:
     docker build -t fennec-smoke-dashboard -f k8s/smoke-dashboard/Dockerfile k8s/smoke-dashboard/
     docker save fennec-smoke-dashboard | ssh "$SMOKE_K3S_HOST" 'sudo k3s ctr images import -'
 
+# create/update all smoke test secrets and configmaps (idempotent)
+smoke-setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source k8s/smoke.env
+    export SMOKE_DOMAIN
+    bash k8s/setup-secrets.sh
+
 # deploy and run smoke tests on k3s
-smoke-test: smoke-build
+smoke-test: smoke-setup smoke-build
     #!/usr/bin/env bash
     set -euo pipefail
     source k8s/smoke.env
