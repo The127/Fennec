@@ -1,9 +1,9 @@
 using System.Collections.ObjectModel;
-using System.Text.RegularExpressions;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain;
 using Fennec.App.Helpers;
 using Fennec.App.Messages;
 using Fennec.App.Models;
@@ -11,7 +11,6 @@ using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Shortcuts;
 using Fennec.Client;
-using HubStatus = Fennec.Client.HubConnectionStatus;
 using Fennec.Shared.Dtos.Server;
 using Fennec.Shared.Models;
 using Microsoft.Extensions.Logging;
@@ -169,14 +168,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         messenger.Register<HubConnectionStateChangedMessage>(this);
 
         // Initialize hub status from current state
-        (HubStatusText, HubStatusColor) = messageHubService.CurrentStatus switch
-        {
-            HubStatus.Connected => ("Connected", "#4CAF50"),
-            HubStatus.Connecting => ("Connecting...", "#FFC107"),
-            HubStatus.Reconnecting => ("Reconnecting...", "#FFC107"),
-            HubStatus.Disconnected => ("Disconnected", "#F44336"),
-            _ => ("Unknown", "#808080"),
-        };
+        HubStatus = messageHubService.CurrentStatus;
 
         // Instantiate sub-VMs in dependency order
         VoiceParticipants = new VoiceParticipantsViewModel(serverId, messenger, ChannelGroups);
@@ -446,7 +438,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         if (SelectedChannel is null || string.IsNullOrWhiteSpace(MessageText) || IsOverLimit)
             return;
 
-        var content = ReplaceShortcodes(MessageText.Trim());
+        var content = ShortcodeReplacer.Replace(MessageText.Trim());
         MessageText = "";
 
         var now = SystemClock.Instance.GetCurrentInstant();
@@ -498,8 +490,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         var lastMessage = Messages.LastOrDefault();
         var parsed = InstantPattern.ExtendedIso.Parse(createdAt);
         var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
-        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
-        var msgDate = timestamp?.InZone(zone).Date;
 
         var lastAuthorId = lastMessage?.AuthorId;
         Instant? lastTimestamp = null;
@@ -508,12 +498,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             var lastParsed = InstantPattern.ExtendedIso.Parse(lastMessage.CreatedAt);
             if (lastParsed.Success) lastTimestamp = lastParsed.Value;
         }
-        var lastDate = lastTimestamp?.InZone(zone).Date;
 
-        var isNewDay = lastDate is not null && msgDate is not null && msgDate != lastDate;
-        var hasTimeGap = lastTimestamp is not null && timestamp is not null
-            && (timestamp.Value - lastTimestamp.Value).TotalMinutes >= 5;
-        var showAuthor = authorId != lastAuthorId || hasTimeGap || isNewDay;
+        var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, timestamp, authorId);
+        var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, timestamp);
 
         return new MessageItem
         {
@@ -527,8 +514,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             LocalTime = FormatLocalTime(createdAt),
             ExactTime = FormatExactTime(createdAt),
             ShowAuthor = showAuthor,
-            ShowTimeSeparator = isNewDay,
-            TimeSeparatorText = isNewDay ? FormatTimeSeparator(createdAt) : "",
+            ShowTimeSeparator = showTimeSeparator,
+            TimeSeparatorText = showTimeSeparator ? FormatTimeSeparator(createdAt) : "",
         };
     }
 
@@ -554,10 +541,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     // --- Hub connection status ---
 
     [ObservableProperty]
-    private string _hubStatusText = "Disconnected";
-
-    [ObservableProperty]
-    private string _hubStatusColor = "#808080";
+    private HubConnectionStatus _hubStatus = HubConnectionStatus.Disconnected;
 
     [ObservableProperty]
     private string? _subscribedChannelName;
@@ -566,14 +550,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     {
         Dispatcher.UIThread.Post(() =>
         {
-            (HubStatusText, HubStatusColor) = message.Status switch
-            {
-                HubStatus.Connected => ("Connected", "#4CAF50"),
-                HubStatus.Connecting => ("Connecting...", "#FFC107"),
-                HubStatus.Reconnecting => ("Reconnecting...", "#FFC107"),
-                HubStatus.Disconnected => ("Disconnected", "#F44336"),
-                _ => ("Unknown", "#808080"),
-            };
+            HubStatus = message.Status;
         });
     }
 
@@ -590,24 +567,17 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
             Messages.Clear();
 
-            var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
             Guid? lastAuthorId = null;
             Instant? lastTimestamp = null;
-            LocalDate? lastDate = null;
             foreach (var msg in response.Messages)
             {
                 var parsed = InstantPattern.ExtendedIso.Parse(msg.CreatedAt);
                 var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
-                var msgDate = timestamp?.InZone(zone).Date;
 
-                var isNewDay = lastDate is not null && msgDate is not null && msgDate != lastDate;
-                var hasTimeGap = lastTimestamp is not null && timestamp is not null
-                    && (timestamp.Value - lastTimestamp.Value).TotalMinutes >= 5;
-
-                var showAuthor = msg.AuthorId != lastAuthorId || hasTimeGap || isNewDay;
+                var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, timestamp, msg.AuthorId);
+                var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, timestamp);
                 lastAuthorId = msg.AuthorId;
                 lastTimestamp = timestamp;
-                lastDate = msgDate;
 
                 Messages.Add(new MessageItem
                 {
@@ -621,8 +591,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                     LocalTime = FormatLocalTime(msg.CreatedAt),
                     ExactTime = FormatExactTime(msg.CreatedAt),
                     ShowAuthor = showAuthor,
-                    ShowTimeSeparator = isNewDay,
-                    TimeSeparatorText = isNewDay ? FormatTimeSeparator(msg.CreatedAt) : "",
+                    ShowTimeSeparator = showTimeSeparator,
+                    TimeSeparatorText = showTimeSeparator ? FormatTimeSeparator(msg.CreatedAt) : "",
                 });
             }
 
@@ -675,14 +645,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             return "Yesterday";
 
         return local.ToString("MMMM d, yyyy", null);
-    }
-
-    internal static string ReplaceShortcodes(string text)
-    {
-        return Regex.Replace(text, @":([a-z0-9_]+):", match =>
-            EmojiDatabase.ByShortcode.TryGetValue(match.Groups[1].Value, out var entry)
-                ? entry.Unicode
-                : match.Value);
     }
 
     public string SearchWatermark => "Search messages...";
