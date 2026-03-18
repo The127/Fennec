@@ -3,37 +3,47 @@
 - NodaTime `Instant.FromUtc` only accepts hours 0-23. For timezone-stable day-boundary tests, use midday UTC (12:00) on different calendar days rather than 23:59 → 00:00 crossing.
 - Domain classes live in Fennec.App/Domain/. Tests live in Fennec.App.Tests/Domain/.
 - ServerViewModel already imports `using Fennec.App.Domain;` — domain classes are ready to use.
+- EmojiDatabase is in namespace Fennec.App.Models. Known shortcodes: "grinning" → U+1F600, "smiley" → U+1F603.
+- ServerRoute is a record in Fennec.App/Routes/ServerRoute.cs — has ServerId and InstanceUrl properties directly.
+- Formatting helpers (not domain logic) live in Fennec.App/Formatting/. Tests in Fennec.App.Tests/Formatting/.
+- Message is a `readonly record struct` — use `Message.Create(...)` factory; throws `ArgumentException` on bad ISO timestamp.
+- MessageGrouper methods require explicit `DateTimeZone zone` parameter; callers should pass `DateTimeZoneProviders.Tzdb.GetSystemDefault()`.
 
 ---
 
 ## 2026-03-18 - US-001
-
-- What was implemented: MessageGrouper.cs (pure static class) already existed in Fennec.App/Domain/. ServerViewModel already used it. Fixed timezone bug in MessageGrouperTests.cs: `At()` helper was adding 12 to hours (causing overflow) and day-boundary tests used 23:59→00:00 UTC which isn't a local day boundary in CET. Fixed by removing +12 offset and using noon UTC (day 1 vs day 2) for boundary tests.
-- Files changed: Fennec.App/Domain/MessageGrouper.cs (committed), Fennec.App.Tests/Domain/MessageGrouperTests.cs (committed)
-- **Learnings for future iterations:**
-  - MessageGrouper, its call sites in ServerViewModel, and the test file were all already partially implemented — only the test helper bugs remained.
-  - Always check whether files already exist before creating them from scratch.
-  - Timezone-stable instant helpers: use midday UTC on separate calendar days, not midnight crossing.
+- Introduced `Message` readonly record struct in `Fennec.App/Domain/Message.cs`
+- Static factory `Message.Create` parses ISO timestamp via `InstantPattern.ExtendedIso`, throws `ArgumentException` on failure
+- Files changed: `Fennec.App/Domain/Message.cs`, `Fennec.App.Tests/Domain/MessageTests.cs`
+- **Learnings:**
+  - NodaTime.Text must be imported separately from NodaTime for InstantPattern
+  - `readonly record struct` works cleanly as a value object with no framework deps
 ---
 
 ## 2026-03-18 - US-002
-- What was implemented: Created ShortcodeReplacer.cs in Domain/, removed internal static ReplaceShortcodes from ServerViewModel, updated call site to ShortcodeReplacer.Replace, removed now-unused using System.Text.RegularExpressions. Added 4 tests.
-- Files changed: Fennec.App/Domain/ShortcodeReplacer.cs (new), Fennec.App.Tests/Domain/ShortcodeReplacerTests.cs (new), Fennec.App/ViewModels/ServerViewModel.cs
-- **Learnings:** EmojiDatabase is in namespace Fennec.App.Models. Known shortcodes: "grinning" → U+1F600, "smiley" → U+1F603.
+- Added `DateTimeZone zone` parameter to `MessageGrouper.ShouldShowAuthor` and `ShouldShowTimeSeparator`
+- Removed `DateTimeZoneProviders.Tzdb.GetSystemDefault()` call from MessageGrouper; callers in ServerViewModel now resolve it
+- Updated MessageGrouperTests to pass `DateTimeZone.Utc` explicitly
+- Files changed: `Fennec.App/Domain/MessageGrouper.cs`, `Fennec.App/ViewModels/ServerViewModel.cs`, `Fennec.App.Tests/Domain/MessageGrouperTests.cs`
+- **Learnings:**
+  - Both call sites in ServerViewModel (BuildMessageItem and LoadMessagesAsync) needed updating
+  - Zone resolution moved to application layer, making domain logic pure and testable
 ---
 
 ## 2026-03-18 - US-003
-- What was implemented: Created MessageLengthPolicy.cs in Domain/ with MaxLength=10_000, CounterVisibleThreshold=9_000, CharsRemaining, ShouldShowCounter, IsOverLimit. Replaced inline logic in ServerViewModel. Added 6 tests.
-- Files changed: Fennec.App/Domain/MessageLengthPolicy.cs (new), Fennec.App.Tests/Domain/MessageLengthPolicyTests.cs (new), Fennec.App/ViewModels/ServerViewModel.cs
+- Moved `ShortcodeReplacer` from `Fennec.App/Domain/` to `Fennec.App/Formatting/` with namespace `Fennec.App.Formatting`
+- Deleted `Fennec.App/Domain/ShortcodeReplacer.cs` and `Fennec.App.Tests/Domain/ShortcodeReplacerTests.cs`
+- Added `using Fennec.App.Formatting;` to ServerViewModel
+- Files changed: new `Fennec.App/Formatting/ShortcodeReplacer.cs`, `Fennec.App.Tests/Formatting/ShortcodeReplacerTests.cs`, `Fennec.App/ViewModels/ServerViewModel.cs`
+- **Learnings:**
+  - `Fennec.App.Domain` was imported by ServerViewModel already; adding Formatting alongside works cleanly
 ---
 
 ## 2026-03-18 - US-004
-- What was implemented: Created OutgoingMessageState.cs with abstract base + PendingState, DeliveredState, FailedState(reason). Added SendState property to MessageItem with change notification that cascades to IsPending and IsSendFailed (now computed). Updated SendMessage() to use SendState instead of direct flag assignment. Added 5 tests.
-- Files changed: Fennec.App/Domain/OutgoingMessageState.cs (new), Fennec.App.Tests/Domain/OutgoingMessageStateTests.cs (new), Fennec.App/ViewModels/ServerViewModel.cs
----
-
-## 2026-03-18 - US-005
-- What was implemented: Added private CreateServerRoute(Guid, string, string) factory method to MainAppViewModel. Replaced all 3 inline ServerRoute constructions. Added 1 test asserting ServerId and InstanceUrl are correct.
-- Files changed: Fennec.App/ViewModels/MainAppViewModel.cs, Fennec.App.Tests/ViewModels/MainAppViewModelTests.cs
-- **Learnings:** ServerRoute is a record in Fennec.App/Routes/ServerRoute.cs — has ServerId and InstanceUrl properties directly. NSubstitute can match records with Arg.Is<ServerRoute>().
+- `BuildMessageItem` now constructs `Message.Create(...)` first; reads `message.Timestamp` and `message.AuthorId` for MessageGrouper calls
+- `LoadMessagesAsync` constructs `Message` per DTO before building `MessageItem`; timestamp parsing loop eliminated
+- Files changed: `Fennec.App/ViewModels/ServerViewModel.cs`
+- **Learnings:**
+  - lastMessage.CreatedAt still needs `InstantPattern.ExtendedIso.Parse` in BuildMessageItem since MessageItem stores string, not Instant
+  - Message.Timestamp is `Instant` (not nullable) so it implicitly converts to `Instant?` when passed to MessageGrouper — no cast needed
 ---
