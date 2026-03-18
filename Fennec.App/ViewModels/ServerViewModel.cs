@@ -493,10 +493,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
     private MessageItem BuildMessageItem(Guid messageId, string content, Guid authorId, string authorName, string? authorInstanceUrl, string createdAt)
     {
-        var lastMessage = Messages.LastOrDefault();
-        var parsed = InstantPattern.ExtendedIso.Parse(createdAt);
-        var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
+        var message = Message.Create(messageId, authorId, authorInstanceUrl, content, createdAt);
 
+        var lastMessage = Messages.LastOrDefault();
         var lastAuthorId = lastMessage?.AuthorId;
         Instant? lastTimestamp = null;
         if (lastMessage is not null)
@@ -506,8 +505,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         }
 
         var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
-        var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, timestamp, authorId, zone);
-        var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, timestamp, zone);
+        var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, message.Timestamp, message.AuthorId, zone);
+        var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, message.Timestamp, zone);
 
         return new MessageItem
         {
@@ -574,18 +573,17 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
             Messages.Clear();
 
+            var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
             Guid? lastAuthorId = null;
             Instant? lastTimestamp = null;
             foreach (var msg in response.Messages)
             {
-                var parsed = InstantPattern.ExtendedIso.Parse(msg.CreatedAt);
-                var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
+                var message = Message.Create(msg.MessageId, msg.AuthorId, msg.AuthorInstanceUrl, msg.Content, msg.CreatedAt);
 
-                var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
-                var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, timestamp, msg.AuthorId, zone);
-                var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, timestamp, zone);
-                lastAuthorId = msg.AuthorId;
-                lastTimestamp = timestamp;
+                var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, message.Timestamp, message.AuthorId, zone);
+                var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, message.Timestamp, zone);
+                lastAuthorId = message.AuthorId;
+                lastTimestamp = message.Timestamp;
 
                 Messages.Add(new MessageItem
                 {
