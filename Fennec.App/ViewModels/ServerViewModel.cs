@@ -504,8 +504,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             if (lastParsed.Success) lastTimestamp = lastParsed.Value;
         }
 
-        var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, timestamp, authorId);
-        var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, timestamp);
+        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, timestamp, authorId, zone);
+        var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, timestamp, zone);
 
         return new MessageItem
         {
@@ -579,8 +580,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
                 var parsed = InstantPattern.ExtendedIso.Parse(msg.CreatedAt);
                 var timestamp = parsed.Success ? parsed.Value : (Instant?)null;
 
-                var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, timestamp, msg.AuthorId);
-                var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, timestamp);
+                var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+                var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, timestamp, msg.AuthorId, zone);
+                var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, timestamp, zone);
                 lastAuthorId = msg.AuthorId;
                 lastTimestamp = timestamp;
 
