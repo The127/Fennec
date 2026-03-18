@@ -27,22 +27,16 @@ public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) 
         for (int i = 0; i < servers.Count; i++)
         {
             var s = servers[i];
+            var summary = new ServerSummary(s.Id, s.Name, new InstanceUrl(s.InstanceUrl));
             if (existing.TryGetValue(s.Id, out var local))
             {
-                local.Name = s.Name;
-                local.InstanceUrl = new InstanceUrl(s.InstanceUrl);
-                local.SortOrder = i;
+                local.UpdateFrom(summary, i);
                 existing.Remove(s.Id);
             }
             else
             {
-                toAdd.Add(new LocalServer
-                {
-                    Id = s.Id,
-                    Name = s.Name,
-                    InstanceUrl = new InstanceUrl(s.InstanceUrl),
-                    SortOrder = i
-                });
+                var newServer = new LocalServer { Id = s.Id, Name = s.Name, InstanceUrl = new InstanceUrl(s.InstanceUrl), SortOrder = i };
+                toAdd.Add(newServer);
             }
         }
 
@@ -104,21 +98,15 @@ public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) 
         for (int i = 0; i < groups.Count; i++)
         {
             var g = groups[i];
+            var summary = new ChannelGroupSummary(g.ChannelGroupId, g.Name);
             if (existing.TryGetValue(g.ChannelGroupId, out var local))
             {
-                local.Name = g.Name;
-                local.SortOrder = i;
+                local.UpdateFrom(summary, i);
                 existing.Remove(g.ChannelGroupId);
             }
             else
             {
-                toAdd.Add(new LocalChannelGroup
-                {
-                    Id = g.ChannelGroupId,
-                    Name = g.Name,
-                    ServerId = serverId,
-                    SortOrder = i
-                });
+                toAdd.Add(new LocalChannelGroup { Id = g.ChannelGroupId, Name = g.Name, ServerId = serverId, SortOrder = i });
             }
         }
 
@@ -149,24 +137,15 @@ public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) 
         for (int i = 0; i < channels.Count; i++)
         {
             var c = channels[i];
+            var summary = new ChannelSummary(c.ChannelId, c.Name, c.ChannelType, channelGroupId);
             if (existing.TryGetValue(c.ChannelId, out var local))
             {
-                local.Name = c.Name;
-                local.ChannelType = c.ChannelType;
-                local.SortOrder = i;
+                local.UpdateFrom(summary, i);
                 existing.Remove(c.ChannelId);
             }
             else
             {
-                toAdd.Add(new LocalChannel
-                {
-                    Id = c.ChannelId,
-                    Name = c.Name,
-                    ChannelGroupId = channelGroupId,
-                    ServerId = serverId,
-                    ChannelType = c.ChannelType,
-                    SortOrder = i
-                });
+                toAdd.Add(new LocalChannel { Id = c.ChannelId, Name = c.Name, ChannelGroupId = channelGroupId, ServerId = serverId, ChannelType = c.ChannelType, SortOrder = i });
             }
         }
 

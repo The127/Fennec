@@ -11,10 +11,17 @@ public class LocalServer
     public required string Name { get; set; }
 
     public required InstanceUrl InstanceUrl { get; set; }
-    
+
     public DateTime JoinedAtUtc { get; set; } = DateTime.UtcNow;
-    
+
     public int? SortOrder { get; set; }
-    
+
     public List<LocalChannelGroup> ChannelGroups { get; set; } = [];
+
+    public void UpdateFrom(ServerSummary summary, int sortOrder)
+    {
+        Name = summary.Name;
+        InstanceUrl = summary.InstanceUrl;
+        SortOrder = sortOrder;
+    }
 }
