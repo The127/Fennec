@@ -1,0 +1,38 @@
+-- Seed data for smoke test environment.
+-- Creates two users (kris, mini), a test server, channel group, channel, and memberships.
+-- IDs match those in the fennec-test-env secret / .config/fennec-test/*.env files.
+
+-- Users
+INSERT INTO "user" (id, name, display_name, created_at, updated_at) VALUES
+    ('aaaaaaaa-0001-0001-0001-000000000001', 'kris', 'Kris', NOW(), NOW()),
+    ('aaaaaaaa-0001-0001-0001-000000000002', 'mini', 'Mini', NOW(), NOW());
+
+-- Auth methods (password, type=0, BCrypt hashes of 'kris' and 'mini')
+INSERT INTO auth_method (id, user_id, type, details, created_at, updated_at) VALUES
+    (gen_random_uuid(), 'aaaaaaaa-0001-0001-0001-000000000001', 0,
+     '{"Hash":"$2b$11$jWNgn4dMUsnEHNFxx1cSb.fBXtR7rSkIujecNz2kFLmRqE6j4mUGC"}', NOW(), NOW()),
+    (gen_random_uuid(), 'aaaaaaaa-0001-0001-0001-000000000002', 0,
+     '{"Hash":"$2b$11$RvuwUKkwCaQder9RUXtkH.XIHqX8EmdiV3zwuCtSUCCQV9k893fQy"}', NOW(), NOW());
+
+-- KnownUser entries for local users (instance_url = NULL for local)
+INSERT INTO known_user (id, remote_id, instance_url, name, is_deleted, created_at, updated_at) VALUES
+    ('bbbbbbbb-0001-0001-0001-000000000001', 'aaaaaaaa-0001-0001-0001-000000000001', NULL, 'kris', false, NOW(), NOW()),
+    ('bbbbbbbb-0001-0001-0001-000000000002', 'aaaaaaaa-0001-0001-0001-000000000002', NULL, 'mini', false, NOW(), NOW());
+
+-- Server (ID matches FENNEC_AUTO_JOIN_SERVER)
+INSERT INTO server (id, name, visibility, created_at, updated_at) VALUES
+    ('046e1f2a-2faf-4686-ba85-fd2448e57a87', 'Smoke Test Server', 0, NOW(), NOW());
+
+-- Channel group (required by channel FK)
+INSERT INTO channel_group (id, name, server_id, created_at, updated_at) VALUES
+    ('cccccccc-0001-0001-0001-000000000001', 'General', '046e1f2a-2faf-4686-ba85-fd2448e57a87', NOW(), NOW());
+
+-- Channel (ID matches FENNEC_AUTO_JOIN_CHANNEL, type=0 TextAndVoice)
+INSERT INTO channel (id, name, server_id, channel_group_id, channel_type, created_at, updated_at) VALUES
+    ('6a2989c8-be88-42c3-9a69-a84c02586259', 'general', '046e1f2a-2faf-4686-ba85-fd2448e57a87',
+     'cccccccc-0001-0001-0001-000000000001', 0, NOW(), NOW());
+
+-- Server members (link known_users to server)
+INSERT INTO server_member (id, server_id, known_user_id, created_at, updated_at) VALUES
+    (gen_random_uuid(), '046e1f2a-2faf-4686-ba85-fd2448e57a87', 'bbbbbbbb-0001-0001-0001-000000000001', NOW(), NOW()),
+    (gen_random_uuid(), '046e1f2a-2faf-4686-ba85-fd2448e57a87', 'bbbbbbbb-0001-0001-0001-000000000002', NOW(), NOW());

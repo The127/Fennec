@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: smoke-dashboard
+  namespace: fennec-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: smoke-dashboard
+  namespace: fennec-test
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: smoke-dashboard
+  namespace: fennec-test
+subjects:
+  - kind: ServiceAccount
+    name: smoke-dashboard
+    namespace: fennec-test
+roleRef:
+  kind: Role
+  name: smoke-dashboard
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smoke-dashboard
+  namespace: fennec-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smoke-dashboard
+  template:
+    metadata:
+      labels:
+        app: smoke-dashboard
+    spec:
+      serviceAccountName: smoke-dashboard
+      containers:
+        - name: dashboard
+          image: fennec-smoke-dashboard:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MINI_VNC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: MINI_VNC_PASSWORD
+            - name: MINI_VNC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: fennec-test-env
+                  key: MINI_VNC_USERNAME
+            - name: MINI_HOST
+              value: "192.168.1.29"
+            - name: MINI_USER
+              value: "kristianjakobsen"
+          volumeMounts:
+            - name: ssh-key
+              mountPath: /ssh
+              readOnly: true
+      volumes:
+        - name: ssh-key
+          secret:
+            secretName: mac-mini-ssh
+            defaultMode: 0400
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smoke-dashboard
+  namespace: fennec-test
+spec:
+  selector:
+    app: smoke-dashboard
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30900

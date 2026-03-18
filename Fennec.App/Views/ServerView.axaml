@@ -22,6 +22,8 @@
                                       TrueSize="30"
                                       FalseSize="15" />
         <conv:StringEqualsConverter x:Key="StringEqualsConverter" />
+        <conv:HubConnectionStatusToBrushConverter x:Key="HubStatusColorConverter" />
+        <conv:HubConnectionStatusToTextConverter  x:Key="HubStatusTextConverter" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="Border.selected">
@@ -49,8 +51,8 @@
                         Padding="8,4">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
-                                Background="{Binding HubStatusColor}" />
-                        <TextBlock Text="{Binding HubStatusText}" FontSize="10" Opacity="0.7"
+                                Background="{Binding HubStatus, Converter={StaticResource HubStatusColorConverter}}" />
+                        <TextBlock Text="{Binding HubStatus, Converter={StaticResource HubStatusTextConverter}}" FontSize="10" Opacity="0.7"
                                    VerticalAlignment="Center" />
                         <TextBlock FontSize="10" Opacity="0.5" VerticalAlignment="Center"
                                    IsVisible="{Binding SubscribedChannelName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">

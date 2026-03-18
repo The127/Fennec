@@ -103,7 +103,7 @@ public partial class MainAppView : UserControl
         // If barely moved, treat as click → navigate to voice server
         if (totalDrag < 5 && DataContext is MainAppViewModel vm)
         {
-            vm.NavigateToFloatingScreenShareCommand.Execute(null);
+            vm.FloatingScreenShare.NavigateToFloatingScreenShareCommand.Execute(null);
         }
     }
 }

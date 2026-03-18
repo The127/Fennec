@@ -164,9 +164,9 @@ public partial class AppShellViewModel
                     }
                     // auto-login returned null
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // auto-login failed, fall through to auth view
+                    _logger.LogError(ex, "Auto-login failed for {Username}@{InstanceUrl}", username, instanceUrl);
                 }
             }
 

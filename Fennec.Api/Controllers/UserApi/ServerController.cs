@@ -85,9 +85,13 @@ public class ServerController : UserControllerBase
             InstanceUrl = x.InstanceUrl,
         });
 
+        var servers = query is IAsyncEnumerable<ListJoinedServersResponseItemDto>
+            ? await query.ToListAsync(cancellationToken)
+            : query.ToList();
+
         return Ok(new ListJoinedServersResponseDto
         {
-            Servers = await query.ToListAsync(cancellationToken),
+            Servers = servers,
         });
     }
 }

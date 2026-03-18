@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 
 namespace Fennec.Client;
@@ -7,7 +8,7 @@ public static class Ipv4HttpHandler
 {
     public static SocketsHttpHandler Create()
     {
-        return new SocketsHttpHandler
+        var handler = new SocketsHttpHandler
         {
             ConnectCallback = async (context, cancellationToken) =>
             {
@@ -25,5 +26,13 @@ public static class Ipv4HttpHandler
                 }
             }
         };
+
+        if (Environment.GetEnvironmentVariable("FENNEC_SKIP_TLS_VERIFY") == "1")
+            handler.SslOptions = new SslClientAuthenticationOptions
+            {
+                RemoteCertificateValidationCallback = (_, _, _, _) => true
+            };
+
+        return handler;
     }
 }

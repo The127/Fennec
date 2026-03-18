@@ -50,16 +50,16 @@
                 </StackPanel>
                 <!-- Global voice indicator -->
                 <StackPanel DockPanel.Dock="Bottom" Spacing="4"
-                            IsVisible="{Binding IsInVoiceCall}">
+                            IsVisible="{Binding VoiceBar.IsInVoiceCall}">
                     <Button Classes="Ghost" Padding="4"
-                            Command="{Binding NavigateToVoiceChannelCommand}"
+                            Command="{Binding VoiceBar.NavigateToVoiceChannelCommand}"
                             ToolTip.Tip="Go to voice channel"
                             HorizontalAlignment="Stretch">
                         <StackPanel Spacing="2" HorizontalAlignment="Center">
                             <mi:MaterialIcon Kind="Headphones" Width="16" Height="16"
                                              Foreground="{DynamicResource SuccessColor}"
                                              HorizontalAlignment="Center" />
-                            <TextBlock Text="{Binding VoiceServerName}"
+                            <TextBlock Text="{Binding VoiceBar.VoiceServerName}"
                                        FontSize="9" TextAlignment="Center"
                                        TextTrimming="CharacterEllipsis"
                                        MaxWidth="36" />
@@ -67,29 +67,29 @@
                     </Button>
                     <UniformGrid Columns="3" HorizontalAlignment="Center">
                         <Button Classes="Ghost" Padding="2" Width="24" Height="24"
-                                Command="{Binding ToggleVoiceMuteCommand}"
+                                Command="{Binding VoiceBar.ToggleVoiceMuteCommand}"
                                 ToolTip.Tip="Toggle Mute">
                             <Panel>
                                 <mi:MaterialIcon Kind="Microphone" Width="12" Height="12"
-                                                 IsVisible="{Binding !IsVoiceMuted}" />
+                                                 IsVisible="{Binding !VoiceBar.IsVoiceMuted}" />
                                 <mi:MaterialIcon Kind="MicrophoneOff" Width="12" Height="12"
                                                  Foreground="{DynamicResource ErrorColor}"
-                                                 IsVisible="{Binding IsVoiceMuted}" />
+                                                 IsVisible="{Binding VoiceBar.IsVoiceMuted}" />
                             </Panel>
                         </Button>
                         <Button Classes="Ghost" Padding="2" Width="24" Height="24"
-                                Command="{Binding ToggleVoiceDeafenCommand}"
+                                Command="{Binding VoiceBar.ToggleVoiceDeafenCommand}"
                                 ToolTip.Tip="Toggle Deafen">
                             <Panel>
                                 <mi:MaterialIcon Kind="VolumeHigh" Width="12" Height="12"
-                                                 IsVisible="{Binding !IsVoiceDeafened}" />
+                                                 IsVisible="{Binding !VoiceBar.IsVoiceDeafened}" />
                                 <mi:MaterialIcon Kind="VolumeOff" Width="12" Height="12"
                                                  Foreground="{DynamicResource ErrorColor}"
-                                                 IsVisible="{Binding IsVoiceDeafened}" />
+                                                 IsVisible="{Binding VoiceBar.IsVoiceDeafened}" />
                             </Panel>
                         </Button>
                         <Button Classes="Ghost" Padding="2" Width="24" Height="24"
-                                Command="{Binding LeaveVoiceCallCommand}"
+                                Command="{Binding VoiceBar.LeaveVoiceCallCommand}"
                                 ToolTip.Tip="Disconnect">
                             <mi:MaterialIcon Kind="PhoneHangup" Width="12" Height="12"
                                              Foreground="{DynamicResource ErrorColor}" />
@@ -163,23 +163,23 @@
                                 Margin="4">
                             <UniformGrid Columns="3">
                                 <Button Classes="modeButton"
-                                        Command="{Binding SetThemeModeCommand}"
+                                        Command="{Binding ThemeZoom.SetThemeModeCommand}"
                                         CommandParameter="Light"
-                                        Tag="{Binding IsLightMode}"
+                                        Tag="{Binding ThemeZoom.IsLightMode}"
                                         HorizontalAlignment="Stretch">
                                     <mi:MaterialIcon Kind="WeatherSunny" Width="16" Height="16" />
                                 </Button>
                                 <Button Classes="modeButton"
-                                        Command="{Binding SetThemeModeCommand}"
+                                        Command="{Binding ThemeZoom.SetThemeModeCommand}"
                                         CommandParameter="Auto"
-                                        Tag="{Binding IsAutoMode}"
+                                        Tag="{Binding ThemeZoom.IsAutoMode}"
                                         HorizontalAlignment="Stretch">
                                     <mi:MaterialIcon Kind="BrightnessAuto" Width="16" Height="16" />
                                 </Button>
                                 <Button Classes="modeButton"
-                                        Command="{Binding SetThemeModeCommand}"
+                                        Command="{Binding ThemeZoom.SetThemeModeCommand}"
                                         CommandParameter="Dark"
-                                        Tag="{Binding IsDarkMode}"
+                                        Tag="{Binding ThemeZoom.IsDarkMode}"
                                         HorizontalAlignment="Stretch">
                                     <mi:MaterialIcon Kind="WeatherNight" Width="16" Height="16" />
                                 </Button>
@@ -199,7 +199,7 @@
 
     <!-- Floating screen share PiP overlay -->
     <Border x:Name="FloatingPip"
-            IsVisible="{Binding ShowFloatingScreenShare}"
+            IsVisible="{Binding FloatingScreenShare.ShowFloatingScreenShare}"
             HorizontalAlignment="Right"
             VerticalAlignment="Bottom"
             Margin="0,0,16,16"
@@ -214,30 +214,30 @@
             PointerMoved="FloatingPip_PointerMoved"
             PointerReleased="FloatingPip_PointerReleased">
         <Grid>
-            <ctrls:ScreenShareViewer Source="{Binding FloatingScreenShareFrame}"
-                                     CursorX="{Binding FloatingCursorX}"
-                                     CursorY="{Binding FloatingCursorY}"
-                                     CursorShape="{Binding FloatingCursorShape}"
-                                     CursorVisible="{Binding FloatingCursorVisible}" />
+            <ctrls:ScreenShareViewer Source="{Binding FloatingScreenShare.FloatingScreenShareFrame}"
+                                     CursorX="{Binding FloatingScreenShare.FloatingCursorX}"
+                                     CursorY="{Binding FloatingScreenShare.FloatingCursorY}"
+                                     CursorShape="{Binding FloatingScreenShare.FloatingCursorShape}"
+                                     CursorVisible="{Binding FloatingScreenShare.FloatingCursorVisible}" />
             <!-- Title bar -->
             <Border VerticalAlignment="Top" Padding="8,4"
                     Background="#80000000">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2">
                         <Button Classes="Ghost" Padding="4" Width="24" Height="24"
-                                Command="{Binding PopOutFloatingScreenShareCommand}"
+                                Command="{Binding FloatingScreenShare.PopOutFloatingScreenShareCommand}"
                                 ToolTip.Tip="Pop Out">
                             <mi:MaterialIcon Kind="OpenInNew" Width="12" Height="12" />
                         </Button>
                         <Button Classes="Ghost" Padding="4" Width="24" Height="24"
-                                Command="{Binding NavigateToFloatingScreenShareCommand}"
+                                Command="{Binding FloatingScreenShare.NavigateToFloatingScreenShareCommand}"
                                 ToolTip.Tip="Go to channel">
                             <mi:MaterialIcon Kind="ArrowExpand" Width="12" Height="12" />
                         </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                         <mi:MaterialIcon Kind="Monitor" Width="12" Height="12" />
-                        <TextBlock Text="{Binding FloatingSharerUsername}" FontSize="11"
+                        <TextBlock Text="{Binding FloatingScreenShare.FloatingSharerUsername}" FontSize="11"
                                    Foreground="White" VerticalAlignment="Center" />
                     </StackPanel>
                 </DockPanel>

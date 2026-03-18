@@ -69,6 +69,21 @@ poll() {
     log "Ready: $desc"
 }
 
+# wait_quiet <description> <command> [timeout_seconds]
+# Like poll but silently returns 1 on timeout without printing [FAIL]
+wait_quiet() {
+    local desc="$1" cmd="$2" timeout="${3:-30}"
+    local elapsed=0
+    while ! eval "$cmd" >/dev/null 2>&1; do
+        sleep 0.5
+        elapsed=$((elapsed + 1))
+        if (( elapsed >= timeout * 2 )); then
+            return 1
+        fi
+    done
+    log "Ready: $desc"
+}
+
 # --- State queries ---
 auth_state()  { get "$1/auth/state"; }
 voice_state() { get "$1/voice/state"; }
@@ -210,9 +225,9 @@ run_test() {
     _TEST_FAILED=0
     step "TEST: $name"
     # Wait for clean peer state before each test — check twice with a gap to ensure stability
-    poll "pre-test peers settling" "all_peers_connected $LOCAL" 45 || true
+    wait_quiet "pre-test peers settling" "all_peers_connected $LOCAL" 45
     sleep 2
-    poll "pre-test peers stable" "all_peers_connected $LOCAL" 15 || true
+    wait_quiet "pre-test peers stable" "all_peers_connected $LOCAL" 15
     if (( PAUSE > 0 )); then sleep "$PAUSE"; fi
     # Call the test function; it uses assert() to flag failures
     "$@" || _TEST_FAILED=1

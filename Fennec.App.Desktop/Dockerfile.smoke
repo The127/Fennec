@@ -1,0 +1,52 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+WORKDIR /src
+
+# Copy solution and project files for layer-cached restore
+COPY Fennec.sln .
+COPY Fennec.App.Desktop/Fennec.App.Desktop.csproj Fennec.App.Desktop/
+COPY Fennec.App/Fennec.App.csproj Fennec.App/
+COPY Fennec.Client/Fennec.Client.csproj Fennec.Client/
+COPY Fennec.Shared/Fennec.Shared.csproj Fennec.Shared/
+
+RUN dotnet restore Fennec.App.Desktop/Fennec.App.Desktop.csproj
+
+# Copy source and publish
+COPY Fennec.App.Desktop/ Fennec.App.Desktop/
+COPY Fennec.App/ Fennec.App/
+COPY Fennec.Client/ Fennec.Client/
+COPY Fennec.Shared/ Fennec.Shared/
+
+RUN dotnet publish Fennec.App.Desktop/Fennec.App.Desktop.csproj \
+    -c Release \
+    -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS final
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    xvfb \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxrandr2 \
+    libxi6 \
+    libice6 \
+    libsm6 \
+    libfontconfig1 \
+    libglib2.0-0 \
+    x11vnc \
+    novnc \
+    websockify \
+    ca-certificates \
+    libva-drm2 \
+    libva2 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=build /app/publish .
+COPY Fennec.App.Desktop/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 8310 5900 6080
+
+ENTRYPOINT ["/entrypoint.sh"]

@@ -51,8 +51,22 @@ smoke-build:
     docker build -t fennec-app-linux -f Fennec.App.Desktop/Dockerfile.smoke .
     docker build -t fennec-test-runner -f smoke-tests/Dockerfile .
     docker build -t fennec-mac-launcher -f k8s/mac-launcher/Dockerfile .
+    docker build -t fennec-smoke-dashboard -f k8s/smoke-dashboard/Dockerfile k8s/smoke-dashboard/
     echo "Importing images into k3s on ${SMOKE_K3S_HOST}..."
-    docker save fennec-api fennec-app-linux fennec-test-runner fennec-mac-launcher | ssh "$SMOKE_K3S_HOST" 'sudo k3s ctr images import -'
+    docker save fennec-api fennec-app-linux fennec-test-runner fennec-mac-launcher fennec-smoke-dashboard | ssh "$SMOKE_K3S_HOST" 'sudo k3s ctr images import -'
+
+# build and deploy smoke dashboard only (faster than full smoke-build)
+smoke-dashboard: _smoke-dashboard-build
+    kubectl apply -f k8s/smoke-dashboard.yaml
+    kubectl rollout restart deployment/smoke-dashboard -n fennec-test
+    kubectl rollout status deployment/smoke-dashboard -n fennec-test --timeout=60s
+
+_smoke-dashboard-build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source k8s/smoke.env
+    docker build -t fennec-smoke-dashboard -f k8s/smoke-dashboard/Dockerfile k8s/smoke-dashboard/
+    docker save fennec-smoke-dashboard | ssh "$SMOKE_K3S_HOST" 'sudo k3s ctr images import -'
 
 # deploy and run smoke tests on k3s
 smoke-test: smoke-build
@@ -73,8 +87,10 @@ smoke-test: smoke-build
     # Apply templated manifests via envsubst
     envsubst < k8s/fennec-api.yaml | kubectl apply -f -
     envsubst < k8s/fennec-app-local.yaml | kubectl apply -f -
+    kubectl delete job mac-launcher -n $NS --ignore-not-found
     envsubst < k8s/fennec-app-mini.yaml | kubectl apply -f -
     envsubst < k8s/ingress.yaml | kubectl apply -f -
+    kubectl apply -f k8s/smoke-dashboard.yaml
 
     # Wait for core services
     kubectl wait --for=condition=available deployment/postgres -n $NS --timeout=60s
