@@ -1,6 +1,4 @@
 using System.Collections.ObjectModel;
-using Avalonia;
-using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -11,11 +9,8 @@ using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
 using Fennec.App.Shortcuts;
-using Fennec.App.Themes;
 using Fennec.App.ViewModels.Settings;
 using Fennec.Client;
-using Avalonia.Media.Imaging;
-using Avalonia.Threading;
 using Fennec.Shared.Dtos.Auth;
 using Fennec.Shared.Dtos.Server;
 using ShadUI;
@@ -30,7 +25,7 @@ public partial class SidebarServer(Guid id, string name, string instanceUrl) : O
     public string AvatarFallback { get; } = name[..1].ToUpperInvariant();
 }
 
-public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>, IRecipient<VoiceStateChangedMessage>, IRecipient<VoiceMuteToggledMessage>, IRecipient<VoiceDeafenToggledMessage>, IRecipient<ScreenShareStartedMessage>, IRecipient<ScreenShareStoppedMessage>, IRecipient<ScreenShareFrameMessage>, IRecipient<ScreenShareCursorMessage>, IRecipient<ScreenSharePopOutRequestedMessage>, IRecipient<ScreenSharePopOutClosedMessage>, IRecipient<ControlNavigateToServerMessage>
+public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IVoiceChannelNavigator, IRecipient<ServerCreatedMessage>, IRecipient<ServerJoinedMessage>, IRecipient<ControlNavigateToServerMessage>
 {
     private readonly IRouter _routerField;
     private readonly IMessenger _messenger;
@@ -81,21 +76,11 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
 
         messenger.Register<ServerCreatedMessage>(this);
         messenger.Register<ServerJoinedMessage>(this);
-        messenger.Register<VoiceStateChangedMessage>(this);
-        messenger.Register<VoiceMuteToggledMessage>(this);
-        messenger.Register<VoiceDeafenToggledMessage>(this);
-        messenger.Register<ScreenShareStartedMessage>(this);
-        messenger.Register<ScreenShareStoppedMessage>(this);
-        messenger.Register<ScreenShareFrameMessage>(this);
-        messenger.Register<ScreenShareCursorMessage>(this);
-        messenger.Register<ScreenSharePopOutRequestedMessage>(this);
-        messenger.Register<ScreenSharePopOutClosedMessage>(this);
         messenger.Register<ControlNavigateToServerMessage>(this);
 
-        // Initialize voice state from service (handles case where VM is created after call started)
-        IsInVoiceCall = voiceCallService.IsConnected;
-        IsVoiceMuted = voiceCallService.IsMuted;
-        IsVoiceDeafened = voiceCallService.IsDeafened;
+        ThemeZoom = new ThemeZoomViewModel(_settingsStore, _messenger, _toastManager);
+        FloatingScreenShare = new FloatingScreenShareViewModel(_messenger, _voiceCallService, this, _routerField);
+        VoiceBar = new VoiceBarViewModel(_voiceCallService, _messenger, this, Servers, FloatingScreenShare);
 
         _routerField.Navigated += OnRouteNavigated;
     }
@@ -125,7 +110,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             IsSearchable = false;
         }
 
-        UpdateFloatingScreenShareVisibility();
+        FloatingScreenShare.OnRouteNavigated();
     }
 
     [ObservableProperty]
@@ -170,7 +155,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         switch (shortcutId)
         {
             case "app.toggleTheme":
-                ToggleThemeCommand.Execute(null);
+                ThemeZoom.ToggleThemeCommand.Execute(null);
                 return true;
             case "app.openSettings":
                 OpenSettingsCommand.Execute(null);
@@ -200,35 +185,34 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
                 NavigateForwardCommand.Execute(null);
                 return true;
             case "app.zoomIn":
-                ZoomInCommand.Execute(null);
+                ThemeZoom.ZoomInCommand.Execute(null);
                 return true;
             case "app.zoomOut":
-                ZoomOutCommand.Execute(null);
+                ThemeZoom.ZoomOutCommand.Execute(null);
                 return true;
             case "app.zoomReset":
-                ZoomResetCommand.Execute(null);
+                ThemeZoom.ZoomResetCommand.Execute(null);
                 return true;
             case "voice.toggleMute":
-                ToggleVoiceMuteCommand.Execute(null);
+                VoiceBar.ToggleVoiceMuteCommand.Execute(null);
                 return true;
             case "voice.toggleDeafen":
-                ToggleVoiceDeafenCommand.Execute(null);
+                VoiceBar.ToggleVoiceDeafenCommand.Execute(null);
                 return true;
             default:
                 return false;
         }
     }
 
-    private const double ZoomStep = 0.1;
-    private const double ZoomMin = 0.5;
-    private const double ZoomMax = 2.0;
+    public ThemeZoomViewModel ThemeZoom { get; }
+    public FloatingScreenShareViewModel FloatingScreenShare { get; }
+    public VoiceBarViewModel VoiceBar { get; }
 
     public async Task InitializeAsync()
     {
-        var settings = await _settingsStore.LoadAsync();
-        CurrentThemeMode = AppThemes.ModeFromName(settings.ThemeMode);
-        _messenger.Send(new ZoomChangedMessage(settings.ZoomLevel));
+        await ThemeZoom.InitializeAsync();
 
+        var settings = await _settingsStore.LoadAsync();
         if (settings.KeyBindings is { Count: > 0 })
             _keymapService.LoadOverrides(settings.KeyBindings);
 
@@ -267,40 +251,6 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         }
     }
 
-    [RelayCommand]
-    private async Task ZoomInAsync()
-    {
-        var settings = await _settingsStore.LoadAsync();
-        var newZoom = Math.Min(settings.ZoomLevel + ZoomStep, ZoomMax);
-        await ApplyZoomAsync(settings, newZoom);
-    }
-
-    [RelayCommand]
-    private async Task ZoomOutAsync()
-    {
-        var settings = await _settingsStore.LoadAsync();
-        var newZoom = Math.Max(settings.ZoomLevel - ZoomStep, ZoomMin);
-        await ApplyZoomAsync(settings, newZoom);
-    }
-
-    [RelayCommand]
-    private async Task ZoomResetAsync()
-    {
-        var settings = await _settingsStore.LoadAsync();
-        await ApplyZoomAsync(settings, 1.0);
-    }
-
-    private async Task ApplyZoomAsync(AppSettings settings, double zoomLevel)
-    {
-        zoomLevel = Math.Round(zoomLevel, 1);
-        settings.ZoomLevel = zoomLevel;
-        await _settingsStore.SaveAsync(settings);
-        _messenger.Send(new ZoomChangedMessage(zoomLevel));
-        _toastManager.CreateToast($"Zoom: {zoomLevel:P0}")
-            .WithDelay(2)
-            .ShowInfo();
-    }
-
     public void Receive(ServerCreatedMessage message)
     {
         _ = LoadServersAndNavigateToServerAsync(message.ServerId, message.ServerName);
@@ -312,7 +262,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
         if (_client is null) return;
         var server = Servers.FirstOrDefault(s => s.Id == serverId);
         var instanceUrl = server?.InstanceUrl ?? _session!.Url;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, _settingsStore, serverId, serverName, instanceUrl, _session!.UserId, Username));
+        await _routerField.NavigateAsync(CreateServerRoute(serverId, serverName, instanceUrl));
     }
 
     public void Receive(ServerJoinedMessage message)
@@ -411,7 +361,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private async Task NavigateToServerAsync(SidebarServer server)
     {
         if (_client is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, _settingsStore, server.Id, server.Name, server.InstanceUrl, _session!.UserId, Username));
+        await _routerField.NavigateAsync(CreateServerRoute(server.Id, server.Name, server.InstanceUrl));
     }
 
     [RelayCommand]
@@ -425,55 +375,6 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
     private async Task NavigateToCallsAsync()
     {
         await _routerField.NavigateAsync(new CallsRoute());
-    }
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsLightMode))]
-    [NotifyPropertyChangedFor(nameof(IsAutoMode))]
-    [NotifyPropertyChangedFor(nameof(IsDarkMode))]
-    private Themes.ThemeMode _currentThemeMode = AppThemes.Auto;
-
-    public bool IsLightMode => CurrentThemeMode == AppThemes.Light;
-    public bool IsAutoMode => CurrentThemeMode == AppThemes.Auto;
-    public bool IsDarkMode => CurrentThemeMode == AppThemes.Dark;
-
-    [RelayCommand]
-    private async Task SetThemeModeAsync(string modeName)
-    {
-        var mode = AppThemes.ModeFromName(modeName);
-        var app = Application.Current!;
-        var settings = await _settingsStore.LoadAsync();
-        var palette = AppThemes.PaletteFromName(settings.Theme);
-
-        ThemeVariant? osTheme = null;
-        if (app.ApplicationLifetime
-            is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow is not null)
-        {
-            var ptv = desktop.MainWindow.PlatformSettings?.GetColorValues().ThemeVariant;
-            if (ptv is not null)
-                osTheme = ptv == Avalonia.Platform.PlatformThemeVariant.Light
-                    ? ThemeVariant.Light : ThemeVariant.Dark;
-        }
-
-        app.RequestedThemeVariant = AppThemes.Resolve(palette, mode, osTheme);
-        CurrentThemeMode = mode;
-        settings.Theme = palette.Name;
-        settings.ThemeMode = mode.Name;
-        await _settingsStore.SaveAsync(settings);
-    }
-
-    [RelayCommand]
-    private async Task ToggleThemeAsync()
-    {
-        // Cycle: Light → Auto → Dark → Light
-        var next = CurrentThemeMode == AppThemes.Light ? AppThemes.Auto
-                 : CurrentThemeMode == AppThemes.Auto ? AppThemes.Dark
-                 : AppThemes.Light;
-        await SetThemeModeAsync(next.Name);
-        _toastManager.CreateToast($"Mode: {next.Name}")
-            .WithDelay(2)
-            .ShowInfo();
     }
 
     [RelayCommand]
@@ -546,298 +447,16 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IRec
             .Show();
     }
 
-    // --- Global voice state ---
-
-    [ObservableProperty]
-    private bool _isInVoiceCall;
-
-    [ObservableProperty]
-    private string? _voiceChannelName;
-
-    [ObservableProperty]
-    private string? _voiceServerName;
-
-    [ObservableProperty]
-    private bool _isVoiceMuted;
-
-    [ObservableProperty]
-    private bool _isVoiceDeafened;
-
-    private Guid? _voiceServerId;
-
-    public void Receive(VoiceStateChangedMessage message)
+    async Task IVoiceChannelNavigator.NavigateToVoiceChannelAsync()
     {
-        IsInVoiceCall = message.IsConnected;
-        _voiceServerId = message.ServerId;
-
-        if (message.IsConnected && message.ServerId is not null)
-        {
-            var server = Servers.FirstOrDefault(s => s.Id == message.ServerId);
-            VoiceServerName = server?.Name;
-            // Channel name will be resolved from the server's channel list isn't available here;
-            // We don't have channel data at this level, so leave it as the server name.
-            VoiceChannelName = null;
-        }
-        else
-        {
-            VoiceServerName = null;
-            VoiceChannelName = null;
-            IsVoiceMuted = false;
-            IsVoiceDeafened = false;
-
-            // Reset floating screen share
-            _activeScreenShareCount = 0;
-            _focusedScreenShareUserId = null;
-            FloatingScreenShareFrame = null;
-            FloatingSharerUsername = null;
-            CloseAllPopOutWindows();
-            UpdateFloatingScreenShareVisibility();
-        }
-    }
-
-    public void Receive(VoiceMuteToggledMessage message)
-    {
-        IsVoiceMuted = message.IsMuted;
-    }
-
-    public void Receive(VoiceDeafenToggledMessage message)
-    {
-        IsVoiceDeafened = message.IsDeafened;
-        if (message.IsDeafened)
-            IsVoiceMuted = true;
-    }
-
-    [RelayCommand]
-    private void ToggleVoiceMute()
-    {
-        if (!_voiceCallService.IsConnected) return;
-        var newMuted = !_voiceCallService.IsMuted;
-        _voiceCallService.SetMuted(newMuted);
-        _messenger.Send(new VoiceMuteToggledMessage(newMuted));
-    }
-
-    [RelayCommand]
-    private void ToggleVoiceDeafen()
-    {
-        if (!_voiceCallService.IsConnected) return;
-        var newDeafened = !_voiceCallService.IsDeafened;
-        _voiceCallService.SetDeafened(newDeafened);
-        _messenger.Send(new VoiceDeafenToggledMessage(newDeafened));
-    }
-
-    [RelayCommand]
-    private async Task LeaveVoiceCallAsync()
-    {
-        await _voiceCallService.LeaveAsync();
-    }
-
-    [RelayCommand]
-    private async Task NavigateToVoiceChannelAsync()
-    {
-        if (_voiceServerId is null || _client is null || _session is null) return;
-        var server = Servers.FirstOrDefault(s => s.Id == _voiceServerId);
+        if (VoiceBar.VoiceServerId is null || _client is null || _session is null) return;
+        var server = Servers.FirstOrDefault(s => s.Id == VoiceBar.VoiceServerId);
         if (server is null) return;
-        await _routerField.NavigateAsync(new ServerRoute(_client, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, _settingsStore, server.Id, server.Name, server.InstanceUrl, _session.UserId, Username));
+        await _routerField.NavigateAsync(CreateServerRoute(server.Id, server.Name, server.InstanceUrl));
     }
 
-    // --- Floating screen share ---
-
-    private int _activeScreenShareCount;
-
-    [ObservableProperty]
-    private bool _showFloatingScreenShare;
-
-    [ObservableProperty]
-    private WriteableBitmap? _floatingScreenShareFrame;
-
-    [ObservableProperty]
-    private double _floatingCursorX;
-
-    [ObservableProperty]
-    private double _floatingCursorY;
-
-    [ObservableProperty]
-    private CursorType _floatingCursorShape;
-
-    [ObservableProperty]
-    private bool _floatingCursorVisible = true;
-
-    [ObservableProperty]
-    private string? _floatingSharerUsername;
-
-    private Guid? _focusedScreenShareUserId;
-
-    private void UpdateFloatingScreenShareVisibility()
-    {
-        var isOnVoiceServer = _routerField.CurrentViewModel is ServerViewModel svm
-                              && svm.ServerId == _voiceServerId;
-        ShowFloatingScreenShare = _activeScreenShareCount > 0 && !isOnVoiceServer && !IsScreenSharePoppedOut;
-    }
-
-    public void Receive(ScreenShareStartedMessage message)
-    {
-        if (message.ServerId != _voiceServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            _activeScreenShareCount++;
-            _focusedScreenShareUserId ??= message.UserId;
-            if (_focusedScreenShareUserId == message.UserId)
-                FloatingSharerUsername = message.Username;
-            UpdateFloatingScreenShareVisibility();
-        });
-    }
-
-    public void Receive(ScreenShareStoppedMessage message)
-    {
-        if (message.ServerId != _voiceServerId) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            _activeScreenShareCount = Math.Max(0, _activeScreenShareCount - 1);
-
-            if (_focusedScreenShareUserId == message.UserId)
-            {
-                _focusedScreenShareUserId = null;
-                FloatingSharerUsername = null;
-                FloatingScreenShareFrame = null;
-            }
-
-            if (_activeScreenShareCount == 0)
-            {
-                FloatingScreenShareFrame = null;
-                FloatingSharerUsername = null;
-            }
-
-            UpdateFloatingScreenShareVisibility();
-        });
-    }
-
-    public void Receive(ScreenShareFrameMessage message)
-    {
-        if (_focusedScreenShareUserId != message.UserId) return;
-        if (!ShowFloatingScreenShare) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            try
-            {
-                if (FloatingScreenShareFrame is null
-                    || FloatingScreenShareFrame.PixelSize.Width != message.Width
-                    || FloatingScreenShareFrame.PixelSize.Height != message.Height)
-                {
-                    FloatingScreenShareFrame = new WriteableBitmap(
-                        new Avalonia.PixelSize(message.Width, message.Height),
-                        new Avalonia.Vector(96, 96),
-                        Avalonia.Platform.PixelFormat.Rgba8888,
-                        Avalonia.Platform.AlphaFormat.Unpremul);
-                }
-
-                using (var frameBuffer = FloatingScreenShareFrame.Lock())
-                {
-                    var srcStride = message.Width * 4;
-                    var dstStride = frameBuffer.RowBytes;
-
-                    if (srcStride == dstStride)
-                    {
-                        System.Runtime.InteropServices.Marshal.Copy(
-                            message.RgbaData, 0, frameBuffer.Address, message.RgbaData.Length);
-                    }
-                    else
-                    {
-                        for (int y = 0; y < message.Height; y++)
-                        {
-                            System.Runtime.InteropServices.Marshal.Copy(
-                                message.RgbaData, y * srcStride,
-                                frameBuffer.Address + y * dstStride, srcStride);
-                        }
-                    }
-                }
-
-                OnPropertyChanged(nameof(FloatingScreenShareFrame));
-            }
-            catch
-            {
-                // Ignore render failures
-            }
-        });
-    }
-
-    public void Receive(ScreenShareCursorMessage message)
-    {
-        if (_focusedScreenShareUserId != message.UserId) return;
-        if (!ShowFloatingScreenShare) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            FloatingCursorX = message.X;
-            FloatingCursorY = message.Y;
-            FloatingCursorShape = message.Type;
-            FloatingCursorVisible = message.IsVisible;
-        });
-    }
-
-    // --- Screen share pop-out ---
-
-    private readonly Dictionary<Guid, Views.ScreenShareWindow> _popOutWindows = new();
-
-    [ObservableProperty]
-    private bool _isScreenSharePoppedOut;
-
-    public void Receive(ScreenSharePopOutRequestedMessage message)
-    {
-        Dispatcher.UIThread.Post(() => OpenPopOutWindow(message.UserId, message.Username));
-    }
-
-    public void Receive(ScreenSharePopOutClosedMessage message)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            _popOutWindows.Remove(message.UserId);
-            if (_popOutWindows.Count == 0)
-                IsScreenSharePoppedOut = false;
-            UpdateFloatingScreenShareVisibility();
-        });
-    }
-
-    [RelayCommand]
-    private void PopOutFloatingScreenShare()
-    {
-        if (_focusedScreenShareUserId is null || FloatingSharerUsername is null) return;
-        OpenPopOutWindow(_focusedScreenShareUserId.Value, FloatingSharerUsername);
-    }
-
-    private void OpenPopOutWindow(Guid userId, string username)
-    {
-        if (_popOutWindows.ContainsKey(userId))
-        {
-            _popOutWindows[userId].Activate();
-            return;
-        }
-
-        if (_voiceServerId is null) return;
-
-        var vm = new ScreenShareWindowViewModel(_messenger, _voiceCallService, userId, username, _voiceServerId.Value);
-        var window = new Views.ScreenShareWindow { DataContext = vm };
-        _popOutWindows[userId] = window;
-        IsScreenSharePoppedOut = true;
-        UpdateFloatingScreenShareVisibility();
-        window.Show();
-    }
-
-    private void CloseAllPopOutWindows()
-    {
-        foreach (var window in _popOutWindows.Values.ToList())
-            window.Close();
-        _popOutWindows.Clear();
-        IsScreenSharePoppedOut = false;
-    }
-
-    [RelayCommand]
-    private async Task NavigateToFloatingScreenShareAsync()
-    {
-        await NavigateToVoiceChannelAsync();
-    }
+    private ServerRoute CreateServerRoute(Guid serverId, string serverName, string instanceUrl) =>
+        new(_client!, _dialogManager, _serverStore, _messageHubService, _voiceCallService, _messenger, _toastManager, _settingsStore, serverId, serverName, instanceUrl, _session!.UserId, Username);
 
     private async Task SwitchToAccountAsync(AuthSession session)
     {
