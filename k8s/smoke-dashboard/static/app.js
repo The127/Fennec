@@ -413,8 +413,21 @@ function startPolling() {
   }, 2000);
 }
 
+// ── Version ───────────────────────────────────────────────────────────────────
+
+async function fetchVersion() {
+  try {
+    const resp = await fetch('/api/local/version');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const badge = document.getElementById('version-badge');
+    if (data.version) badge.textContent = data.version;
+  } catch (_) {}
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 fetchRuns();
 connectSSE();
 startPolling();
+fetchVersion();

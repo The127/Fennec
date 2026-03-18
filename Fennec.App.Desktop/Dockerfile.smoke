@@ -17,6 +17,7 @@ COPY Fennec.App/ Fennec.App/
 COPY Fennec.Client/ Fennec.Client/
 COPY Fennec.Shared/ Fennec.Shared/
 
+ARG GIT_COMMIT=unknown
 RUN dotnet publish Fennec.App.Desktop/Fennec.App.Desktop.csproj \
     -c Release \
     -o /app/publish
@@ -44,6 +45,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=build /app/publish .
+ARG GIT_COMMIT=unknown
+ENV FENNEC_GIT_COMMIT=$GIT_COMMIT
 COPY Fennec.App.Desktop/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

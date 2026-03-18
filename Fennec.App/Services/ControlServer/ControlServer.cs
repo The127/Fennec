@@ -1,4 +1,5 @@
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -106,6 +107,17 @@ public class ControlServer : IDisposable
         // Health
         if (method == "GET" && path == "/health")
             return (200, new { ok = true });
+
+        // Version
+        if (method == "GET" && path == "/version")
+        {
+            var v = Environment.GetEnvironmentVariable("FENNEC_GIT_COMMIT")
+                ?? Assembly.GetEntryAssembly()
+                    ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                    ?.InformationalVersion
+                ?? "unknown";
+            return (200, new { version = v });
+        }
 
         // Auth
         if (method == "GET" && path == "/auth/state")

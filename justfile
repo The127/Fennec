@@ -48,7 +48,7 @@ smoke-build:
     set -euo pipefail
     source k8s/smoke.env
     docker build -t fennec-api -f Fennec.Api/Dockerfile .
-    docker build -t fennec-app-linux -f Fennec.App.Desktop/Dockerfile.smoke .
+    docker build -t fennec-app-linux -f Fennec.App.Desktop/Dockerfile.smoke --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) .
     docker build -t fennec-test-runner -f smoke-tests/Dockerfile .
     docker build -t fennec-mac-launcher -f k8s/mac-launcher/Dockerfile .
     docker build -t fennec-smoke-dashboard -f k8s/smoke-dashboard/Dockerfile k8s/smoke-dashboard/
