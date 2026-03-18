@@ -1,6 +1,6 @@
-using Fennec.App.Domain;
+using Fennec.App.Formatting;
 
-namespace Fennec.App.Tests.Domain;
+namespace Fennec.App.Tests.Formatting;
 
 public class ShortcodeReplacerTests
 {
