@@ -1,0 +1,75 @@
+{
+  "project": "Fennec",
+  "branchName": "ralph/message-domain-model",
+  "description": "Introduce Message as a domain value object, fix MessageGrouper timezone dependency, relocate ShortcodeReplacer to Formatting/",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Introduce Message value object",
+      "description": "As a developer, I want a Message value object in Domain/ so that the facts of a message have a named home with enforced invariants.",
+      "acceptanceCriteria": [
+        "Fennec.App/Domain/Message.cs introduced — no Avalonia, no CommunityToolkit.Mvvm dependency",
+        "Message is a readonly record struct with properties: Guid Id, Guid AuthorId, string? AuthorInstanceUrl, string Content, Instant Timestamp",
+        "Static factory Message.Create(Guid id, Guid authorId, string? authorInstanceUrl, string content, string isoTimestamp) parses the ISO timestamp and throws ArgumentException if unparseable",
+        "AuthorIdentity is NOT on Message (it belongs on the display layer)",
+        "Unit tests in Fennec.App.Tests/Domain/MessageTests.cs: valid inputs produce correct properties; unparseable timestamp throws; content is stored as-is (no trimming)",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Fix MessageGrouper timezone dependency",
+      "description": "As a developer, I want MessageGrouper to accept a DateTimeZone parameter so the hidden system-default dependency is eliminated and tests can control the zone.",
+      "acceptanceCriteria": [
+        "MessageGrouper.ShouldShowAuthor signature gains DateTimeZone zone parameter",
+        "MessageGrouper.ShouldShowTimeSeparator signature gains DateTimeZone zone parameter",
+        "GetSystemDefault() call removed from MessageGrouper entirely",
+        "Call sites in ServerViewModel pass DateTimeZoneProviders.Tzdb.GetSystemDefault() — zone resolution stays in the application layer",
+        "Existing MessageGrouperTests updated to supply an explicit zone (DateTimeZone.Utc or a named zone)",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Relocate ShortcodeReplacer to Formatting/",
+      "description": "As a developer, I want ShortcodeReplacer in Fennec.App/Formatting/ so the Domain/ namespace contains only domain logic.",
+      "acceptanceCriteria": [
+        "Fennec.App/Formatting/ShortcodeReplacer.cs created — namespace changed to Fennec.App.Formatting",
+        "Fennec.App/Domain/ShortcodeReplacer.cs deleted",
+        "ServerViewModel using directive updated to Fennec.App.Formatting",
+        "ShortcodeReplacerTests moved to Fennec.App.Tests/Formatting/ShortcodeReplacerTests.cs with namespace/using updated",
+        "Fennec.App.Tests/Domain/ShortcodeReplacerTests.cs deleted",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Use Message in BuildMessageItem and LoadMessagesAsync",
+      "description": "As a developer, I want BuildMessageItem to construct a Message value object first, then map it to MessageItem, so domain logic runs in the domain layer and ServerViewModel becomes a mapping concern.",
+      "acceptanceCriteria": [
+        "BuildMessageItem constructs a Message via Message.Create(...) before building MessageItem",
+        "Timestamp parsing (InstantPattern.ExtendedIso.Parse) removed from BuildMessageItem — Message.Create handles it; BuildMessageItem reads message.Timestamp",
+        "MessageGrouper calls in BuildMessageItem use message.Timestamp from the Message value object",
+        "LoadMessagesAsync constructs Message objects before mapping — timestamp parsing loop removed from ServerViewModel",
+        "No behavioural change observable from the UI",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
