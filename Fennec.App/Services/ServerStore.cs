@@ -1,3 +1,4 @@
+using Fennec.App.Domain;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Server;
 using Microsoft.Extensions.Logging;
@@ -55,7 +56,7 @@ public class ServerStore(
         }
     }
 
-    public async Task<List<ListJoinedServersResponseItemDto>> GetJoinedServersAsync(string homeUrl, IFennecClient client, CancellationToken cancellationToken = default)
+    public async Task<List<ServerSummary>> GetJoinedServersAsync(string homeUrl, IFennecClient client, CancellationToken cancellationToken = default)
     {
         var cached = await serverRepo.GetJoinedServersAsync(cancellationToken);
 
@@ -81,7 +82,7 @@ public class ServerStore(
         return cached;
     }
 
-    public async Task<List<ListChannelGroupsResponseItemDto>> GetChannelGroupsAsync(string instanceUrl, IFennecClient client, Guid serverId, CancellationToken cancellationToken = default)
+    public async Task<List<ChannelGroupSummary>> GetChannelGroupsAsync(string instanceUrl, IFennecClient client, Guid serverId, CancellationToken cancellationToken = default)
     {
         var cached = await groupRepo.GetChannelGroupsAsync(serverId, cancellationToken);
 
@@ -107,7 +108,7 @@ public class ServerStore(
         return cached;
     }
 
-    public async Task<List<ListChannelsResponseItemDto>> GetChannelsAsync(string instanceUrl, IFennecClient client, Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
+    public async Task<List<ChannelSummary>> GetChannelsAsync(string instanceUrl, IFennecClient client, Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
     {
         var cached = await channelRepo.GetChannelsAsync(serverId, channelGroupId, cancellationToken);
 

@@ -44,7 +44,7 @@ public class MainAppViewModelTests
         _serverClient.ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ListJoinedServersResponseDto { Servers = [] });
         _serverStore.GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new List<ListJoinedServersResponseItemDto>()));
+            .Returns(Task.FromResult(new List<ServerSummary>()));
         _settingsStore.LoadAsync(Arg.Any<CancellationToken>())
             .Returns(new AppSettings());
     }
@@ -100,18 +100,18 @@ public class MainAppViewModelTests
     {
         // Arrange
         var serverId = Guid.NewGuid();
-        var servers = new List<ListJoinedServersResponseItemDto>
+        var servers = new List<ServerSummary>
         {
-            new() { Id = serverId, Name = "Server 1", InstanceUrl = "https://1.fennec.chat" }
+            new(serverId, "Server 1", new InstanceUrl("1.fennec.chat")),
         };
-        
+
         // Mock server store to return the server
         _serverStore.GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new List<ListJoinedServersResponseItemDto>(servers)));
-            
-        // Mock API to return the same server
+            .Returns(Task.FromResult(new List<ServerSummary>(servers)));
+
+        // Mock API to return the same server (ListJoinedServersResponseItemDto still used for HTTP client layer)
         _serverClient.ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ListJoinedServersResponseDto { Servers = new List<ListJoinedServersResponseItemDto>(servers) });
+            .Returns(new ListJoinedServersResponseDto { Servers = [new ListJoinedServersResponseItemDto { Id = serverId, Name = "Server 1", InstanceUrl = "1.fennec.chat" }] });
             
         var vm = CreateViewModel();
 
@@ -129,12 +129,12 @@ public class MainAppViewModelTests
     {
         // Arrange
         var serverId = Guid.NewGuid();
-        var serversWithDuplicates = new List<ListJoinedServersResponseItemDto>
+        var serversWithDuplicates = new List<ServerSummary>
         {
-            new() { Id = serverId, Name = "Server 1", InstanceUrl = "https://1.fennec.chat" },
-            new() { Id = serverId, Name = "Server 1", InstanceUrl = "https://1.fennec.chat" }
+            new(serverId, "Server 1", new InstanceUrl("1.fennec.chat")),
+            new(serverId, "Server 1", new InstanceUrl("1.fennec.chat")),
         };
-        
+
         _serverStore.GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(serversWithDuplicates));
             
@@ -151,19 +151,19 @@ public class MainAppViewModelTests
     {
         // Arrange
         var serverId = Guid.NewGuid();
-        var servers = new List<ListJoinedServersResponseItemDto>
+        var servers = new List<ServerSummary>
         {
-            new() { Id = serverId, Name = "Server 1", InstanceUrl = "https://1.fennec.chat" }
+            new(serverId, "Server 1", new InstanceUrl("1.fennec.chat")),
         };
-        
+
         _serverStore.GetJoinedServersAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new List<ListJoinedServersResponseItemDto>(servers)));
+            .Returns(Task.FromResult(new List<ServerSummary>(servers)));
             
         _serverClient.ListJoinedServersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(async _ => 
+            .Returns(async _ =>
             {
                 await Task.Delay(10); // Simulate network delay
-                return new ListJoinedServersResponseDto { Servers = new List<ListJoinedServersResponseItemDto>(servers) };
+                return new ListJoinedServersResponseDto { Servers = [new ListJoinedServersResponseItemDto { Id = serverId, Name = "Server 1", InstanceUrl = "1.fennec.chat" }] };
             });
             
         var vm = CreateViewModel();

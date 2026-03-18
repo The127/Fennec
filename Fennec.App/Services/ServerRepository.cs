@@ -8,19 +8,14 @@ namespace Fennec.App.Services;
 
 public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) : IServerRepository, IChannelGroupRepository, IChannelRepository
 {
-    public async Task<List<ListJoinedServersResponseItemDto>> GetJoinedServersAsync(CancellationToken cancellationToken = default)
+    public async Task<List<ServerSummary>> GetJoinedServersAsync(CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        return await dbContext.Servers
+        var servers = await dbContext.Servers
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.JoinedAtUtc)
-            .Select(x => new ListJoinedServersResponseItemDto
-            {
-                Id = x.Id,
-                Name = x.Name,
-                InstanceUrl = x.InstanceUrl
-            })
             .ToListAsync(cancellationToken);
+        return servers.Select(x => new ServerSummary(x.Id, x.Name, x.InstanceUrl)).ToList();
     }
 
     public async Task SetJoinedServersAsync(List<ListJoinedServersResponseItemDto> servers, CancellationToken cancellationToken = default)
@@ -87,17 +82,13 @@ public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) 
         }
     }
 
-    public async Task<List<ListChannelGroupsResponseItemDto>> GetChannelGroupsAsync(Guid serverId, CancellationToken cancellationToken = default)
+    public async Task<List<ChannelGroupSummary>> GetChannelGroupsAsync(Guid serverId, CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         return await dbContext.ChannelGroups
             .Where(x => x.ServerId == serverId)
             .OrderBy(x => x.SortOrder)
-            .Select(x => new ListChannelGroupsResponseItemDto
-            {
-                ChannelGroupId = x.Id,
-                Name = x.Name
-            })
+            .Select(x => new ChannelGroupSummary(x.Id, x.Name))
             .ToListAsync(cancellationToken);
     }
 
@@ -136,19 +127,13 @@ public class ServerRepository(IDbContextFactory<AppDbContext> dbContextFactory) 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<List<ListChannelsResponseItemDto>> GetChannelsAsync(Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
+    public async Task<List<ChannelSummary>> GetChannelsAsync(Guid serverId, Guid channelGroupId, CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         return await dbContext.Channels
             .Where(x => x.ServerId == serverId && x.ChannelGroupId == channelGroupId)
             .OrderBy(x => x.SortOrder)
-            .Select(x => new ListChannelsResponseItemDto
-            {
-                ChannelId = x.Id,
-                Name = x.Name,
-                ChannelGroupId = x.ChannelGroupId,
-                ChannelType = x.ChannelType
-            })
+            .Select(x => new ChannelSummary(x.Id, x.Name, x.ChannelType, x.ChannelGroupId))
             .ToListAsync(cancellationToken);
     }
 

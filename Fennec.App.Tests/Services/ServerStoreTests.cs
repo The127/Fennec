@@ -1,3 +1,4 @@
+using Fennec.App.Domain;
 using Fennec.App.Services;
 using Fennec.Client;
 using Fennec.Client.Clients;
@@ -29,9 +30,9 @@ public class ServerStoreTests
     {
         // Arrange
         var homeUrl = "https://fennec.chat";
-        var cached = new List<ListJoinedServersResponseItemDto> 
-        { 
-            new() { Id = Guid.NewGuid(), Name = "Cached Server", InstanceUrl = homeUrl } 
+        var cached = new List<ServerSummary>
+        {
+            new(Guid.NewGuid(), "Cached Server", new InstanceUrl(homeUrl))
         };
         var remote = new ListJoinedServersResponseDto
         {
@@ -46,9 +47,9 @@ public class ServerStoreTests
 
         // Assert
         Assert.Equal(cached, result);
-        
+
         await _sut.WaitForRefreshesAsync();
-        
+
         await _serverRepo.Received(1).SetJoinedServersAsync(Arg.Is<List<ListJoinedServersResponseItemDto>>(x => x.Count == 1 && x[0].Name == "Remote Server"));
     }
 
@@ -58,9 +59,9 @@ public class ServerStoreTests
         // Arrange
         var instanceUrl = "https://fennec.chat";
         var serverId = Guid.NewGuid();
-        var cached = new List<ListChannelGroupsResponseItemDto> 
-        { 
-            new() { ChannelGroupId = Guid.NewGuid(), Name = "Cached Group" } 
+        var cached = new List<ChannelGroupSummary>
+        {
+            new(Guid.NewGuid(), "Cached Group")
         };
         var remote = new ListChannelGroupsResponseDto
         {
@@ -75,9 +76,9 @@ public class ServerStoreTests
 
         // Assert
         Assert.Equal(cached, result);
-        
+
         await _sut.WaitForRefreshesAsync();
-        
+
         await _groupRepo.Received(1).SetChannelGroupsAsync(serverId, Arg.Is<List<ListChannelGroupsResponseItemDto>>(x => x.Count == 1 && x[0].Name == "Remote Group"));
     }
 
@@ -88,9 +89,9 @@ public class ServerStoreTests
         var instanceUrl = "https://fennec.chat";
         var serverId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var cached = new List<ListChannelsResponseItemDto> 
-        { 
-            new() { ChannelId = Guid.NewGuid(), Name = "Cached Channel", ChannelGroupId = groupId, ChannelType = ChannelType.TextOnly } 
+        var cached = new List<ChannelSummary>
+        {
+            new(Guid.NewGuid(), "Cached Channel", ChannelType.TextOnly, groupId)
         };
         var remote = new ListChannelsResponseDto
         {
@@ -105,9 +106,9 @@ public class ServerStoreTests
 
         // Assert
         Assert.Equal(cached, result);
-        
+
         await _sut.WaitForRefreshesAsync();
-        
+
         await _channelRepo.Received(1).SetChannelsAsync(serverId, groupId, Arg.Is<List<ListChannelsResponseItemDto>>(x => x.Count == 1 && x[0].Name == "Remote Channel"));
     }
 }

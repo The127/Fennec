@@ -13,7 +13,6 @@ using Fennec.App.Shortcuts;
 using Fennec.App.ViewModels.Settings;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Auth;
-using Fennec.Shared.Dtos.Server;
 using ShadUI;
 
 namespace Fennec.App.ViewModels;
@@ -303,7 +302,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IVoi
         }
     }
 
-    private void UpdateServersList(List<ListJoinedServersResponseItemDto>? servers)
+    private void UpdateServersList(List<ServerSummary>? servers)
     {
         if (servers == null) return;
         

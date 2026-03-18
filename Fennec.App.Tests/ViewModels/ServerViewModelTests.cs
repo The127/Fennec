@@ -1,6 +1,7 @@
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain;
 using Fennec.App.Messages;
 using Fennec.App.Services;
 using Fennec.App.ViewModels;
@@ -29,7 +30,7 @@ public class ServerViewModelTests
     {
         _client.Server.Returns(_serverClient);
         _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new List<ListChannelGroupsResponseItemDto>()));
+            .Returns(Task.FromResult(new List<ChannelGroupSummary>()));
     }
 
     private readonly ILogger<ServerViewModel> _logger = Substitute.For<ILogger<ServerViewModel>>();
@@ -43,21 +44,15 @@ public class ServerViewModelTests
         var groupId = Guid.NewGuid();
 
         _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
-            .Returns(new List<ListChannelGroupsResponseItemDto>
+            .Returns(new List<ChannelGroupSummary>
             {
-                new() { ChannelGroupId = groupId, Name = "default group" },
+                new(groupId, "default group"),
             });
 
         _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, groupId, Arg.Any<CancellationToken>())
-            .Returns(new List<ListChannelsResponseItemDto>
+            .Returns(new List<ChannelSummary>
             {
-                new()
-                {
-                    ChannelId = Guid.NewGuid(),
-                    Name = "general",
-                    ChannelType = ChannelType.TextAndVoice,
-                    ChannelGroupId = groupId,
-                },
+                new(Guid.NewGuid(), "general", ChannelType.TextAndVoice, groupId),
             });
 
         var vm = CreateViewModel();
@@ -77,23 +72,23 @@ public class ServerViewModelTests
         var group2Id = Guid.NewGuid();
 
         _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
-            .Returns(new List<ListChannelGroupsResponseItemDto>
+            .Returns(new List<ChannelGroupSummary>
             {
-                new() { ChannelGroupId = group1Id, Name = "text" },
-                new() { ChannelGroupId = group2Id, Name = "voice" },
+                new(group1Id, "text"),
+                new(group2Id, "voice"),
             });
 
         _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, group1Id, Arg.Any<CancellationToken>())
-            .Returns(new List<ListChannelsResponseItemDto>
+            .Returns(new List<ChannelSummary>
             {
-                new() { ChannelId = Guid.NewGuid(), Name = "general", ChannelType = ChannelType.TextOnly, ChannelGroupId = group1Id },
-                new() { ChannelId = Guid.NewGuid(), Name = "random", ChannelType = ChannelType.TextOnly, ChannelGroupId = group1Id },
+                new(Guid.NewGuid(), "general", ChannelType.TextOnly, group1Id),
+                new(Guid.NewGuid(), "random", ChannelType.TextOnly, group1Id),
             });
 
         _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, group2Id, Arg.Any<CancellationToken>())
-            .Returns(new List<ListChannelsResponseItemDto>
+            .Returns(new List<ChannelSummary>
             {
-                new() { ChannelId = Guid.NewGuid(), Name = "lounge", ChannelType = ChannelType.TextAndVoice, ChannelGroupId = group2Id },
+                new(Guid.NewGuid(), "lounge", ChannelType.TextAndVoice, group2Id),
             });
 
         var vm = CreateViewModel();
@@ -111,12 +106,12 @@ public class ServerViewModelTests
         var channelId = Guid.NewGuid();
 
         _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
-            .Returns(new List<ListChannelGroupsResponseItemDto> { new() { ChannelGroupId = groupId, Name = "default" } });
+            .Returns(new List<ChannelGroupSummary> { new(groupId, "default") });
 
         _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, groupId, Arg.Any<CancellationToken>())
-            .Returns(new List<ListChannelsResponseItemDto>
+            .Returns(new List<ChannelSummary>
             {
-                new() { ChannelId = channelId, Name = "general", ChannelType = ChannelType.TextAndVoice, ChannelGroupId = groupId },
+                new(channelId, "general", ChannelType.TextAndVoice, groupId),
             });
 
         var vm = CreateViewModel();
@@ -155,7 +150,7 @@ public class ServerViewModelTests
     public async Task Api_failure_leaves_channel_groups_empty()
     {
         _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
-            .Returns(new List<ListChannelGroupsResponseItemDto>());
+            .Returns(new List<ChannelGroupSummary>());
 
         var vm = CreateViewModel();
         await vm.LoadAsync();
@@ -170,15 +165,15 @@ public class ServerViewModelTests
         var channelId = Guid.NewGuid();
 
         _serverStore.GetChannelGroupsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new List<ListChannelGroupsResponseItemDto>
+            .Returns(Task.FromResult(new List<ChannelGroupSummary>
             {
-                new() { ChannelGroupId = groupId, Name = "stored group" }
+                new(groupId, "stored group")
             }));
 
         _serverStore.GetChannelsAsync(Arg.Any<string>(), Arg.Any<IFennecClient>(), _serverId, groupId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new List<ListChannelsResponseItemDto>
+            .Returns(Task.FromResult(new List<ChannelSummary>
             {
-                new() { ChannelId = channelId, Name = "stored channel", ChannelType = ChannelType.TextOnly, ChannelGroupId = groupId }
+                new(channelId, "stored channel", ChannelType.TextOnly, groupId)
             }));
 
         // Api fails

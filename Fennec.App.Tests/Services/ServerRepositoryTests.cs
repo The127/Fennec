@@ -158,7 +158,7 @@ public class ServerRepositoryTests : IDisposable
         Assert.Equal(2, result.Count);
         Assert.Contains(result, g => g.Name == "Updated Group 1");
         Assert.Contains(result, g => g.Name == "Group 3");
-        Assert.DoesNotContain(result, g => g.ChannelGroupId == groupId2);
+        Assert.DoesNotContain(result, g => g.Id == groupId2);
     }
 
     public void Dispose()

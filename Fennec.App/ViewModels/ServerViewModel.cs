@@ -724,11 +724,11 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             ChannelGroups.Clear();
             foreach (var group in groups)
             {
-                var channels = await serverStore.GetChannelsAsync(instanceUrl, client, ServerId, group.ChannelGroupId);
+                var channels = await serverStore.GetChannelsAsync(instanceUrl, client, ServerId, group.Id);
                 var channelItems = channels
-                    .Select(c => new ChannelItem(c.ChannelId, c.Name, c.ChannelType, c.ChannelGroupId))
+                    .Select(c => new ChannelItem(c.Id, c.Name, c.ChannelType, c.ChannelGroupId))
                     .ToList();
-                ChannelGroups.Add(new ChannelGroupItem(group.ChannelGroupId, group.Name, channelItems));
+                ChannelGroups.Add(new ChannelGroupItem(group.Id, group.Name, channelItems));
             }
 
             try
