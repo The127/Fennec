@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain;
 using Fennec.App.Messages;
 using Fennec.Shared.Dtos.Server;
 using ShadUI;
@@ -74,7 +75,7 @@ public partial class ServerPresenceViewModel : ObservableObject,
     }
 
     private static string MemberKey(string name, string? instanceUrl) =>
-        instanceUrl is not null ? $"{name}@{instanceUrl}" : name;
+        new FederatedAddress(name, instanceUrl).ToString();
 
     [RelayCommand]
     private void AddFriend()

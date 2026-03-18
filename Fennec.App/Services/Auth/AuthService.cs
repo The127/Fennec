@@ -11,9 +11,6 @@ public class AuthService(
     IExceptionHandler exceptionHandler,
     IDbPathProvider dbPathProvider) : IAuthService
 {
-    private static string StripScheme(string url)
-        => url.Replace("https://", "").Replace("http://", "");
-
     public async Task<AuthSession?> LoginAsync(string username, string password, string instanceUrl, CancellationToken cancellationToken)
     {
         var client = clientFactory.Create();

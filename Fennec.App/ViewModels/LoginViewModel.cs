@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain;
 using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Services.Auth;
@@ -66,13 +67,9 @@ public partial class LoginViewModel : ObservableValidator
         if (HasErrors)
             return;
         
-        var usernameParts = Username.Split('@');
-
-        if (usernameParts.Length != 2)
-            return;
-
-        var username = usernameParts[0];
-        var instanceUrl = usernameParts[1];
+        var address = FederatedAddress.Parse(Username);
+        var username = address.Username;
+        var instanceUrl = address.InstanceUrl!;
 
         try
         {
@@ -81,7 +78,7 @@ public partial class LoginViewModel : ObservableValidator
                 Password,
                 instanceUrl,
                 cancellationToken);
-            
+
             Messenger.Send(new LoginSucceededMessage(authSession!)); // TODO: deal with the nulablility
         }
         catch (Exception e)

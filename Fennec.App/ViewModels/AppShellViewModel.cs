@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain;
 using Fennec.App.Messages;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
@@ -142,11 +143,10 @@ public partial class AppShellViewModel
         {
             var autoLogin = Environment.GetEnvironmentVariable("FENNEC_AUTO_LOGIN");
             var autoPassword = Environment.GetEnvironmentVariable("FENNEC_AUTO_LOGIN_PASSWORD");
-            if (autoLogin is not null && autoPassword is not null && autoLogin.Contains('@'))
+            if (autoLogin is not null && autoPassword is not null && FederatedAddress.TryParse(autoLogin, out var autoAddress))
             {
-                var atIndex = autoLogin.IndexOf('@');
-                var username = autoLogin[..atIndex];
-                var instanceUrl = autoLogin[(atIndex + 1)..];
+                var username = autoAddress!.Username;
+                var instanceUrl = autoAddress.InstanceUrl!;
                 try
                 {
                     var authService = _serviceProvider.GetRequiredService<IAuthService>();

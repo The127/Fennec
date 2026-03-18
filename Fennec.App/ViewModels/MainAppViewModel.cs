@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain;
 using Fennec.App.Exceptions;
 using Fennec.App.Messages;
 using Fennec.App.Routes;
@@ -283,7 +284,7 @@ public partial class MainAppViewModel : ObservableObject, IShortcutHandler, IVoi
         _client = _clientFactory.Create();
         _client.SetHomeSession(session.Url, session.SessionToken);
         Username = session.Username;
-        UserAtServer = $"{session.Username}@{session.Url}";
+        UserAtServer = new FederatedAddress(session.Username, session.Url).ToString();
         AvatarFallback = session.Username[..1].ToUpperInvariant();
     }
 

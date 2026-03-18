@@ -26,7 +26,7 @@ public partial class VoiceParticipantItem(Guid userId, string username, string? 
     public Guid UserId { get; } = userId;
     public string Username { get; } = username;
     public string? InstanceUrl { get; } = instanceUrl;
-    public string Identity => instanceUrl is not null ? $"{username}@{instanceUrl}" : username;
+    public string Identity => new FederatedAddress(username, instanceUrl).ToString();
 
     [ObservableProperty]
     private bool _isMuted;
@@ -78,7 +78,7 @@ public class MemberItem(string username, string? instanceUrl, bool isOnline)
 {
     public string Username { get; } = username;
     public string? InstanceUrl { get; } = instanceUrl;
-    public string Identity => InstanceUrl is not null ? $"{Username}@{InstanceUrl}" : Username;
+    public string Identity => new FederatedAddress(Username, InstanceUrl).ToString();
     public bool IsOnline { get; } = isOnline;
 }
 
@@ -97,7 +97,7 @@ public partial class MessageItem : ObservableObject
     public required Guid AuthorId { get; init; }
     public required string AuthorName { get; init; }
     public string? AuthorInstanceUrl { get; init; }
-    public string AuthorIdentity => AuthorInstanceUrl is not null ? $"{AuthorName}@{AuthorInstanceUrl}" : AuthorName;
+    public string AuthorIdentity => new FederatedAddress(AuthorName, AuthorInstanceUrl).ToString();
     public required string AvatarFallback { get; init; }
     public required string CreatedAt { get; init; }
     public required string LocalTime { get; init; }
