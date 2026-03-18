@@ -203,12 +203,9 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     [ObservableProperty]
     private string _messageText = "";
 
-    public const int MaxMessageLength = 10_000;
-    private const int CharCountVisibleThreshold = 9_000;
-
-    public int MessageCharsRemaining => MaxMessageLength - MessageText.Length;
-    public bool ShowCharCount => MessageText.Length >= CharCountVisibleThreshold;
-    public bool IsOverLimit => MessageText.Length > MaxMessageLength;
+    public int MessageCharsRemaining => MessageLengthPolicy.CharsRemaining(MessageText);
+    public bool ShowCharCount => MessageLengthPolicy.ShouldShowCounter(MessageText);
+    public bool IsOverLimit => MessageLengthPolicy.IsOverLimit(MessageText);
 
     partial void OnMessageTextChanged(string value)
     {
