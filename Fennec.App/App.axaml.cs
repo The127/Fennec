@@ -205,11 +205,9 @@ public partial class App : Application
         if (settingsStore is null) return;
 
         var settings = Task.Run(() => settingsStore.LoadAsync()).GetAwaiter().GetResult();
-        var mode = AppThemes.ModeFromName(settings.ThemeMode);
         // For Auto mode at startup, we can't read PlatformSettings yet (no window),
         // so fall back to Dark. The subscription will correct it once the window is ready.
-        RequestedThemeVariant = AppThemes.Resolve(settings.Theme,
-            AppThemes.ResolveEffectiveMode(mode));
+        RequestedThemeVariant = AppThemes.Resolve(settings.Theme, settings.ThemeMode);
     }
 
     private void SubscribeToOsThemeChanges(MainWindow window)
@@ -235,12 +233,9 @@ public partial class App : Application
         if (settingsStore is null) return;
 
         var settings = Task.Run(() => settingsStore.LoadAsync()).GetAwaiter().GetResult();
-        var mode = AppThemes.ModeFromName(settings.ThemeMode);
-        if (mode != AppThemes.Auto) return;
+        if (settings.ThemeMode != AppThemes.Auto) return;
 
-        RequestedThemeVariant = AppThemes.Resolve(
-            settings.Theme,
-            AppThemes.ResolveEffectiveMode(mode, osTheme));
+        RequestedThemeVariant = AppThemes.Resolve(settings.Theme, settings.ThemeMode, osTheme);
     }
 
     private void SetupGlobalExceptionHandlers()

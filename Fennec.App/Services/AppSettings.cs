@@ -1,14 +1,20 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using Fennec.App.Domain;
+using Fennec.App.Themes;
+using AppThemeMode = Fennec.App.Themes.ThemeMode;
 
 namespace Fennec.App.Services;
 
 public class AppSettings
 {
     [JsonPropertyName("theme")]
-    public string Theme { get; set; } = "Default";
+    [JsonConverter(typeof(ThemePaletteJsonConverter))]
+    public ThemePalette Theme { get; set; } = AppThemes.Default;
 
     [JsonPropertyName("themeMode")]
-    public string ThemeMode { get; set; } = "Auto";
+    [JsonConverter(typeof(ThemeModeJsonConverter))]
+    public AppThemeMode ThemeMode { get; set; } = AppThemes.Auto;
 
     [JsonPropertyName("zoomLevel")]
     public double ZoomLevel { get; set; } = 1.0;
@@ -38,7 +44,8 @@ public class AppSettings
     public string VoiceSoundPack { get; set; } = "Classic";
 
     [JsonPropertyName("screenShareResolution")]
-    public string ScreenShareResolution { get; set; } = "1080p";
+    [JsonConverter(typeof(ScreenShareResolutionJsonConverter))]
+    public ScreenShareResolution ScreenShareResolution { get; set; } = ScreenShareResolution.P1080;
 
     [JsonPropertyName("screenShareBitrateKbps")]
     public int ScreenShareBitrateKbps { get; set; } = 1500;
@@ -48,4 +55,31 @@ public class AppSettings
 
     [JsonPropertyName("viewerDownscalePercent")]
     public int ViewerDownscalePercent { get; set; } = 100;
+}
+
+public class ThemePaletteJsonConverter : JsonConverter<ThemePalette>
+{
+    public override ThemePalette Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => AppThemes.PaletteFromName(reader.GetString());
+
+    public override void Write(Utf8JsonWriter writer, ThemePalette value, JsonSerializerOptions options)
+        => writer.WriteStringValue(value.Name);
+}
+
+public class ThemeModeJsonConverter : JsonConverter<AppThemeMode>
+{
+    public override AppThemeMode Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => AppThemes.ModeFromName(reader.GetString());
+
+    public override void Write(Utf8JsonWriter writer, AppThemeMode value, JsonSerializerOptions options)
+        => writer.WriteStringValue(value.Name);
+}
+
+public class ScreenShareResolutionJsonConverter : JsonConverter<ScreenShareResolution>
+{
+    public override ScreenShareResolution Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => ScreenShareResolution.FromValue(reader.GetString());
+
+    public override void Write(Utf8JsonWriter writer, ScreenShareResolution value, JsonSerializerOptions options)
+        => writer.WriteStringValue(value.Value);
 }

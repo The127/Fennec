@@ -2,6 +2,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain;
 using Fennec.App.Messages;
 using Fennec.App.Services;
 using Microsoft.Extensions.Logging;
@@ -47,11 +48,11 @@ public partial class ScreenShareBroadcastViewModel : ObservableObject,
     [ObservableProperty]
     private bool _isScreenSharing;
 
-    public List<string> ShareResolutionOptions { get; } = ["720p", "1080p", "1440p", "Native"];
+    public IReadOnlyList<ScreenShareResolution> ShareResolutionOptions { get; } = ScreenShareResolution.All;
     public List<int> ShareFrameRateOptions { get; } = [15, 30, 60];
 
     [ObservableProperty]
-    private string _shareResolution = "1080p";
+    private ScreenShareResolution _shareResolution = ScreenShareResolution.P1080;
 
     [ObservableProperty]
     private int _shareBitrateKbps = 1500;
@@ -71,7 +72,7 @@ public partial class ScreenShareBroadcastViewModel : ObservableObject,
                 ShareBitrateKbps = settings.ScreenShareBitrateKbps;
                 ShareFrameRate = settings.ScreenShareFrameRate;
                 await _voiceCallService.StartScreenShareWithPickerAsync(
-                    ShareResolution, ShareBitrateKbps, ShareFrameRate);
+                    ShareResolution.Value, ShareBitrateKbps, ShareFrameRate);
             }
             else
             {
@@ -94,7 +95,7 @@ public partial class ScreenShareBroadcastViewModel : ObservableObject,
                             ShareBitrateKbps = ctx.Result.BitrateKbps;
                             ShareFrameRate = ctx.Result.FrameRate;
                             await _voiceCallService.StartScreenShareAsync(
-                                ctx.Result.Target, ctx.Result.Resolution, ctx.Result.BitrateKbps, ctx.Result.FrameRate);
+                                ctx.Result.Target, ctx.Result.Resolution.Value, ctx.Result.BitrateKbps, ctx.Result.FrameRate);
                         }
                     })
                     .Show();
@@ -124,7 +125,7 @@ public partial class ScreenShareBroadcastViewModel : ObservableObject,
     {
         try
         {
-            await _voiceCallService.UpdateScreenShareSettingsAsync(ShareResolution, ShareBitrateKbps, ShareFrameRate);
+            await _voiceCallService.UpdateScreenShareSettingsAsync(ShareResolution.Value, ShareBitrateKbps, ShareFrameRate);
 
             var settings = await _settingsStore.LoadAsync();
             settings.ScreenShareResolution = ShareResolution;

@@ -41,7 +41,7 @@ public partial class ThemeZoomViewModel : ObservableObject
     public async Task InitializeAsync()
     {
         var settings = await _settingsStore.LoadAsync();
-        CurrentThemeMode = AppThemes.ModeFromName(settings.ThemeMode);
+        CurrentThemeMode = settings.ThemeMode;
         _messenger.Send(new ZoomChangedMessage(settings.ZoomLevel));
     }
 
@@ -85,7 +85,7 @@ public partial class ThemeZoomViewModel : ObservableObject
         var mode = AppThemes.ModeFromName(modeName);
         var app = Application.Current!;
         var settings = await _settingsStore.LoadAsync();
-        var palette = AppThemes.PaletteFromName(settings.Theme);
+        var palette = settings.Theme;
 
         ThemeVariant? osTheme = null;
         if (app.ApplicationLifetime
@@ -100,8 +100,8 @@ public partial class ThemeZoomViewModel : ObservableObject
 
         app.RequestedThemeVariant = AppThemes.Resolve(palette, mode, osTheme);
         CurrentThemeMode = mode;
-        settings.Theme = palette.Name;
-        settings.ThemeMode = mode.Name;
+        settings.Theme = palette;
+        settings.ThemeMode = mode;
         await _settingsStore.SaveAsync(settings);
     }
 

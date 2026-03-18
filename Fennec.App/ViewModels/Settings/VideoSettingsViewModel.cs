@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Fennec.App.Domain;
 using Fennec.App.Services;
 
 namespace Fennec.App.ViewModels.Settings;
@@ -8,12 +9,12 @@ public partial class VideoSettingsViewModel : ObservableObject
     private readonly ISettingsStore _settingsStore;
     private bool _initialized;
 
-    public List<string> ResolutionOptions { get; } = ["720p", "1080p", "1440p", "Native"];
+    public IReadOnlyList<ScreenShareResolution> ResolutionOptions { get; } = ScreenShareResolution.All;
     public List<int> FrameRateOptions { get; } = [15, 30, 60];
     public List<int> ViewerScaleOptions { get; } = [100, 75, 50];
 
     [ObservableProperty]
-    private string _selectedResolution;
+    private ScreenShareResolution _selectedResolution;
 
     [ObservableProperty]
     private int _bitrateKbps;
@@ -28,9 +29,7 @@ public partial class VideoSettingsViewModel : ObservableObject
     {
         _settingsStore = settingsStore;
 
-        _selectedResolution = ResolutionOptions.Contains(currentSettings.ScreenShareResolution)
-            ? currentSettings.ScreenShareResolution
-            : "1080p";
+        _selectedResolution = currentSettings.ScreenShareResolution;
         _bitrateKbps = Math.Clamp(currentSettings.ScreenShareBitrateKbps, 500, 50_000);
         _selectedFrameRate = FrameRateOptions.Contains(currentSettings.ScreenShareFrameRate)
             ? currentSettings.ScreenShareFrameRate
@@ -42,7 +41,7 @@ public partial class VideoSettingsViewModel : ObservableObject
         _initialized = true;
     }
 
-    partial void OnSelectedResolutionChanged(string value)
+    partial void OnSelectedResolutionChanged(ScreenShareResolution value)
     {
         if (_initialized) _ = SaveAsync();
     }

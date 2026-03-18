@@ -1,12 +1,13 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Fennec.App.Domain;
 using Fennec.App.Services;
 using ShadUI;
 
 namespace Fennec.App.ViewModels;
 
-public record ScreenSharePickerResult(CaptureTarget Target, string Resolution, int BitrateKbps, int FrameRate);
+public record ScreenSharePickerResult(CaptureTarget Target, ScreenShareResolution Resolution, int BitrateKbps, int FrameRate);
 
 public partial class ScreenSharePickerViewModel : ObservableObject
 {
@@ -18,11 +19,11 @@ public partial class ScreenSharePickerViewModel : ObservableObject
     [ObservableProperty]
     private CaptureTarget? _selectedTarget;
 
-    public List<string> ResolutionOptions { get; } = ["720p", "1080p", "1440p", "Native"];
+    public IReadOnlyList<ScreenShareResolution> ResolutionOptions { get; } = ScreenShareResolution.All;
     public List<int> FrameRateOptions { get; } = [15, 30, 60];
 
     [ObservableProperty]
-    private string _selectedResolution;
+    private ScreenShareResolution _selectedResolution;
 
     [ObservableProperty]
     private int _bitrateKbps;
@@ -38,9 +39,7 @@ public partial class ScreenSharePickerViewModel : ObservableObject
         _settingsStore = settingsStore;
         Targets = new(targets);
 
-        _selectedResolution = ResolutionOptions.Contains(currentSettings.ScreenShareResolution)
-            ? currentSettings.ScreenShareResolution
-            : "1080p";
+        _selectedResolution = currentSettings.ScreenShareResolution;
         _bitrateKbps = Math.Clamp(currentSettings.ScreenShareBitrateKbps, 500, 50_000);
         _selectedFrameRate = FrameRateOptions.Contains(currentSettings.ScreenShareFrameRate)
             ? currentSettings.ScreenShareFrameRate

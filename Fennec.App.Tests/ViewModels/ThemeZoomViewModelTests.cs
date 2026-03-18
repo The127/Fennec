@@ -36,7 +36,7 @@ public class ThemeZoomViewModelTests
     public async Task startup_applies_the_saved_theme_mode()
     {
         _settingsStore.LoadAsync(Arg.Any<CancellationToken>())
-            .Returns(new AppSettings { ThemeMode = "Dark" });
+            .Returns(new AppSettings { ThemeMode = AppThemes.Dark });
         var vm = CreateViewModel();
 
         await vm.InitializeAsync();

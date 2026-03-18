@@ -29,8 +29,8 @@ public partial class AppearanceSettingsViewModel : ObservableObject
     public AppearanceSettingsViewModel(ISettingsStore settingsStore, AppSettings settings)
     {
         _settingsStore = settingsStore;
-        _selectedPalette = AppThemes.PaletteFromName(settings.Theme);
-        _selectedMode = AppThemes.ModeFromName(settings.ThemeMode);
+        _selectedPalette = settings.Theme;
+        _selectedMode = settings.ThemeMode;
     }
 
     [RelayCommand]
@@ -56,8 +56,8 @@ public partial class AppearanceSettingsViewModel : ObservableObject
     private async Task SaveThemeAsync()
     {
         var settings = await _settingsStore.LoadAsync();
-        settings.Theme = SelectedPalette.Name;
-        settings.ThemeMode = SelectedMode.Name;
+        settings.Theme = SelectedPalette;
+        settings.ThemeMode = SelectedMode;
         await _settingsStore.SaveAsync(settings);
     }
 
