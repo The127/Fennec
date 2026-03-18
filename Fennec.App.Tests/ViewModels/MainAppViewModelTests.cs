@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.Messaging;
 using Fennec.App.Exceptions;
 using Fennec.App.Messages;
+using Fennec.App.Routes;
 using Fennec.App.Routing;
 using Fennec.App.Services;
 using Fennec.App.Services.Auth;
@@ -188,5 +189,19 @@ public class MainAppViewModelTests
             Arg.Is<GetPublicTokenRequestDto>(r => r.Audience == "https://fennec.chat"),
             Arg.Any<CancellationToken>());
         await _messageHubService.Received().ConnectAsync("https://fennec.chat", "jwt-token");
+    }
+
+    [Fact]
+    public async Task NavigateToServerCommand_produces_ServerRoute_with_correct_ServerId_and_InstanceUrl()
+    {
+        var serverId = Guid.NewGuid();
+        var instanceUrl = "https://remote.fennec.chat";
+        var vm = CreateViewModel();
+        var server = new SidebarServer(serverId, "Remote Server", instanceUrl);
+
+        await vm.NavigateToServerCommand.ExecuteAsync(server);
+
+        await _router.Received().NavigateAsync(Arg.Is<ServerRoute>(r =>
+            r.ServerId == serverId && r.InstanceUrl == instanceUrl));
     }
 }
