@@ -146,6 +146,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     private readonly ILogger<ServerViewModel> _logger;
     private readonly string instanceUrl;
     private readonly Guid _currentUserId;
+    private readonly MessageItemBuilder _messageItemBuilder = new();
 
     public ServerViewModel(
         IFennecClient client,
@@ -494,8 +495,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
     private MessageItem BuildMessageItem(Guid messageId, string content, Guid authorId, string authorName, string? authorInstanceUrl, string createdAt)
     {
-        var message = Message.Create(messageId, authorId, authorInstanceUrl, content, createdAt);
-
         var lastMessage = Messages.LastOrDefault();
         var lastAuthorId = lastMessage?.AuthorId;
         Instant? lastTimestamp = null;
@@ -505,25 +504,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             if (lastParsed.Success) lastTimestamp = lastParsed.Value;
         }
 
-        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
-        var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, message.Timestamp, message.AuthorId, zone);
-        var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, message.Timestamp, zone);
-
-        return new MessageItem
-        {
-            MessageId = messageId,
-            Content = content,
-            AuthorId = authorId,
-            AuthorName = authorName,
-            AuthorInstanceUrl = authorInstanceUrl,
-            AvatarFallback = authorName.Length > 0 ? authorName[..1].ToUpper() : "?",
-            CreatedAt = createdAt,
-            LocalTime = FormatLocalTime(createdAt),
-            ExactTime = FormatExactTime(createdAt),
-            ShowAuthor = showAuthor,
-            ShowTimeSeparator = showTimeSeparator,
-            TimeSeparatorText = showTimeSeparator ? FormatTimeSeparator(createdAt) : "",
-        };
+        return _messageItemBuilder.Build(messageId, content, authorId, authorName, authorInstanceUrl, createdAt, lastTimestamp, lastAuthorId);
     }
 
     public void Receive(ChannelMessageReceivedMessage message)
@@ -574,33 +555,14 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
 
             Messages.Clear();
 
-            var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
             Guid? lastAuthorId = null;
             Instant? lastTimestamp = null;
             foreach (var msg in response.Messages)
             {
-                var message = Message.Create(msg.MessageId, msg.AuthorId, msg.AuthorInstanceUrl, msg.Content, msg.CreatedAt);
-
-                var showAuthor = MessageGrouper.ShouldShowAuthor(lastTimestamp, lastAuthorId, message.Timestamp, message.AuthorId, zone);
-                var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(lastTimestamp, message.Timestamp, zone);
-                lastAuthorId = message.AuthorId;
-                lastTimestamp = message.Timestamp;
-
-                Messages.Add(new MessageItem
-                {
-                    MessageId = msg.MessageId,
-                    Content = msg.Content,
-                    AuthorId = msg.AuthorId,
-                    AuthorName = msg.AuthorName,
-                    AuthorInstanceUrl = msg.AuthorInstanceUrl,
-                    AvatarFallback = msg.AuthorName.Length > 0 ? msg.AuthorName[..1].ToUpper() : "?",
-                    CreatedAt = msg.CreatedAt,
-                    LocalTime = FormatLocalTime(msg.CreatedAt),
-                    ExactTime = FormatExactTime(msg.CreatedAt),
-                    ShowAuthor = showAuthor,
-                    ShowTimeSeparator = showTimeSeparator,
-                    TimeSeparatorText = showTimeSeparator ? FormatTimeSeparator(msg.CreatedAt) : "",
-                });
+                var item = _messageItemBuilder.Build(msg.MessageId, msg.Content, msg.AuthorId, msg.AuthorName, msg.AuthorInstanceUrl, msg.CreatedAt, lastTimestamp, lastAuthorId);
+                lastAuthorId = msg.AuthorId;
+                lastTimestamp = InstantPattern.ExtendedIso.Parse(msg.CreatedAt) is { Success: true } r ? r.Value : lastTimestamp;
+                Messages.Add(item);
             }
 
             _allMessages = Messages.ToList();
@@ -609,49 +571,6 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         {
             // Failed to load messages.
         }
-    }
-
-    private static string FormatLocalTime(string instantString)
-    {
-        var result = InstantPattern.ExtendedIso.Parse(instantString);
-        if (!result.Success) return "";
-
-        var local = result.Value.InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
-        var now = SystemClock.Instance.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
-
-        if (local.Date == now.Date)
-            return local.ToString("HH:mm", null);
-
-        if (local.Year == now.Year)
-            return local.ToString("MMM dd, HH:mm", null);
-
-        return local.ToString("yyyy MMM dd, HH:mm", null);
-    }
-
-    private static string FormatExactTime(string instantString)
-    {
-        var result = InstantPattern.ExtendedIso.Parse(instantString);
-        if (!result.Success) return "";
-
-        var local = result.Value.InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
-        return local.ToString("dddd, MMMM d, yyyy 'at' HH:mm:ss", null);
-    }
-
-    private static string FormatTimeSeparator(string instantString)
-    {
-        var result = InstantPattern.ExtendedIso.Parse(instantString);
-        if (!result.Success) return "";
-
-        var local = result.Value.InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
-        var now = SystemClock.Instance.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault());
-
-        if (local.Date == now.Date)
-            return "Today";
-
-        if (local.Date == now.Date.PlusDays(-1))
-            return "Yesterday";
-
-        return local.ToString("MMMM d, yyyy", null);
     }
 
     public string SearchWatermark => "Search messages...";
