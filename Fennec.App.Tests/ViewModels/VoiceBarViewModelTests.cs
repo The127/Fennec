@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain.Events;
 using Fennec.App.Messages;
 using Fennec.App.Routing;
 using Fennec.App.Services;

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain.Events;
 using Fennec.App.Messages;
 using Microsoft.Extensions.Logging;
 using SIPSorcery.Net;

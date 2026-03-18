@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain.Events;
 using Fennec.App.Messages;
 
 namespace Fennec.App.ViewModels;

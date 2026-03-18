@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Messaging;
+using Fennec.App.Domain.Events;
 using Fennec.App.Messages;
 using Fennec.Client;
 using Fennec.Shared.Dtos.Voice;
