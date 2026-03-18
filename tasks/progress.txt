@@ -1,0 +1,18 @@
+## Codebase Patterns
+
+- Domain classes in `Fennec.App/Domain/` are pure static classes with no Avalonia/CommunityToolkit.Mvvm dependencies.
+- Domain tests in `Fennec.App.Tests/Domain/` use xUnit.
+- NodaTime `Instant` comparisons in tests must use noon UTC (e.g. `Instant.FromUtc(2024, 1, day, 12, 0)`) to avoid timezone-sensitive day-boundary failures on systems ahead of UTC.
+
+---
+
+## 2026-03-18 - US-001 & US-002
+
+- US-001: MessageGrouper already extracted into `Fennec.App/Domain/MessageGrouper.cs`; ServerViewModel uses it in `LoadMessagesAsync` and `BuildMessageItem`; tests in `Fennec.App.Tests/Domain/MessageGrouperTests.cs` — fixed timezone-sensitive test cases (23:59→00:00 UTC crossed no local-day boundary on UTC+ systems; changed to noon-to-noon gap).
+- US-002: ShortcodeReplacer already extracted into `Fennec.App/Domain/ShortcodeReplacer.cs`; `ReplaceShortcodes` removed from ServerViewModel; `ShortcodeReplacer.Replace` used at call site; tests in `Fennec.App.Tests/Domain/ShortcodeReplacerTests.cs`.
+- Files changed: `Fennec.App/Domain/MessageGrouper.cs`, `Fennec.App/Domain/ShortcodeReplacer.cs`, `Fennec.App/ViewModels/ServerViewModel.cs`, `Fennec.App.Tests/Domain/MessageGrouperTests.cs`, `Fennec.App.Tests/Domain/ShortcodeReplacerTests.cs`
+- **Learnings for future iterations:**
+  - Both domain extractions were already done in a prior session; needed timezone fix only.
+  - ServerViewModel.cs also had HubStatusText/HubStatusColor → HubConnectionStatus enum refactor bundled in (see feedback_colors_in_view_not_vm.md).
+
+---

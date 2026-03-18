@@ -105,11 +105,20 @@ public partial class MessageItem : ObservableObject
     public required bool ShowTimeSeparator { get; init; }
     public required string TimeSeparatorText { get; init; }
 
-    [ObservableProperty]
-    private bool _isPending;
+    private OutgoingMessageState? _sendState;
+    public OutgoingMessageState? SendState
+    {
+        get => _sendState;
+        set
+        {
+            SetProperty(ref _sendState, value);
+            OnPropertyChanged(nameof(IsPending));
+            OnPropertyChanged(nameof(IsSendFailed));
+        }
+    }
 
-    [ObservableProperty]
-    private bool _isSendFailed;
+    public bool IsPending => SendState is PendingState;
+    public bool IsSendFailed => SendState is FailedState;
 
     [ObservableProperty]
     private bool _isSelected;
@@ -448,7 +457,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             authorName: _currentUsername,
             authorInstanceUrl: null,
             createdAt: nowString);
-        optimistic.IsPending = true;
+        optimistic.SendState = new PendingState();
 
         Messages.Add(optimistic);
         _allMessages.Add(optimistic);
@@ -469,13 +478,12 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
             else
             {
                 optimistic.MessageId = response.MessageId;
-                optimistic.IsPending = false;
+                optimistic.SendState = new DeliveredState();
             }
         }
         catch
         {
-            optimistic.IsPending = false;
-            optimistic.IsSendFailed = true;
+            optimistic.SendState = new FailedState("Send failed");
             MessageText = content;
         }
     }
