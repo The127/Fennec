@@ -7,16 +7,18 @@ public class OutgoingMessageStateTests
 {
     private static MessageItem NewMessage() => new()
     {
-        Content = "hello",
-        AuthorId = Guid.NewGuid(),
-        AuthorName = "alice",
-        AvatarFallback = "A",
-        CreatedAt = "2024-01-01T12:00:00Z",
-        LocalTime = "12:00",
-        ExactTime = "Monday, January 1, 2024 at 12:00:00",
-        ShowAuthor = true,
-        ShowTimeSeparator = false,
-        TimeSeparatorText = "",
+        Display = new MessageDisplayModel(
+            Content: "hello",
+            AuthorId: Guid.NewGuid(),
+            AuthorName: "alice",
+            AuthorInstanceUrl: null,
+            AvatarFallback: "A",
+            CreatedAt: "2024-01-01T12:00:00Z",
+            LocalTime: "12:00",
+            ExactTime: "Monday, January 1, 2024 at 12:00:00",
+            ShowAuthor: true,
+            ShowTimeSeparator: false,
+            TimeSeparatorText: ""),
     };
 
     [Fact]

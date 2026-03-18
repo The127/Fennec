@@ -599,9 +599,9 @@
                                 <StackPanel>
                                     <!-- Time separator for messages with a gap -->
                                     <Grid ColumnDefinitions="* Auto *" Margin="0,16,0,4"
-                                          IsVisible="{Binding ShowTimeSeparator}">
+                                          IsVisible="{Binding Display.ShowTimeSeparator}">
                                         <Separator Grid.Column="0" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1" Text="{Binding TimeSeparatorText}"
+                                        <TextBlock Grid.Column="1" Text="{Binding Display.TimeSeparatorText}"
                                                    Classes="Muted" FontSize="12" Margin="12,0" />
                                         <Separator Grid.Column="2" VerticalAlignment="Center" />
                                     </Grid>
@@ -609,7 +609,7 @@
                                     <!-- Author header (avatar + name) — only shown for first message in a group -->
                                     <StackPanel Orientation="Horizontal" Spacing="10"
                                                 Margin="0,12,0,4"
-                                                IsVisible="{Binding ShowAuthor}">
+                                                IsVisible="{Binding Display.ShowAuthor}">
                                         <Button Padding="0" MinWidth="0" MinHeight="0"
                                                 CornerRadius="16" Cursor="Hand"
                                                 Background="Transparent" BorderThickness="0">
@@ -624,10 +624,10 @@
                                                     <Border Classes="PopupPanel" Padding="12" MinWidth="200">
                                                         <StackPanel Spacing="12">
                                                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                                                <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="40" Width="40" />
+                                                                <shadui:Avatar Fallback="{Binding Display.AvatarFallback}" Height="40" Width="40" />
                                                                 <StackPanel VerticalAlignment="Center">
-                                                                    <TextBlock Text="{Binding AuthorName}" FontWeight="SemiBold" FontSize="15" />
-                                                                    <TextBlock Text="{Binding AuthorIdentity}" Classes="Muted" FontSize="12" />
+                                                                    <TextBlock Text="{Binding Display.AuthorName}" FontWeight="SemiBold" FontSize="15" />
+                                                                    <TextBlock Text="{Binding Display.AuthorIdentity}" Classes="Muted" FontSize="12" />
                                                                 </StackPanel>
                                                             </StackPanel>
                                                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -650,11 +650,11 @@
                                                     </Border>
                                                 </Flyout>
                                             </Button.Flyout>
-                                            <shadui:Avatar Fallback="{Binding AvatarFallback}" Height="32" Width="32" />
+                                            <shadui:Avatar Fallback="{Binding Display.AvatarFallback}" Height="32" Width="32" />
                                         </Button>
-                                        <TextBlock Text="{Binding AuthorName}" FontWeight="SemiBold"
+                                        <TextBlock Text="{Binding Display.AuthorName}" FontWeight="SemiBold"
                                                    FontSize="15" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding LocalTime}" Classes="Muted" FontSize="12"
+                                        <TextBlock Text="{Binding Display.LocalTime}" Classes="Muted" FontSize="12"
                                                    VerticalAlignment="Center" />
                                     </StackPanel>
 
@@ -662,7 +662,7 @@
                                     <Border CornerRadius="8"
                                             Padding="12,8"
                                             Margin="42,2,48,2"
-                                            ToolTip.Tip="{Binding ExactTime}"
+                                            ToolTip.Tip="{Binding Display.ExactTime}"
                                             Background="{DynamicResource SecondaryColor50}"
                                             Classes.selected="{Binding IsSelected}"
                                             Classes.pending="{Binding IsPending}"
@@ -678,8 +678,8 @@
                                         </Border.Styles>
                                         <Grid ColumnDefinitions="*,Auto">
                                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
-                                                <controls:MessageContentControl MessageText="{Binding Content}"
-                                                                                     IsEmojiOnly="{Binding IsEmojiOnly}"
+                                                <controls:MessageContentControl MessageText="{Binding Display.Content}"
+                                                                                     IsEmojiOnly="{Binding Display.IsEmojiOnly}"
                                                                                      VerticalAlignment="Center" />
                                                 <mi:MaterialIcon Kind="ClockOutline" Width="14" Height="14"
                                                                  Opacity="0.5" VerticalAlignment="Center"
@@ -695,7 +695,7 @@
                                                     Cursor="Hand"
                                                     Opacity="0"
                                                     Classes="ghost"
-                                                    Tag="{Binding Content}"
+                                                    Tag="{Binding Display.Content}"
                                                     Click="OnCopyMessageClick">
                                                 <Button.Styles>
                                                     <Style Selector="Border:pointerover Button">

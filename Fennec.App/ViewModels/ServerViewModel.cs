@@ -94,18 +94,7 @@ public partial class MessageItem : ObservableObject
     [ObservableProperty]
     private Guid _messageId;
 
-    public required string Content { get; init; }
-    public required Guid AuthorId { get; init; }
-    public required string AuthorName { get; init; }
-    public string? AuthorInstanceUrl { get; init; }
-    public string AuthorIdentity => new FederatedAddress(AuthorName, AppInstanceUrl.From(AuthorInstanceUrl)).ToString();
-    public required string AvatarFallback { get; init; }
-    public required string CreatedAt { get; init; }
-    public required string LocalTime { get; init; }
-    public required string ExactTime { get; init; }
-    public required bool ShowAuthor { get; init; }
-    public required bool ShowTimeSeparator { get; init; }
-    public required string TimeSeparatorText { get; init; }
+    public required MessageDisplayModel Display { get; init; }
 
     private OutgoingMessageState? _sendState;
     public OutgoingMessageState? SendState
@@ -124,7 +113,6 @@ public partial class MessageItem : ObservableObject
 
     [ObservableProperty]
     private bool _isSelected;
-    public bool IsEmojiOnly => !string.IsNullOrWhiteSpace(Content) && EmojiHelper.IsAllEmoji(Content);
 }
 
 public class ScreenShareInfo(Guid userId, string username, string? instanceUrl)
@@ -297,7 +285,7 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         var selected = Messages.Where(m => m.IsSelected).ToList();
         if (selected.Count == 0) return null;
 
-        return string.Join(Environment.NewLine, selected.Select(m => m.Content));
+        return string.Join(Environment.NewLine, selected.Select(m => m.Display.Content));
     }
 
     public ObservableCollection<ChannelGroupItem> ChannelGroups { get; } = [];
@@ -496,11 +484,11 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
     private MessageItem BuildMessageItem(Guid messageId, string content, Guid authorId, string authorName, string? authorInstanceUrl, string createdAt)
     {
         var lastMessage = Messages.LastOrDefault();
-        var lastAuthorId = lastMessage?.AuthorId;
+        var lastAuthorId = lastMessage?.Display.AuthorId;
         Instant? lastTimestamp = null;
         if (lastMessage is not null)
         {
-            var lastParsed = InstantPattern.ExtendedIso.Parse(lastMessage.CreatedAt);
+            var lastParsed = InstantPattern.ExtendedIso.Parse(lastMessage.Display.CreatedAt);
             if (lastParsed.Success) lastTimestamp = lastParsed.Value;
         }
 
@@ -589,8 +577,8 @@ public partial class ServerViewModel : ObservableObject, IShortcutHandler, ISear
         {
             foreach (var msg in _allMessages)
             {
-                if (msg.Content.Contains(query, StringComparison.OrdinalIgnoreCase)
-                    || msg.AuthorName.Contains(query, StringComparison.OrdinalIgnoreCase))
+                if (msg.Display.Content.Contains(query, StringComparison.OrdinalIgnoreCase)
+                    || msg.Display.AuthorName.Contains(query, StringComparison.OrdinalIgnoreCase))
                 {
                     Messages.Add(msg);
                 }

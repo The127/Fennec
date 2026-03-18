@@ -22,20 +22,23 @@ public class MessageItemBuilder
         var showAuthor = MessageGrouper.ShouldShowAuthor(previousTimestamp, previousAuthorId, message.Timestamp, message.AuthorId, zone);
         var showTimeSeparator = MessageGrouper.ShouldShowTimeSeparator(previousTimestamp, message.Timestamp, zone);
 
+        var display = new MessageDisplayModel(
+            Content: content,
+            AuthorId: authorId,
+            AuthorName: authorName,
+            AuthorInstanceUrl: authorInstanceUrl,
+            AvatarFallback: authorName.Length > 0 ? authorName[..1].ToUpper() : "?",
+            CreatedAt: createdAt,
+            LocalTime: FormatLocalTime(createdAt),
+            ExactTime: FormatExactTime(createdAt),
+            ShowAuthor: showAuthor,
+            ShowTimeSeparator: showTimeSeparator,
+            TimeSeparatorText: showTimeSeparator ? FormatTimeSeparator(createdAt) : "");
+
         return new MessageItem
         {
             MessageId = messageId,
-            Content = content,
-            AuthorId = authorId,
-            AuthorName = authorName,
-            AuthorInstanceUrl = authorInstanceUrl,
-            AvatarFallback = authorName.Length > 0 ? authorName[..1].ToUpper() : "?",
-            CreatedAt = createdAt,
-            LocalTime = FormatLocalTime(createdAt),
-            ExactTime = FormatExactTime(createdAt),
-            ShowAuthor = showAuthor,
-            ShowTimeSeparator = showTimeSeparator,
-            TimeSeparatorText = showTimeSeparator ? FormatTimeSeparator(createdAt) : "",
+            Display = display,
         };
     }
 
